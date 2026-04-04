@@ -1,0 +1,15 @@
+# Framework principal para criação da API (rápido, moderno e com documentação automática)
+fastapi
+
+# Servidor web ASGI necessário para rodar o FastAPI e gerenciar as conexões
+uvicorn
+
+# Adaptador para o PostgreSQL que permite ao Python executar comandos SQL
+# A versão 'binary' facilita a instalação sem depender de compiladores C no sistema
+psycopg2-binary
+
+# Essencial para validação de dados e criação dos esquemas (Schemas) que a API receberá
+pydantic
+
+# Permite que o Python leia arquivos .env (onde guardaremos a senha do banco com segurança)
+python-dotenv

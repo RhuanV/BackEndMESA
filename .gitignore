@@ -1,0 +1,36 @@
+# --- Python ---
+# Ignora o ambiente virtual (nunca deve ir para o git)
+.venv/
+env/
+venv/
+ENV/
+
+# Arquivos de bytecode (compilados do Python)
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Configurações Sensíveis ---
+# Ignora as credenciais do banco de dados e chaves secretas
+.env
+
+# --- IDEs e Editores ---
+# Ignora configurações específicas do VS Code ou PyCharm
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Banco de Dados / DBeaver ---
+# Ignora arquivos temporários e logs do DBeaver
+*.sql.log
+*.db
+.dbeaver/
+
+# --- Sistema Operacional ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
