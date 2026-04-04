@@ -15,6 +15,13 @@ class UsuarioRepository:
                 cur.execute("SELECT id, username, role FROM usuarios;")
                 return cur.fetchall()
 
+    def obter_usuario_por_username(self, username: str) -> dict | None:
+        """Busca um usuário pelo username e retorna hash, role e demais dados para autenticação."""
+        with psycopg2.connect(self.conn_params) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM usuarios WHERE username = %s;", (username,))
+                return cur.fetchone()
+
     def create(self, username: str, hash_password: str, role: str) -> int:
         with psycopg2.connect(self.conn_params) as conn:
             with conn.cursor() as cur:

@@ -14,6 +14,12 @@ pydantic
 # Hash seguro de senhas com bcrypt via passlib
 passlib[bcrypt]
 
+# JWT para tokens de acesso
+python-jose[cryptography]
+
+# Necessario para receber OAuth2PasswordRequestForm no login
+python-multipart
+
 # Versao compatível do backend bcrypt para evitar falha de inicializacao no Passlib 1.7.x
 bcrypt<5
 

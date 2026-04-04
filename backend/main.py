@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 from backend.service import UsuarioService
@@ -30,6 +31,27 @@ def create_usuario(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return {"id": new_id, "message": "Usuário criado com sucesso"}
+
+
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Autentica o usuário e retorna um token JWT de acesso."""
+    user = service.autenticar_usuario(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuario ou senha invalidos")
+
+    try:
+        access_token = service.security.create_access_token(
+            {
+                "sub": str(user["id"]),
+                "username": user["username"],
+                "role": user["role"],
+            }
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.put("/usuarios/{user_id}/username")

@@ -1,8 +1,13 @@
+from datetime import datetime, timedelta, timezone
+
+from jose import jwt
 from passlib.context import CryptContext
 
+from backend.database import ALGORITHM, SECRET_KEY
 from backend.repository import UsuarioRepository
 
 ALLOWED_ROLES = {"analista", "administrador", "desenvolvedor"}
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 class SecurityService:
@@ -23,6 +28,15 @@ class SecurityService:
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Compara uma senha em texto puro com o hash armazenado."""
         return self._pwd_context.verify(plain_password, hashed_password)
+
+    def create_access_token(self, dados: dict) -> str:
+        """Cria um token JWT com expiração de 30 minutos."""
+        if not SECRET_KEY:
+            raise ValueError("SECRET_KEY nao configurada no .env")
+
+        payload = dados.copy()
+        payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 class UsuarioService:
@@ -63,3 +77,14 @@ class UsuarioService:
     def excluir_usuario(self, user_id: int) -> bool:
         """Exclui um usuário pelo ID no banco de dados."""
         return self.repo.delete(user_id)
+
+    def autenticar_usuario(self, username: str, password: str) -> dict | None:
+        """Valida as credenciais e retorna os dados do usuário quando corretos."""
+        user = self.repo.obter_usuario_por_username(username.strip())
+        if not user:
+            return None
+
+        if not self.security.verify_password(password, user["hash"]):
+            return None
+
+        return user
