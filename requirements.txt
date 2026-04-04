@@ -25,3 +25,7 @@ bcrypt<5
 
 # Permite que o Python leia arquivos .env (onde guardaremos a senha do banco com segurança)
 python-dotenv
+
+# Ferramentas de desenvolvimento (qualidade e padronização de commits)
+pre-commit
+commitizen
