@@ -1,19 +1,46 @@
+from jose import JWTError, jwt
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
+from backend.database import ALGORITHM, SECRET_KEY
 from backend.service import UsuarioService
 
 app = FastAPI(title="GeoAvia - Teste Inicial")
 service = UsuarioService()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 class UpdateUsernameRequest(BaseModel):
     username: str
 
 
+async def obter_usuario_atual(token: str = Depends(oauth2_scheme)) -> dict:
+    """Valida o token JWT e retorna os dados básicos do usuário autenticado."""
+    unauthorized_exception = HTTPException(
+        status_code=401,
+        detail="Token invalido ou expirado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    if not SECRET_KEY:
+        raise HTTPException(status_code=500, detail="SECRET_KEY nao configurada no .env")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        sub = payload.get("sub")
+        username = payload.get("username")
+        role = payload.get("role")
+        if not sub or not username or not role:
+            raise unauthorized_exception
+    except JWTError as exc:
+        raise unauthorized_exception from exc
+
+    return {"sub": sub, "username": username, "role": role}
+
+
 @app.get("/usuarios")
-def get_usuarios():
+def get_usuarios(usuario_atual: dict = Depends(obter_usuario_atual)):
     """Retorna a lista de usuários passando pelas camadas de serviço e repositório."""
     return service.listar_usuarios()
 

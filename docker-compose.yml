@@ -14,6 +14,9 @@ services:
       - ./init-db:/docker-entrypoint-initdb.d 
   backend:
     build: .
+    volumes:
+      - .:/app
+    command: python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     container_name: geoavia_backend
     ports:
       - "8000:8000"
