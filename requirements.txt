@@ -11,5 +11,11 @@ psycopg2-binary
 # Essencial para validação de dados e criação dos esquemas (Schemas) que a API receberá
 pydantic
 
+# Hash seguro de senhas com bcrypt via passlib
+passlib[bcrypt]
+
+# Versao compatível do backend bcrypt para evitar falha de inicializacao no Passlib 1.7.x
+bcrypt<5
+
 # Permite que o Python leia arquivos .env (onde guardaremos a senha do banco com segurança)
 python-dotenv
