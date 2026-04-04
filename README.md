@@ -1,84 +1,95 @@
 # GeoAvia - Backend MESA-Auto
 
-Backend do framework GeoAvia (parceria SAC/ANAC/ITA) para automatizar a **Metodologia MESA** na prospeccao de sitios aeroportuarios.
+Backend do projeto GeoAvia (parceria SAC/ANAC/ITA) para automação da metodologia MESA na prospecção de sítios aeroportuários.
 
-O projeto foi desenvolvido com:
+## Visão geral
+
+Stack atual:
 
 - Python 3.12
 - FastAPI
 - PostgreSQL (com evolucao prevista para PostGIS)
 - Docker e Docker Compose
+- SQL puro com psycopg2 (sem ORM)
 
-## Sumario
+Estado atual da API:
 
-- [Visao Geral](#visao-geral)
-- [Arquitetura](#arquitetura)
-- [Estrutura do Projeto](#estrutura-do-projeto)
-- [Como Executar](#como-executar)
-- [Configuracao](#configuracao)
-- [Documentacao da API](#documentacao-da-api)
-- [Diretrizes para IA](#diretrizes-para-ia)
-
-## Visao Geral
-
-Este backend implementa uma arquitetura em camadas para separar claramente:
-
-- Interface HTTP (API)
-- Regras de negocio da metodologia MESA
-- Acesso a dados no PostgreSQL via SQL puro
+- Cadastro de usuário com hash de senha
+- Login com JWT
+- Proteção de rota com Bearer token em GET /usuarios
+- Gestão de usuários por ID (update username e delete)
 
 ## Arquitetura
 
-```text
-Camada 3 -> API (FastAPI)
-Camada 2 -> Service (regras de negocio MESA)
-Camada 1 -> Repository (SQL puro com psycopg2)
-```
+Arquitetura em camadas:
 
-Principios adotados:
+- Camada API: backend/main.py
+- Camada Service: backend/service.py
+- Camada Repository: backend/repository.py
+- Configuração de ambiente: backend/database.py
 
-- Sem ORM neste momento, priorizando controle e performance para operacoes geograficas
-- Regras de negocio concentradas na camada Service
-- Configuracao por variaveis de ambiente (`.env`)
+Princípios:
 
-## Estrutura do Projeto
+- Regras de negócio no service
+- Acesso a dados no repository com SQL explícito
+- Variáveis sensíveis via .env
+
+## Estrutura do repositório
 
 ```text
 BackEndMESA/
 |-- backend/
-|   |-- main.py          # Camada 3: API/rotas
-|   |-- service.py       # Camada 2: regras de negocio MESA
-|   |-- repository.py    # Camada 1: acesso ao banco (SQL puro)
-|   `-- database.py      # configuracao e leitura do .env
+|   |-- main.py
+|   |-- service.py
+|   |-- repository.py
+|   `-- database.py
 |-- init-db/
 |   |-- 01_create_tables.sql
 |   `-- 02_insert_data.sql
 |-- .github/
 |   `-- copilot-instructions.md
+|-- .pre-commit-config.yaml
 |-- docker-compose.yml
 |-- Dockerfile
 |-- requirements.txt
 `-- README.md
 ```
 
-## Como Executar
+## Configuração
 
-### Opcao A: Docker (recomendado)
+Crie um arquivo .env na raiz com:
 
-Sobe automaticamente PostgreSQL + API FastAPI.
+```env
+DB_HOST=db
+DB_NAME=usuarios_MESA
+DB_USER=postgres
+DB_PASS=123
+DB_PORT=5432
+SECRET_KEY=troque_para_uma_chave_forte
+ALGORITHM=HS256
+```
 
-1. Configure o arquivo `.env` na raiz (veja a secao [Configuracao](#configuracao)).
-2. Execute:
+Observações:
+
+- Em execução local fora do Docker, use DB_HOST=localhost.
+- SECRET_KEY deve ser única por ambiente e não deve ser versionada.
+
+## Como executar
+
+### Opção A: Docker (recomendado)
 
 ```bash
 docker-compose up --build
 ```
 
-O banco sera inicializado com os scripts da pasta `init-db/`.
+Serviços esperados:
 
-### Opcao B: Execucao local
+- API: http://127.0.0.1:8000
+- Swagger: http://127.0.0.1:8000/docs
+- Banco: porta 5433 no host (mapeada para 5432 no container)
+- Caso já tenho postgres rodando, talvez seja necessário fazer a conexão com a porta 5433 no dbeaver (ou outro SGBD) para visualizar o banco de dados nos testes.
 
-1. Crie e ative o ambiente virtual:
+### Opção B: Local
 
 ```bash
 python -m venv .venv
@@ -96,49 +107,68 @@ Linux/macOS:
 source .venv/bin/activate
 ```
 
-2. Instale as dependencias:
+Instalar dependências e iniciar:
 
 ```bash
 pip install -r requirements.txt
-```
-
-3. Execute a API:
-
-```bash
 python -m uvicorn backend.main:app --reload
 ```
 
-## Configuracao
+## Endpoints atuais
 
-Crie um arquivo `.env` na raiz com o conteudo:
+Autenticação:
 
-```env
-DB_HOST=db
-DB_NAME=geoavia
-DB_USER=postgres
-DB_PASS=sua_senha_secreta
-DB_PORT=5432
-```
+- POST /usuarios/signup
+- POST /login
 
-Observacao:
+Usuários:
 
-- Use `DB_HOST=localhost` se executar a API fora do Docker
+- GET /usuarios (protegida por token)
+- PUT /usuarios/{user_id}/username
+- DELETE /usuarios/{user_id}
 
-## Documentacao da API
+## Fluxo de autenticação
 
-Com o servidor em execucao:
+1. Criar usuário em POST /usuarios/signup
+2. Autenticar em POST /login
+3. Receber access_token
+4. Enviar Authorization: Bearer <token> para GET /usuarios
 
-- Swagger UI: http://127.0.0.1:8000/docs
-- ReDoc: http://127.0.0.1:8000/redoc
+## Organização para trabalho em conjunto
 
-## Diretrizes para IA
+Sugestões práticas para evoluir o repositório em equipe:
 
-As diretrizes de arquitetura e contexto tecnico para assistentes de IA estao em:
+1. Separar módulo de segurança
+- Criar backend/security.py para centralizar hashing, emissão e validação de token.
+- Manter backend/service.py focado em regra de negócio.
 
-- `.github/copilot-instructions.md`
-- `docs/adr/` (Architecture Decision Records)
+2. Padronizar modelos de request/response
+- Criar backend/schemas.py com classes Pydantic para signup, login e respostas.
+- Reduzir parâmetros soltos nas rotas.
 
-Decisoes principais:
+3. Separar dependências de runtime e desenvolvimento
+- Manter runtime em requirements.txt.
+- Criar requirements-dev.txt para ferramentas como pre-commit e commitizen.
 
-- SQL puro com `psycopg2-binary` para facilitar evolucao geoespacial
-- Logica MESA centralizada na camada `service.py`
+4. Adicionar testes automatizados
+- tests/unit para service.
+- tests/integration para rotas e autenticação.
+
+5. Definir convenções de colaboração
+- Padrão de branch: feat/, fix/, chore/.
+- PR com checklist mínimo (teste local, impacto em API, migração de banco).
+- Commits semânticos com commitizen (já suportado por .pre-commit-config.yaml).
+
+6. Versionar decisões arquiteturais
+- Criar pasta docs/adr para registrar decisões de segurança, banco e API.
+
+## Segurança
+
+- Senhas nunca devem ser armazenadas em texto puro.
+- Não commitar .env com credenciais reais.
+- Em produção, rotacionar SECRET_KEY e usar variáveis secretas do ambiente.
+
+## Referências internas
+
+- Diretrizes de implementação: .github/copilot-instructions.md
+- Entrada principal da API: backend/main.py
