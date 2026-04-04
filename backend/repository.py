@@ -1,10 +1,11 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from backend.database import DATABASE_URL
 
 class UsuarioRepository:
     def __init__(self):
         # Em produção, use variáveis de ambiente (.env)
-        self.conn_params = "host=localhost dbname=usuarios_MESA user=postgres password=123"
+        self.conn_params = DATABASE_URL
 
     def get_all(self):
         with psycopg2.connect(self.conn_params) as conn:
