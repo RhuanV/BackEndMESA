@@ -1,7 +1,7 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from backend.database import DATABASE_URL
+from geoavia_backend.database import DATABASE_URL
 
 
 class UserRepository:

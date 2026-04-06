@@ -8,14 +8,17 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 # Copies only the requirements first (optimizes Docker cache)
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copies the rest of the code (backend folder and .env)
-COPY . .
+# Copies the backend source code
+COPY backend/src ./src
+
+# Ensures Python can find the src package
+ENV PYTHONPATH=/app/src
 
 # Exposes the port used by FastAPI
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "geoavia_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

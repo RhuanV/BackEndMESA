@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
 
-from backend.database import ALGORITHM, SECRET_KEY
-from backend.repository import UserRepository
+from geoavia_backend.database import ALGORITHM, SECRET_KEY
+from geoavia_backend.repository import UserRepository
 
 ALLOWED_ROLES = {"analyst", "admin", "dev"}
 ACCESS_TOKEN_EXPIRE_MINUTES = 30

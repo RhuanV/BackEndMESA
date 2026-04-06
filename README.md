@@ -61,7 +61,7 @@ Create a .env file in the root directory with:
 
 ```env
 DB_HOST=db
-DB_NAME=geoavia_users
+DB_NAME=geoavia_us
 DB_USER=postgres
 DB_PASS=123
 DB_PORT=5432
@@ -90,7 +90,13 @@ Expected services:
 
 If you already have PostgreSQL running locally, you may need to connect using port 5433 in DBeaver (or another DB client) to view the database during tests.
 
-### Opção B: Local
+### Option B: Local Package Installation (Editable Mode)
+
+For development, you may install the backend as a local Python package in **editable mode**.
+
+This allows Python to recognize the project as a proper package and automatically reflect code changes without reinstalling dependencies.
+
+Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -108,12 +114,30 @@ Linux/macOS:
 source .venv/bin/activate
 ```
 
-Install dependencies and start:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
-python -m uvicorn backend.main:app --reload
 ```
+
+Install the backend in editable mode:
+
+```bash
+pip install -e .
+```
+
+Run the API:
+
+```bash
+uvicorn geoavia_backend.main:app --reload
+```
+
+#### Advantages of Editable Installation
+
+- **Proper package resolution:** The module `geoavia_backend` becomes globally available inside the environment.
+- **Cleaner imports:** You avoid relative import issues when the project grows.
+- **Better IDE support:** Tools like VSCode/Pylance can resolve modules more reliably.
+- **No reinstall needed:** Code changes are immediately reflected without reinstalling the package.
 
 ## Current Endpoints
 

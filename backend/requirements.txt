@@ -21,7 +21,7 @@ python-jose[cryptography]
 python-multipart
 
 # Compatible version of the bcrypt backend to avoid initialization failures in Passlib 1.7.x
-bcrypt<5
+bcrypt==4.0.1
 
 # Allows Python to read .env files (where we securely store the database password)
 python-dotenv

@@ -3,8 +3,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
-from backend.database import ALGORITHM, SECRET_KEY
-from backend.service import UserService
+from geoavia_backend.database import ALGORITHM, SECRET_KEY
+from geoavia_backend.service import UserService
 
 app = FastAPI(title="GeoAvia - Initial Test")
 service = UserService()
