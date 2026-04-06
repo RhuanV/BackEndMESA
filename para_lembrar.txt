@@ -1,0 +1,16 @@
+geoavia/
+│
+├── backend/
+│   ├── pyproject.toml
+│   ├── src/
+│   │   └── geoavia_backend/
+│   ├── migrations/
+│   └── tests/
+│
+├── frontend/
+│   ├── package.json
+│   └── src/
+│
+├── docker/
+├── docker-compose.yml
+└── README.md

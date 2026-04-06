@@ -1,31 +1,31 @@
-# Framework principal para criação da API (rápido, moderno e com documentação automática)
+# Main framework for building the API (fast, modern, with automatic documentation)
 fastapi
 
-# Servidor web ASGI necessário para rodar o FastAPI e gerenciar as conexões
+# ASGI web server required to run FastAPI and manage connections
 uvicorn
 
-# Adaptador para o PostgreSQL que permite ao Python executar comandos SQL
-# A versão 'binary' facilita a instalação sem depender de compiladores C no sistema
+# PostgreSQL adapter that allows Python to execute SQL commands
+# The 'binary' version simplifies installation without requiring C compilers on the system
 psycopg2-binary
 
-# Essencial para validação de dados e criação dos esquemas (Schemas) que a API receberá
+# Essential for data validation and for creating the schemas that the API will receive
 pydantic
 
-# Hash seguro de senhas com bcrypt via passlib
+# Secure password hashing using bcrypt through passlib
 passlib[bcrypt]
 
-# JWT para tokens de acesso
+# JWT library for access tokens
 python-jose[cryptography]
 
-# Necessario para receber OAuth2PasswordRequestForm no login
+# Required to receive OAuth2PasswordRequestForm in the login endpoint
 python-multipart
 
-# Versao compatível do backend bcrypt para evitar falha de inicializacao no Passlib 1.7.x
+# Compatible version of the bcrypt backend to avoid initialization failures in Passlib 1.7.x
 bcrypt<5
 
-# Permite que o Python leia arquivos .env (onde guardaremos a senha do banco com segurança)
+# Allows Python to read .env files (where we securely store the database password)
 python-dotenv
 
-# Ferramentas de desenvolvimento (qualidade e padronização de commits)
+# Development tools (code quality and commit standardization)
 pre-commit
 commitizen
