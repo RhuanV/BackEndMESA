@@ -1,0 +1,31 @@
+# Main framework for building the API (fast, modern, with automatic documentation)
+fastapi
+
+# ASGI web server required to run FastAPI and manage connections
+uvicorn
+
+# PostgreSQL adapter that allows Python to execute SQL commands
+# The 'binary' version simplifies installation without requiring C compilers on the system
+psycopg2-binary
+
+# Essential for data validation and for creating the schemas that the API will receive
+pydantic
+
+# Secure password hashing using bcrypt through passlib
+passlib[bcrypt]
+
+# JWT library for access tokens
+python-jose[cryptography]
+
+# Required to receive OAuth2PasswordRequestForm in the login endpoint
+python-multipart
+
+# Compatible version of the bcrypt backend to avoid initialization failures in Passlib 1.7.x
+bcrypt==4.0.1
+
+# Allows Python to read .env files (where we securely store the database password)
+python-dotenv
+
+# Development tools (code quality and commit standardization)
+pre-commit
+commitizen

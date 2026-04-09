@@ -1,21 +1,24 @@
-# Usa uma imagem leve do Python
+# Uses a lightweight Python image
 FROM python:3.12-slim
 
-# Define o diretório de trabalho dentro do container
+# Defines the working directory inside the container
 WORKDIR /app
 
-# Instala dependências do sistema necessárias para o psycopg2
+# Installs system dependencies required for psycopg2
 RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
-# Copia apenas o requirements primeiro (otimiza o cache do Docker)
-COPY requirements.txt .
+# Copies only the requirements first (optimizes Docker cache)
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o restante do código (pasta backend e .env)
-COPY . .
+# Copies the backend source code
+COPY backend/src ./src
 
-# Expõe a porta que o FastAPI usa
+# Ensures Python can find the src package
+ENV PYTHONPATH=/app/src
+
+# Exposes the port used by FastAPI
 EXPOSE 8000
 
-# Comando para rodar a aplicação
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Command to run the application
+CMD ["python", "-m", "uvicorn", "geoavia_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

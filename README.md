@@ -1,40 +1,40 @@
 # GeoAvia - Backend MESA-Auto
 
-Backend do projeto GeoAvia (parceria SAC/ANAC/ITA) para automação da metodologia MESA na prospecção de sítios aeroportuários.
+Backend for the GeoAvia project (SAC/ANAC/ITA partnership) for automating the MESA methodology in airport site prospecting.
 
-## Visão geral
+## Overview
 
-Stack atual:
+Current stack:
 
 - Python 3.12
 - FastAPI
-- PostgreSQL (com evolucao prevista para PostGIS)
-- Docker e Docker Compose
-- SQL puro com psycopg2 (sem ORM)
+- PostgreSQL (with planned evolution to PostGIS)
+- Docker and Docker Compose
+- Raw SQL with psycopg2 (no ORM)
 
-Estado atual da API:
+Current API state:
 
-- Cadastro de usuário com hash de senha
-- Login com JWT
-- Proteção de rota com Bearer token em GET /usuarios
-- Gestão de usuários por ID (update username e delete)
+- User registration with password hashing
+- Login with JWT
+- Route protection using Bearer token on GET /usuarios
+- User management by ID (update username and delete)
 
-## Arquitetura
+## Architecture
 
-Arquitetura em camadas:
+Layered architecture:
 
-- Camada API: backend/main.py
-- Camada Service: backend/service.py
-- Camada Repository: backend/repository.py
-- Configuração de ambiente: backend/database.py
+- API Layer: backend/main.py
+- Service Layer: backend/service.py
+- Repository Layer: backend/repository.py
+- Environment configuration: backend/database.py
 
-Princípios:
+Principles:
 
-- Regras de negócio no service
-- Acesso a dados no repository com SQL explícito
-- Variáveis sensíveis via .env
+- Business rules in the service layer
+- Data access in the repository using explicit SQL
+- Sensitive variables managed through .env
 
-## Estrutura do repositório
+## Repository Structure
 
 ```text
 BackEndMESA/
@@ -55,41 +55,48 @@ BackEndMESA/
 `-- README.md
 ```
 
-## Configuração
+## Configurations
 
-Crie um arquivo .env na raiz com:
+Create a .env file in the root directory with:
 
 ```env
 DB_HOST=db
-DB_NAME=usuarios_MESA
+DB_NAME=geoavia_us
 DB_USER=postgres
 DB_PASS=123
 DB_PORT=5432
-SECRET_KEY=troque_para_uma_chave_forte
+SECRET_KEY=change_for_a_strong_password
 ALGORITHM=HS256
 ```
 
-Observações:
+Notes:
 
-- Em execução local fora do Docker, use DB_HOST=localhost.
-- SECRET_KEY deve ser única por ambiente e não deve ser versionada.
+- When running locally outside Docker, use DB_HOST=localhost.
+- SECRET_KEY must be unique per environment and should not be versioned.
 
-## Como executar
+## How to Run
 
-### Opção A: Docker (recomendado)
+### Option A: Docker (recommended)
 
 ```bash
 docker-compose up --build
 ```
 
-Serviços esperados:
+Expected services:
 
 - API: http://127.0.0.1:8000
 - Swagger: http://127.0.0.1:8000/docs
-- Banco: porta 5433 no host (mapeada para 5432 no container)
-- Caso já tenho postgres rodando, talvez seja necessário fazer a conexão com a porta 5433 no dbeaver (ou outro SGBD) para visualizar o banco de dados nos testes.
+- Database: port 5433 on the host (mapped to 5432 inside the container)
 
-### Opção B: Local
+If you already have PostgreSQL running locally, you may need to connect using port 5433 in DBeaver (or another DB client) to view the database during tests.
+
+### Option B: Local Package Installation (Editable Mode)
+
+For development, you may install the backend as a local Python package in **editable mode**.
+
+This allows Python to recognize the project as a proper package and automatically reflect code changes without reinstalling dependencies.
+
+Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -107,68 +114,81 @@ Linux/macOS:
 source .venv/bin/activate
 ```
 
-Instalar dependências e iniciar:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
-python -m uvicorn backend.main:app --reload
 ```
 
-## Endpoints atuais
+Install the backend in editable mode:
 
-Autenticação:
+```bash
+pip install -e .
+```
+
+Run the API:
+
+```bash
+uvicorn geoavia_backend.main:app --reload
+```
+
+#### Advantages of Editable Installation
+
+- **Proper package resolution:** The module `geoavia_backend` becomes globally available inside the environment.
+- **Cleaner imports:** You avoid relative import issues when the project grows.
+- **Better IDE support:** Tools like VSCode/Pylance can resolve modules more reliably.
+- **No reinstall needed:** Code changes are immediately reflected without reinstalling the package.
+
+## Current Endpoints
+
+Authentication:
 
 - POST /usuarios/signup
 - POST /login
 
-Usuários:
+Users:
 
-- GET /usuarios (protegida por token)
+- GET /usuarios (protected with token)
 - PUT /usuarios/{user_id}/username
 - DELETE /usuarios/{user_id}
 
-## Fluxo de autenticação
+## Authentication Flow
 
-1. Criar usuário em POST /usuarios/signup
-2. Autenticar em POST /login
-3. Receber access_token
-4. Enviar Authorization: Bearer <token> para GET /usuarios
+- Create a user with POST /usuarios/signup
+- Authenticate with POST /login
+- Receive access_token
+- Send Authorization: Bearer <token> when calling GET /usuarios
 
-## Organização para trabalho em conjunto
+## Colaboration Guidelines
 
-Sugestões práticas para evoluir o repositório em equipe:
+Practical suggestions to evolve the repository as a team:
 
-1. Separar módulo de segurança
-- Criar backend/security.py para centralizar hashing, emissão e validação de token.
-- Manter backend/service.py focado em regra de negócio.
+1. Separate the security module
+    - Create backend/security.py to centralize hashing, token generation, and validation.
+    - Keep backend/service.py focused on business logic.
+2. Standardize request/response models
+    - Create backend/schemas.py with Pydantic classes for signup, login, and responses.
+    - Reduce loose parameters in route definitions.
+3. Separate runtime and development dependencies
+    - Keep runtime dependencies in requirements.txt.
+    - Create requirements-dev.txt for tools like pre-commit and commitizen.
+4. Add automated tests
+    - tests/unit for service layer tests.
+    - tests/integration for routes and authentication.
+5. Define collaboration conventions
+    - Branch pattern: feat/, fix/, chore/.
+    - Pull requests with a minimum checklist (local testing, API impact, database migration).
+    - Semantic commits using commitizen (already supported by .pre-commit-config.yaml).
+6. Version architectural decisions
+    - Create a docs/adr folder to document decisions about security, database, and API design.
 
-2. Padronizar modelos de request/response
-- Criar backend/schemas.py com classes Pydantic para signup, login e respostas.
-- Reduzir parâmetros soltos nas rotas.
+## Security
 
-3. Separar dependências de runtime e desenvolvimento
-- Manter runtime em requirements.txt.
-- Criar requirements-dev.txt para ferramentas como pre-commit e commitizen.
+- Passwords must never be stored in plain text.
+- Do not commit .env files containing real credentials.
+- In production, rotate SECRET_KEY and use secure environment variables.
 
-4. Adicionar testes automatizados
-- tests/unit para service.
-- tests/integration para rotas e autenticação.
+## Internal References
 
-5. Definir convenções de colaboração
-- Padrão de branch: feat/, fix/, chore/.
-- PR com checklist mínimo (teste local, impacto em API, migração de banco).
-- Commits semânticos com commitizen (já suportado por .pre-commit-config.yaml).
-
-6. Versionar decisões arquiteturais
-- Criar pasta docs/adr para registrar decisões de segurança, banco e API.
-
-## Segurança
-
-- Senhas nunca devem ser armazenadas em texto puro.
-- Não commitar .env com credenciais reais.
-- Em produção, rotacionar SECRET_KEY e usar variáveis secretas do ambiente.
-
-## Referências internas
-
-- Diretrizes de implementação: .github/copilot-instructions.md
-- Entrada principal da API: backend/main.py
+- Implementation guidelines: .github/copilot-instructions.md
+- API entry point: backend/main.py

@@ -1,7 +1,7 @@
 repos:
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.2.0  # Use a versão mais recente
+    rev: v3.2.0  # Use the most recent version
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
-        args: [] # Aqui você pode customizar os tipos se quiser
+        args: [] # Here, we can customize any type we want to
