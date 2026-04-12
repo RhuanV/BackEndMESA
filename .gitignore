@@ -41,3 +41,6 @@ Thumbs.db
 # --- Downloaded Data ---
 data/*
 !data/.gitkeep
+
+# --- Local Scripts not intended to be uploaded to GitHub --- 
+local_scripts/

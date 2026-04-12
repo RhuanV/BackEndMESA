@@ -57,17 +57,9 @@ BackEndMESA/
 
 ## Configurations
 
-Create a .env file in the root directory with:
+There is a .env_example file in the root directory, based on which one may create
+one's own .env file.
 
-```env
-DB_HOST=db
-DB_NAME=geoavia_users
-DB_USER=postgres
-DB_PASS=123
-DB_PORT=5432
-SECRET_KEY=change_for_a_strong_password
-ALGORITHM=HS256
-```
 
 Notes:
 
@@ -88,7 +80,14 @@ Expected services:
 - Swagger: http://127.0.0.1:8000/docs
 - Database: port 5433 on the host (mapped to 5432 inside the container)
 
-If you already have PostgreSQL running locally, you may need to connect using port 5433 in DBeaver (or another DB client) to view the database during tests.
+#### Accessing the Database via DBeaver
+
+To inspect the tables and run geographic queries, configure a new PostgreSQL connection in DBeaver (or your preferred DB client) with the following parameters (based on your `.env` defaults):
+- **Host:** `localhost`
+- **Port:** `5433` (or the value of `DB_EXT_PORT`)
+- **Database:** `geoavia_main_db` (or the value of `DB_NAME`)
+- **Username:** `postgres` (or the value of `DB_USER`)
+- **Password:** `123` (or the value of `DB_PASS`)
 
 ### Option B: Local Package Installation (Editable Mode)
 
