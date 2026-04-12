@@ -37,3 +37,7 @@ Thumbs.db
 
 # --- Logs ---
 *.log
+
+# --- Downloaded Data ---
+data/*
+!data/.gitkeep

@@ -61,7 +61,7 @@ Create a .env file in the root directory with:
 
 ```env
 DB_HOST=db
-DB_NAME=geoavia_us
+DB_NAME=geoavia_users
 DB_USER=postgres
 DB_PASS=123
 DB_PORT=5432

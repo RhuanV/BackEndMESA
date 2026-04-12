@@ -1,18 +1,31 @@
 services:
+
+# ========================
+# DATABASE
+# ========================
   db:
-    image: postgres:15
+    image: postgis/postgis:15-3.4
     container_name: geoavia_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
-      POSTGRES_DB: geoavia_users
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d
 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ========================
+# BACKEND SERVICE
+# ========================
   backend:
     build: .
     container_name: geoavia_backend
@@ -24,7 +37,80 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
+# ========================
+# AIRFLOW SERVICE
+# ========================
+  airflow:
+    image: apache/airflow:2.9.3
+    container_name: geoavia_airflow
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW_UID: 50000
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    ports:
+      - "8080:8080"
+    command: webserver
+
+# ========================
+# AIRFLOW SCHEDULER
+# ========================
+  airflow-scheduler:
+    image: apache/airflow:2.9.3
+    container_name: geoavia_airflow_scheduler
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW_UID: 50000
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+    command: scheduler
+
+# ========================
+# AIRFLOW INITIALIZER
+# ========================
+  airflow-init:
+    image: apache/airflow:2.9.3
+    depends_on:
+      db:
+        # It only tries to initialize airflow after the postgres database is created
+        condition: service_healthy 
+    env_file:
+      - .env
+    environment:
+      AIRFLOW_UID: 50000
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+    command: >
+      bash -c "airflow db migrate &&
+      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@email.com || true"
+
+
+# ========================
+# DATA PERSISTENCE
+# ========================
 volumes:
   postgres_data:
