@@ -8,7 +8,8 @@ Current stack:
 
 - Python 3.12
 - FastAPI
-- PostgreSQL (with planned evolution to PostGIS)
+- PostgreSQL with PostGIS
+- Apache Airflow (for ETL and data pipelines)
 - Docker and Docker Compose
 - Raw SQL with psycopg2 (no ORM)
 
@@ -23,35 +24,47 @@ Current API state:
 
 Layered architecture:
 
-- API Layer: backend/main.py
-- Service Layer: backend/service.py
-- Repository Layer: backend/repository.py
-- Environment configuration: backend/database.py
+- API Layer: backend/src/geoavia_backend/main.py
+- Service Layer: backend/src/geoavia_backend/service.py
+- Repository Layer: backend/src/geoavia_backend/repository.py
+- Environment configuration: backend/src/geoavia_backend/database.py
+- Data Pipelines (ETL): airflow_config/dags/
 
 Principles:
 
 - Business rules in the service layer
 - Data access in the repository using explicit SQL
+- Automated spatial data ingestion via Airflow DAGs
 - Sensitive variables managed through .env
 
 ## Repository Structure
 
 ```text
 BackEndMESA/
+|-- airflow_config/
+|   |-- dags/
+|   |   |-- dag_load_municipalities.py
+|   |   `-- dag_load_states.py
+|   |-- plugins/
+|   |   `-- config_urls.py
+|   |-- Dockerfile
+|   `-- requirements.txt
 |-- backend/
-|   |-- main.py
-|   |-- service.py
-|   |-- repository.py
-|   `-- database.py
-|-- init-db/
-|   |-- 01_create_tables.sql
-|   `-- 02_insert_data.sql
+|   |-- migrations/
+|   |   |-- 01_create_tables.sql
+|   |   `-- 02_insert_data.sql
+|   |-- src/
+|   |   `-- geoavia_backend/
+|   |       |-- main.py
+|   |       |-- service.py
+|   |       |-- repository.py
+|   |       `-- database.py
+|   `-- requirements.txt
 |-- .github/
 |   `-- copilot-instructions.md
 |-- .pre-commit-config.yaml
 |-- docker-compose.yml
 |-- Dockerfile
-|-- requirements.txt
 `-- README.md
 ```
 
@@ -78,7 +91,8 @@ Expected services:
 
 - API: http://127.0.0.1:8000
 - Swagger: http://127.0.0.1:8000/docs
-- Database: port 5433 on the host (mapped to 5432 inside the container)
+- Airflow: http://127.0.0.1:8080 (User: admin / Pass: admin)
+- Database: Ports are configured in .env file
 
 #### Accessing the Database via DBeaver
 
@@ -190,4 +204,4 @@ Practical suggestions to evolve the repository as a team:
 ## Internal References
 
 - Implementation guidelines: .github/copilot-instructions.md
-- API entry point: backend/main.py
+- API entry point: backend/src/geoavia_backend/main.py

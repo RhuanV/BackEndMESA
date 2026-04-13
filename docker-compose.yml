@@ -109,8 +109,12 @@ services:
       AIRFLOW_UID: 50000
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
     command: >
-      bash -c "airflow db migrate &&
-      airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@email.com || true"
+      bash -c "airflow db migrate && \
+      airflow users create --username ${AIRFLOW_USER:-admin} --password ${AIRFLOW_PASS:-admin} --firstname admin --lastname admin --role Admin --email admin@email.com || true && \
+      airflow dags unpause load_state_boundaries && \
+      airflow dags trigger load_state_boundaries && \
+      airflow dags unpause load_municipality_boundaries && \
+      airflow dags trigger load_municipality_boundaries"
 
 
 # ========================
