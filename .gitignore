@@ -38,9 +38,8 @@ Thumbs.db
 # --- Logs ---
 *.log
 
-# --- Downloaded Data ---
+# --- Manually Downloaded Data ---
 data/*
-!data/.gitkeep
 
 # --- Local Scripts not intended to be uploaded to GitHub --- 
 local_scripts/

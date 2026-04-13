@@ -45,7 +45,7 @@ services:
 # AIRFLOW SERVICE
 # ========================
   airflow:
-    image: apache/airflow:2.9.3
+    build: ./airflow_config
     container_name: geoavia_airflow
     restart: always
     env_file:
@@ -59,11 +59,12 @@ services:
       AIRFLOW_UID: 50000
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+      AIRFLOW_CONN_GEOAVIA_MAIN_CONN: postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow_config/dags:/opt/airflow/dags
+      - ./airflow_config/logs:/opt/airflow/logs
+      - ./airflow_config/plugins:/opt/airflow/plugins
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
     command: webserver
@@ -72,7 +73,7 @@ services:
 # AIRFLOW SCHEDULER
 # ========================
   airflow-scheduler:
-    image: apache/airflow:2.9.3
+    build: ./airflow_config
     container_name: geoavia_airflow_scheduler
     restart: always
     env_file:
@@ -86,16 +87,18 @@ services:
       AIRFLOW_UID: 50000
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+      AIRFLOW_CONN_GEOAVIA_MAIN_CONN: postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow_config/dags:/opt/airflow/dags
+      - ./airflow_config/logs:/opt/airflow/logs
+      - ./airflow_config/plugins:/opt/airflow/plugins
     command: scheduler
 
 # ========================
 # AIRFLOW INITIALIZER
 # ========================
   airflow-init:
-    image: apache/airflow:2.9.3
+    build: ./airflow_config
     depends_on:
       db:
         # It only tries to initialize airflow after the postgres database is created
