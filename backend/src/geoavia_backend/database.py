@@ -1,3 +1,8 @@
+"""
+Database configuration module.
+Responsible for loading environment variables and building the connection string 
+for the repository layer to connect to PostgreSQL.
+"""
 import os
 from dotenv import load_dotenv
 
@@ -5,11 +10,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Retrieves each variable individually
-DB_HOST = os.getenv("DB_HOST")
+DB_HOST = os.getenv("DB_HOST", "db")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASS = os.getenv("DB_PASS")
-DB_PORT = os.getenv("DB_PORT")
+
+# Smart port resolution: uses external port if running locally, otherwise internal port
+if DB_HOST in ("localhost", "127.0.0.1"):
+    DB_PORT = os.getenv("DB_EXT_PORT", "5433")
+else:
+    DB_PORT = os.getenv("DB_PORT", "5432")
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 

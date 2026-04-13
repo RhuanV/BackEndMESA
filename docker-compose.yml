@@ -1,18 +1,32 @@
 services:
+
+# ========================
+# DATABASE
+# ========================
   db:
-    image: postgres:15
+    image: postgis/postgis:15-3.4
     container_name: geoavia_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
-      POSTGRES_DB: geoavia_users
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+      AIRFLOW_DB: ${AIRFLOW_DB}
     ports:
-      - "5433:5432"
+      - "${DB_EXT_PORT:-5433}:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations:/docker-entrypoint-initdb.d
 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ========================
+# BACKEND SERVICE
+# ========================
   backend:
     build: .
     container_name: geoavia_backend
@@ -20,11 +34,91 @@ services:
       - ./backend/src:/app/src
     command: python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000" # HOST:CONTAINER
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
+# ========================
+# AIRFLOW SERVICE
+# ========================
+  airflow:
+    build: ./airflow_config
+    container_name: geoavia_airflow
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW_UID: 50000
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+      AIRFLOW_CONN_GEOAVIA_MAIN_CONN: postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./airflow_config/dags:/opt/airflow/dags
+      - ./airflow_config/logs:/opt/airflow/logs
+      - ./airflow_config/plugins:/opt/airflow/plugins
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
+    command: webserver
+
+# ========================
+# AIRFLOW SCHEDULER
+# ========================
+  airflow-scheduler:
+    build: ./airflow_config
+    container_name: geoavia_airflow_scheduler
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW_UID: 50000
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+      AIRFLOW_CONN_GEOAVIA_MAIN_CONN: postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+    volumes:
+      - ./airflow_config/dags:/opt/airflow/dags
+      - ./airflow_config/logs:/opt/airflow/logs
+      - ./airflow_config/plugins:/opt/airflow/plugins
+    command: scheduler
+
+# ========================
+# AIRFLOW INITIALIZER
+# ========================
+  airflow-init:
+    build: ./airflow_config
+    depends_on:
+      db:
+        # It only tries to initialize airflow after the postgres database is created
+        condition: service_healthy 
+    env_file:
+      - .env
+    environment:
+      AIRFLOW_UID: 50000
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
+    command: >
+      bash -c "airflow db migrate && \
+      airflow users create --username ${AIRFLOW_USER:-admin} --password ${AIRFLOW_PASS:-admin} --firstname admin --lastname admin --role Admin --email admin@email.com || true && \
+      airflow dags unpause load_state_boundaries && \
+      airflow dags trigger load_state_boundaries && \
+      airflow dags unpause load_municipality_boundaries && \
+      airflow dags trigger load_municipality_boundaries"
+
+
+# ========================
+# DATA PERSISTENCE
+# ========================
 volumes:
   postgres_data:
