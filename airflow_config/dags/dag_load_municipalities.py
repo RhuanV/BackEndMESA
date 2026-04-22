@@ -5,9 +5,10 @@ and loads it into the municipality_boundaries PostGIS table.
 """
 import os
 import zipfile
-import tempfile
 import logging
 import requests
+import json
+import shutil
 from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -23,76 +24,110 @@ sys.path.insert(0, plugins_dir)
 # Import URLs from the centralized configuration module (now located in plugins/)
 from config_urls import IBGE_MUNICIPALITIES_URL
 
-def download_and_process_municipalities() -> None:
+def extract_municipalities(**kwargs) -> str:
     """
-    Downloads the shapefile ZIP to a temporary directory, extracts it, 
-    reads it with GeoPandas, and inserts into the database.
+    Task 1: Extract
+    Downloads the shapefile ZIP, extracts it, and returns the path to the extracted directory.
     """
-    # Create a temporary directory that will be automatically deleted after the function ends
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        zip_path = os.path.join(tmp_dir, "municipalities.zip")
-        extract_path = os.path.join(tmp_dir, "extracted")
+    # Create a unique temporary directory based on the DAG run ID
+    run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
+    work_dir = f"/tmp/geoavia_municipalities_{run_id}"
+    os.makedirs(work_dir, exist_ok=True)
+    
+    zip_path = os.path.join(work_dir, "municipalities.zip")
+    extract_path = os.path.join(work_dir, "extracted")
+    
+    logging.info(f"Downloading from {IBGE_MUNICIPALITIES_URL}...")
+    response = requests.get(IBGE_MUNICIPALITIES_URL, stream=True, verify=False)
+    response.raise_for_status()
+    
+    with open(zip_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+            
+    logging.info("Extracting ZIP file...")
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_path)
         
-        # 1. Download the ZIP file
-        logging.info(f"Downloading from {IBGE_MUNICIPALITIES_URL}...")
-        # Disable SSL verification temporarily if IBGE's certificate has issues
-        response = requests.get(IBGE_MUNICIPALITIES_URL, stream=True, verify=False)
-        response.raise_for_status()
-        
-        with open(zip_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+    return extract_path
+
+def transform_municipalities(**kwargs) -> str:
+    """
+    Task 2: Transform
+    Reads the shapefile with GeoPandas, extracts fields, and saves to a temporary JSON.
+    """
+    ti = kwargs['ti']
+    extract_path = ti.xcom_pull(task_ids='extract_municipalities')
+    
+    shp_file = None
+    for root, _, files in os.walk(extract_path):
+        for file in files:
+            if file.lower().endswith(".shp"):
+                shp_file = os.path.join(root, file)
+                break
                 
-        # 2. Extract the ZIP file
-        logging.info("Extracting ZIP file...")
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-            zip_ref.extractall(extract_path)
-            
-        # 3. Find the .shp file dynamically
-        shp_file = None
-        for root, _, files in os.walk(extract_path):
-            for file in files:
-                if file.lower().endswith(".shp"):
-                    shp_file = os.path.join(root, file)
-                    break
-                    
-        if not shp_file:
-            raise FileNotFoundError("Shapefile (.shp) not found in the downloaded ZIP.")
-            
-        # 4. Read with GeoPandas
-        logging.info(f"Reading Shapefile: {shp_file}")
-        gdf = gpd.read_file(shp_file)
+    if not shp_file:
+        raise FileNotFoundError("Shapefile (.shp) not found in the downloaded ZIP.")
         
-        data_to_insert = []
-        for _, row in gdf.iterrows():
-            data_to_insert.append((
-                row['CD_MUN'],
-                row['NM_MUN'],
-                row['SIGLA_UF'],
-                row['geometry'].wkt
-            ))
-            
-        # 5. Connect to database using Airflow Connections
-        logging.info("Connecting to database via Airflow Connection...")
-        # This searches for a connection named 'geoavia_main_conn' in Airflow UI
-        hook = PostgresHook(postgres_conn_id="geoavia_main_conn")
-        conn = hook.get_conn()
-        cursor = conn.cursor()
+    logging.info(f"Reading Shapefile: {shp_file}")
+    gdf = gpd.read_file(shp_file)
+    
+    data_to_insert = []
+    for _, row in gdf.iterrows():
+        data_to_insert.append({
+            "ibge_code": row['CD_MUN'],
+            "municipality_name": row['NM_MUN'],
+            "state_abbr": row['SIGLA_UF'],
+            "geom_wkt": row['geometry'].wkt
+        })
         
-        # 6. Clear table and Insert Data
-        logging.info("Truncating table and inserting new boundaries...")
-        cursor.execute("TRUNCATE TABLE municipality_boundaries RESTART IDENTITY;")
+    work_dir = os.path.dirname(extract_path)
+    transformed_file = os.path.join(work_dir, "transformed_municipalities.json")
+    
+    with open(transformed_file, "w", encoding="utf-8") as f:
+        json.dump(data_to_insert, f)
         
-        sql_insert = """
-            INSERT INTO municipality_boundaries (ibge_code, municipality_name, state_abbr, geom)
-            VALUES (%s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
-        """
-        execute_batch(cursor, sql_insert, data_to_insert)
+    return transformed_file
+
+def load_municipalities(**kwargs) -> None:
+    """
+    Task 3: Load
+    Reads the JSON file, inserts data into PostGIS, and cleans up the temporary directory.
+    """
+    ti = kwargs['ti']
+    transformed_file = ti.xcom_pull(task_ids='transform_municipalities')
+    
+    with open(transformed_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
         
-        conn.commit()
-        cursor.close()
-        conn.close()
-        logging.info("Successfully loaded municipality boundaries into the database!")
+    data_to_insert = [
+        (d["ibge_code"], d["municipality_name"], d["state_abbr"], d["geom_wkt"]) 
+        for d in data
+    ]
+    
+    logging.info("Connecting to database via Airflow Connection...")
+    hook = PostgresHook(postgres_conn_id="geoavia_main_conn")
+    conn = hook.get_conn()
+    cursor = conn.cursor()
+    
+    logging.info("Truncating table and inserting new boundaries...")
+    cursor.execute("TRUNCATE TABLE municipality_boundaries RESTART IDENTITY;")
+    
+    sql_insert = """
+        INSERT INTO municipality_boundaries (ibge_code, municipality_name, state_abbr, geom)
+        VALUES (%s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
+    """
+    execute_batch(cursor, sql_insert, data_to_insert)
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+    logging.info("Successfully loaded municipality boundaries into the database!")
+    
+    # Cleanup
+    work_dir = os.path.dirname(transformed_file)
+    shutil.rmtree(work_dir, ignore_errors=True)
+    logging.info(f"Cleaned up temporary directory: {work_dir}")
 
 with DAG(
     dag_id="load_municipality_boundaries",
@@ -102,7 +137,19 @@ with DAG(
     tags=["geodata", "ibge", "municipalities"]
 ) as dag:
     
-    task_load_municipalities = PythonOperator(
-        task_id="download_and_process_municipalities",
-        python_callable=download_and_process_municipalities
+    extract_task = PythonOperator(
+        task_id="extract_municipalities",
+        python_callable=extract_municipalities
     )
+    
+    transform_task = PythonOperator(
+        task_id="transform_municipalities",
+        python_callable=transform_municipalities
+    )
+    
+    load_task = PythonOperator(
+        task_id="load_municipalities",
+        python_callable=load_municipalities
+    )
+    
+    extract_task >> transform_task >> load_task
