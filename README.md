@@ -82,7 +82,17 @@ Notes:
 ## How to Run
 
 ### Option A: Docker (recommended)
+Copie o template de ambiente:
+```bash
+Copy-Item .env_example .env
+```
+Edite o arquivo .env:
 
+mantenha DB_HOST=db para Docker
+configure DB_USER, DB_PASS, DB_NAME
+defina SECRET_KEY forte
+
+Suba o ambiente:
 ```bash
 docker-compose up --build
 ```
