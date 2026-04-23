@@ -43,3 +43,10 @@ data/*
 
 # --- Local Scripts not intended to be uploaded to GitHub --- 
 local_scripts/
+
+# --- Node.js / Frontend ---
+frontend/node_modules/
+frontend/dist/
+
+README.md
+

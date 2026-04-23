@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO -->
+    <title>GeoAvia — Sistema de Prospecção de Sítios Aeroportuários</title>
+    <meta name="description" content="GeoAvia: Sistema de informação geográfica para prospecção e avaliação de sítios aeroportuários utilizando a metodologia MESA-Auto (SAC/ANAC)." />
+
+    <!-- Content Security Policy (Defense in Depth) -->
+    <meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: blob:
+          https://*.tile.openstreetmap.org
+          https://demotiles.maplibre.org
+          https://basemaps.cartocdn.com
+          https://server.arcgisonline.com
+          https://geoservicos.ibge.gov.br
+          https://*.mapbiomas.org
+          https://storage.googleapis.com
+          https://geosgb.cprm.gov.br;
+        connect-src 'self'
+          https://*.tile.openstreetmap.org
+          https://demotiles.maplibre.org
+          https://basemaps.cartocdn.com
+          https://server.arcgisonline.com
+          https://geoservicos.ibge.gov.br
+          https://*.mapbiomas.org
+          https://storage.googleapis.com
+          https://geosgb.cprm.gov.br;
+        worker-src 'self' blob:;
+        child-src 'none';
+        object-src 'none';
+        base-uri 'self';
+        form-action 'self';
+        frame-ancestors 'none';
+      "
+    />
+
+    <!-- Preconnect to Google Fonts for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
