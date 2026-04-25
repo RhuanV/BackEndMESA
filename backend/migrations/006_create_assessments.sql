@@ -1,0 +1,25 @@
+-- Sprint 2 — Tabela simplificada de avaliações MESA (GEO-26).
+-- Cobre os critérios classificatórios do Manual de Apoio 2021 que o front
+-- coleta hoje no AssessmentForm: declividade, distância de centros urbanos,
+-- presença de obstáculos, custo estimado e coordenadas.
+--
+-- O esquema completo MESA (Terreno, PlanoInformacao, CriterioMESA, AHP, ...)
+-- é responsabilidade da Maria Antonia e virá em sprint posterior — aqui
+-- mantemos só o suficiente pro fluxo end-to-end do demo.
+
+CREATE TABLE IF NOT EXISTS assessments (
+    id SERIAL PRIMARY KEY,
+    site_name VARCHAR(100) NOT NULL,
+    average_slope NUMERIC(5, 2) NOT NULL CHECK (average_slope >= 0 AND average_slope <= 100),
+    urban_center_distance NUMERIC(7, 2) NOT NULL CHECK (urban_center_distance >= 0),
+    has_obstacles BOOLEAN NOT NULL DEFAULT FALSE,
+    obstacle_description TEXT,
+    estimated_cost NUMERIC(15, 2) NOT NULL CHECK (estimated_cost >= 0),
+    latitude NUMERIC(9, 6) NOT NULL CHECK (latitude BETWEEN -90 AND 90),
+    longitude NUMERIC(9, 6) NOT NULL CHECK (longitude BETWEEN -180 AND 180),
+    geom GEOMETRY(POINT, 4674),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_assessments_geom ON assessments USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_assessments_created_at ON assessments (created_at DESC);

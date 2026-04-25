@@ -70,6 +70,24 @@ if [ "$RETRY" -lt "$MAX_RETRIES" ]; then
   echo -e "  ${GREEN}✓${NC} Backend is healthy (port ${API_PORT})"
 fi
 
+# --- Step 3.5: Bootstrap demo user ---
+# The seeded users in 002_insert_data.sql have placeholder hashes and cannot
+# log in. Create a real demo user idempotently via the signup endpoint so the
+# frontend has working credentials out of the box.
+DEMO_USER="demo"
+DEMO_PASS="demo1234"
+DEMO_ROLE="analyst"
+SIGNUP_HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+  -X POST "http://localhost:${API_PORT}/users/signup?username=${DEMO_USER}&password=${DEMO_PASS}&role=${DEMO_ROLE}" \
+  || echo "000")
+if [ "$SIGNUP_HTTP" = "200" ]; then
+  echo -e "  ${GREEN}✓${NC} Demo user created (${DEMO_USER}/${DEMO_PASS}, role: ${DEMO_ROLE})"
+elif [ "$SIGNUP_HTTP" = "400" ]; then
+  echo -e "  ${GREEN}✓${NC} Demo user already exists (${DEMO_USER}/${DEMO_PASS})"
+else
+  echo -e "  ${YELLOW}⚠${NC} Demo user signup returned HTTP ${SIGNUP_HTTP} — login may not work"
+fi
+
 # --- Step 4: Start Frontend ---
 echo ""
 echo -e "${YELLOW}[4/4]${NC} Starting frontend dev server..."

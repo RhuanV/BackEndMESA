@@ -1,74 +1,15 @@
 /**
  * ResultsPanel — Summary statistics and ranking overview.
  *
- * Displays:
- * - Summary statistics cards (total sites, best score, etc.)
- * - RankingTable with sortable results
- * - Uses mock data for Sprint 1 demonstration
+ * Sprint 2: ranking now comes from GET /ranking (real DB rows scored on the
+ * backend). Mock fallback removed — empty state handled by RankingTable.
  *
  * Security: All data is sanitized before rendering.
  */
+import { useEffect, useState } from 'react';
 import { RankingTable } from './RankingTable';
+import { getRanking } from '@/features/results/services/rankingService';
 import type { MesaRankingResult } from '@/types/mesa';
-
-/** Mock data for Sprint 1 demonstration */
-const MOCK_RESULTS: MesaRankingResult[] = [
-  {
-    rank: 1,
-    siteName: 'Sítio Aeroportuário Norte — Campinas',
-    totalScore: 87,
-    slopeScore: 92,
-    distanceScore: 85,
-    obstacleScore: 90,
-    costScore: 81,
-    latitude: -22.9,
-    longitude: -47.06,
-  },
-  {
-    rank: 2,
-    siteName: 'Sítio Vale do Ribeira',
-    totalScore: 74,
-    slopeScore: 78,
-    distanceScore: 70,
-    obstacleScore: 80,
-    costScore: 68,
-    latitude: -24.5,
-    longitude: -47.8,
-  },
-  {
-    rank: 3,
-    siteName: 'Sítio Planalto Central — Goiás',
-    totalScore: 68,
-    slopeScore: 65,
-    distanceScore: 75,
-    obstacleScore: 60,
-    costScore: 72,
-    latitude: -15.8,
-    longitude: -49.3,
-  },
-  {
-    rank: 4,
-    siteName: 'Sítio Litoral Sul — Florianópolis',
-    totalScore: 55,
-    slopeScore: 50,
-    distanceScore: 60,
-    obstacleScore: 45,
-    costScore: 65,
-    latitude: -27.6,
-    longitude: -48.5,
-  },
-  {
-    rank: 5,
-    siteName: 'Sítio Serra da Mantiqueira',
-    totalScore: 42,
-    slopeScore: 30,
-    distanceScore: 55,
-    obstacleScore: 35,
-    costScore: 48,
-    latitude: -22.4,
-    longitude: -45.0,
-  },
-];
 
 interface StatCardProps {
   readonly label: string;
@@ -94,8 +35,31 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
 }
 
 export function ResultsPanel() {
-  // In Sprint 1, we use mock data. In production, this will come from the API.
-  const results = MOCK_RESULTS;
+  const [results, setResults] = useState<MesaRankingResult[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    getRanking()
+      .then((data) => {
+        if (!cancelled) {
+          setResults(data);
+          setError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Erro ao carregar ranqueamento.';
+          setError(message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const bestScore = results.length > 0
     ? Math.max(...results.map((r) => r.totalScore))
@@ -111,19 +75,19 @@ export function ResultsPanel() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Sítios Avaliados"
-          value={results.length}
+          value={isLoading ? '…' : results.length}
           icon="📍"
           color="bg-primary-600/10"
         />
         <StatCard
           label="Melhor Score"
-          value={bestScore}
+          value={isLoading ? '…' : bestScore}
           icon="⭐"
           color="bg-green-500/10"
         />
         <StatCard
           label="Média Geral"
-          value={avgScore.toFixed(1)}
+          value={isLoading ? '…' : avgScore.toFixed(1)}
           icon="📊"
           color="bg-accent-500/10"
         />
@@ -135,6 +99,12 @@ export function ResultsPanel() {
         />
       </div>
 
+      {error && (
+        <div role="alert" className="rounded-lg border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-600">
+          {error}
+        </div>
+      )}
+
       {/* Ranking Table */}
       <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
         <div className="mb-4">
@@ -145,7 +115,13 @@ export function ResultsPanel() {
             Classificação baseada nos critérios do Manual de Apoio MESA 2021
           </p>
         </div>
-        <RankingTable data={results} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-neutral-400">
+            Carregando ranqueamento…
+          </div>
+        ) : (
+          <RankingTable data={results} />
+        )}
       </div>
     </div>
   );

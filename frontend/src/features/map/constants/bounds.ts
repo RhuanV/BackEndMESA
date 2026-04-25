@@ -14,8 +14,8 @@ export const BRAZIL_BOUNDS: LngLatBoundsLike = [
   [-28.84, 5.27],   // Northeast (NE)
 ];
 
-/** Geographic center of Brazil */
-export const BRAZIL_CENTER: [number, number] = [-14.235, -51.9253];
+/** Geographic center of Brazil. MapLibre expects [lng, lat] order. */
+export const BRAZIL_CENTER: [number, number] = [-51.9253, -14.235];
 
 /** Zoom constraints */
 export const MIN_ZOOM = 3;

@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
+import type { StyleSpecification } from 'maplibre-gl';
 import {
   BRAZIL_BOUNDS,
   BRAZIL_CENTER,
@@ -16,6 +17,31 @@ import {
   MIN_ZOOM,
   MAX_ZOOM,
 } from '@/features/map/constants/bounds';
+
+/**
+ * Inline OSM raster style — used when no VITE_MAPLIBRE_STYLE_URL is set, or
+ * when the env points to MapLibre's empty global demo style. Renders the
+ * actual basemap of Brazil via OSM tiles, no API key required.
+ */
+const OSM_RASTER_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '© OpenStreetMap contributors',
+      maxzoom: 19,
+    },
+  },
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
+};
+
+const isUnusableStyle = (url: string | undefined) =>
+  !url || url.includes('demotiles.maplibre.org');
+
+const resolveStyle = (url: string | undefined): string | StyleSpecification =>
+  isUnusableStyle(url) ? OSM_RASTER_STYLE : (url as string);
 
 interface UseMapOptions {
   readonly containerId: string;
@@ -31,10 +57,14 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
     const container = document.getElementById(containerId);
     if (!container || mapRef.current) return;
 
-    const resolvedStyle =
-      styleUrl ?? import.meta.env.VITE_MAPLIBRE_STYLE_URL ?? 'https://demotiles.maplibre.org/style.json';
+    const envStyle = styleUrl ?? import.meta.env.VITE_MAPLIBRE_STYLE_URL;
+    const resolvedStyle = resolveStyle(envStyle);
 
-    if (import.meta.env.PROD && !resolvedStyle.startsWith('https://')) {
+    if (
+      import.meta.env.PROD &&
+      typeof resolvedStyle === 'string' &&
+      !resolvedStyle.startsWith('https://')
+    ) {
       console.warn('[Security] MapLibre style URL should use HTTPS in production:', resolvedStyle);
     }
 
@@ -70,7 +100,7 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
 
   const setStyle = useCallback((newStyleUrl: string) => {
     if (mapRef.current) {
-      mapRef.current.setStyle(newStyleUrl);
+      mapRef.current.setStyle(resolveStyle(newStyleUrl));
     }
   }, []);
 

@@ -17,6 +17,7 @@
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: blob:
+          https://tile.openstreetmap.org
           https://*.tile.openstreetmap.org
           https://demotiles.maplibre.org
           https://basemaps.cartocdn.com
@@ -26,6 +27,7 @@
           https://storage.googleapis.com
           https://geosgb.cprm.gov.br;
         connect-src 'self'
+          https://tile.openstreetmap.org
           https://*.tile.openstreetmap.org
           https://demotiles.maplibre.org
           https://basemaps.cartocdn.com
@@ -39,7 +41,6 @@
         object-src 'none';
         base-uri 'self';
         form-action 'self';
-        frame-ancestors 'none';
       "
     />
 

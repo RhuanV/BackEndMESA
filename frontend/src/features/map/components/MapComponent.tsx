@@ -14,6 +14,7 @@ import { useState, useCallback, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useMap } from '@/features/map/hooks/useMap';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { AssessmentMarkers } from './AssessmentMarkers';
 import { LayerControl } from './LayerControl';
 import { LayerPanel } from './LayerPanel';
 import { MetadataModal } from './MetadataModal';
@@ -140,6 +141,9 @@ export function MapComponent() {
           <div>Lat: {cursorPosition.lat.toFixed(6)}</div>
         </div>
       )}
+
+      {/* Assessment pins (sítios avaliados) */}
+      <AssessmentMarkers map={map} isMapReady={isMapReady} />
 
       {/* Metadata Modal */}
       <MetadataModal layer={selectedLayerMeta} onClose={() => setSelectedLayerMeta(null)} />
