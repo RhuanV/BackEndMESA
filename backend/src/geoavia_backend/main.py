@@ -1,42 +1,33 @@
-from jose import JWTError, jwt
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
-from geoavia_backend.database import ALGORITHM, SECRET_KEY
+from geoavia_backend.auth_dep import obtain_current_user
+from geoavia_backend.mesa_router import router as mesa_router
 from geoavia_backend.service import UserService
 
 app = FastAPI(title="GeoAvia - Initial Test")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 service = UserService()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+
+@app.get("/health")
+def health():
+    """Lightweight liveness probe for start.sh and the dev /health page."""
+    return {"status": "ok"}
 
 
 class UpdateUsernameRequest(BaseModel):
     username: str
-
-
-async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
-    """Validates the JWT token and returns the basic data of the authenticated user."""
-    unauthorized_exception = HTTPException(
-        status_code=401,
-        detail="Invalid or expired token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    if not SECRET_KEY:
-        raise HTTPException(status_code=500, detail="SECRET_KEY not found in .env")
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        sub = payload.get("sub")
-        username = payload.get("username")
-        role = payload.get("role")
-        if not sub or not username or not role:
-            raise unauthorized_exception
-    except JWTError as exc:
-        raise unauthorized_exception from exc
-
-    return {"sub": sub, "username": username, "role": role}
 
 
 @app.get("/users")
@@ -106,5 +97,8 @@ def delete_user(user_id: int):
         raise HTTPException(status_code=404, detail="User not found")
 
     return {"message": "User was successfully deleted"}
+
+
+app.include_router(mesa_router)
 
 # To run the server: uvicorn backend.main:app --reload
