@@ -1,0 +1,113 @@
+TEMA,PLANO DE INFORMAÇÃO,DATA DA ÚLTIMA ATUALIZAÇÃO NA FONTE DE DADOS,PERIODICIDADE DE ATUALIZAÇÃO DA INFORMAÇÃO,FONTE,"SEGREGAÇÃO DOS DADOS
+(EX.: MUNICIPAL, ESTADUAL)","SISTEMA DE REFERÊNCIA/ DATUM
+(EX.: WGS 84, SIRGAS 2000)",EPSG,"FORMATO DO ARQUIVO
+(Ex.: SHAPEFILE, GEOPACKAGE)","GEOMETRIA DO DADO
+(Ex.: PONTO, POLÍGONO, LINHA)",OBSERVAÇÕES,ENDEREÇO
+Unidades Territoriais,Estado,2024,Anual,IBGE,Estadual,SIRGAS 2000,4674,Shapefile,Polígono,-,https://www.ibge.gov.br/geociencias/organizacao-do-territorio/estrutura-territorial/15774-malhas.html?=&t=downloads
+Unidades Territoriais,Município,2024,Anual,IBGE,Municipal,SIRGAS 2000,4674,Shapefile,Polígono,-,https://www.ibge.gov.br/geociencias/organizacao-do-territorio/estrutura-territorial/15774-malhas.html?=&t=downloads
+Unidades Territoriais,Setores Censitários,2022,Aproximadamente 5 anos,IBGE,Estadual,SIRGAS 2000,4674,Shapefile,Polígono,"1. O dado contém apenas os setores censitários, sem a inclusão do total de pessoas em cada setor.
+
+2. Malha censitária anterior é de 2017, o que indica que a atualização das informações não é de alta recorrência.
+
+3. Atualização dos dados tem uma periodicidade de cerca de 10 anos.",https://www.ibge.gov.br/geociencias/organizacao-do-territorio/estrutura-territorial/26565-malhas-de-setores-censitarios-divisoes-intramunicipais.html?edicao=41826&t=acesso-ao-produto
+Unidades Territoriais,Área do imóvel,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial, de modo que seria necessário um tratamento dos dados brutos para utilização no modelo automatizado.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+Unidades Territoriais,Área do imóvel,2025,Diária,INCRA,Estadual,SIRGAS 2000,4674,Shapefile,Polígono,"Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, parece ser recorrente.",https://certificacao.incra.gov.br/csv_shp/export_shp.py
+Unidades Territoriais,UC - Todas,2025,Anual,Min. Meio Ambiente,Federal,SIRGAS 2000,4674,Shapefile,Polígono,"Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, parece ser recorrente.",https://www.gov.br/icmbio/pt-br/assuntos/dados_geoespaciais/mapa-tematico-e-dados-geoestatisticos-das-unidades-de-conservacao-federais
+Unidades Territoriais,Área de Preservação Permanente (APP),2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+Unidades Territoriais,Reserva Legal,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+Unidades Territoriais,Terra Indígena,2024,Irregular (Mín. Anual),FUNAI,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. A página da fonte de dados consta com a data de atualização indicada, porém não é possível averiguar quais dados na página foram atualizados.
+
+2. Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, parece ser no mínimo anual.",Geoprocessamento e Mapas — pt-br (www.gov.br)
+Unidades Territoriais,Terras Quilombolas,2025,Diária,INCRA,Estadual,SIRGAS 2000,4674,Shapefile,Polígono,"Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, parece ser recorrente.",https://certificacao.incra.gov.br/csv_shp/export_shp.py
+Unidades Territoriais,Assentamentos,2025,Diária,INCRA,Estadual,SIRGAS 2000,4674,Shapefile,Polígono,"Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, parece ser recorrente.",https://certificacao.incra.gov.br/csv_shp/export_shp.py
+Unidades Territoriais,Florestas Públicas,2007,Não há,Min. Meio Ambiente,Federal,Sem SRC,-,Shapefile,Polígono,"1. Dado vetorial está sem SRC. Apesar disso, aparenta estar locado corretamente.
+
+2. Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, não parece ser recorrente.",http://mapas.mma.gov.br/i3geo/datadownload.htm
+Unidades Territoriais,Cavernas,2012,Não há,ICMBio,Federal,SAD69,4618,Shapefile,Polígono,"Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, parece ser no mínimo anual.",https://www.gov.br/icmbio/pt-br/assuntos/centros-de-pesquisa/cavernas/publicacoes/mapa-de-potencialidades-de-ocorrencia-de-cavernas-no-brasil/dados-mapa-de-potencialidades-de-ocorrencia-de-cavermas-no-brasil.zip/view
+"Hidrografia , Fauna e Flora",Rios,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+"Hidrografia , Fauna e Flora",Rios,2012,Não há,ANA,Estadual,SAD69,Personalizado,Shapefile,Linha,"Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, não parece ser recorrente.",https://metadados.snirh.gov.br/geonetwork/srv/api/records/a01764d3-4742-4f7d-b867-01bf544dde6d
+"Hidrografia , Fauna e Flora",Nascentes,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+"Hidrografia , Fauna e Flora",Vegetação Nativa,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+"Hidrografia , Fauna e Flora",Lagos,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+"Hidrografia , Fauna e Flora",Banhados,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Há sobreposição dos polígonos do dado vetorial.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+"Hidrografia , Fauna e Flora",Área de Pousio,2025,Mensal,SICAR,Estadual,SIRGAS 2000,Personalizado,Shapefile,Polígono,"1. Talvez o dado possa ser útil para análise de presença de aves.
+
+2. Atualização dos dados difere entre os estados e não há uma periodicidade definida. Além disso, existem dados de 2025, o que indica que os dados estão em constante atualização.",http://www.car.gov.br/publico/imoveis/index
+"Hidrografia , Fauna e Flora",Aves,2022,Não há,ICMBio/CEMAVE,Federal,SIRGAS 2000,4674,Shapefile,Polígono,"Dado não é muito preciso, basicamente as áreas de concentração de aeronaves são representadas por quadrados de 300 km².",https://www.gov.br/icmbio/pt-br/assuntos/centros-de-pesquisa/cemave/noticias/cemave-publica-4a-edicao-do-relatorio-de-areas-de-concentracao-de-aves-migratorias-no-brasil
+Infraestrutura,Aeroportos,2024,Acima de 1 ano,Min. da Infraestrutura,Federal,SIRGAS 2000,4674,Shapefile,Ponto,"1. Ultima atualização dos dados há pouco mais de 1 ano, porém, no mesmo link há outros dados georreferenciados com data de atualização mais recente, o que indica que o dados está em constante atualização.",https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/bit-mapas
+Infraestrutura,Aeroportos,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Ponto e Polígono,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Infraestrutura,Aeródromos,2010,Não há,ANA,Federal,SIRGAS 2000,4674,Shapefile,Ponto,"1. Dado bem datado, não recomenda-se a utilização.",https://metadados.snirh.gov.br/geonetwork/srv/api/records/ce6bb0fe-ccfc-4cbf-9ff6-929ba80b47db
+Infraestrutura,Rodovias Federais,2025,Trimestral,Min. da Infraestrutura,Federal,SIRGAS 2000,4674,Shapefile,Linha,1. Atualização trimestral dos dados.,https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/bit-mapas
+Infraestrutura,Rodovias Federais,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Linha,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.
+
+4. Necessário utilização de plugin no Qgis.",https://www.openstreetmap.org/export
+Infraestrutura,Rodovias Estaduais,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Linha,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Infraestrutura,Ferrovias,2024,Acima de 1 ano,Min. da Infraestrutura,Federal,SIRGAS 2000,4674,Shapefile,Linha,"Última atualização dos dados há pouco mais de 1 ano. Porém, há outros dados georreferenciados com data de atualização mais recente no site, o que indica que o dados está em constante atualização.",https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/bit-mapas
+Infraestrutura,Ferrovias,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Linha,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Infraestrutura,Hidrovias,2024,Acima de 1 ano,Min. da Infraestrutura,Federal,SIRGAS 2000,4674,Shapefile,Linha,"Última atualização dos dados há pouco mais de 1 ano. Porém, há outros dados georreferenciados com data de atualização mais recente no site, o que indica que o dados está em constante atualização.",https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/bit-mapas
+Infraestrutura,Hidrovias,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Linha,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Infraestrutura,Dutos,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Linha,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Infraestrutura,Portos,2024,Acima de 1 ano,Min. da Infraestrutura,Federal,SIRGAS 2000,4674,Shapefile,Ponto,"Última atualização dos dados há pouco mais de 1 ano. Porém, há outros dados georreferenciados com data de atualização mais recente no site, o que indica que o dados está em constante atualização.",https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/bit-mapas
+Infraestrutura,Portos,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Ponto e Polígono,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Geração de Energia,Linhas de Transmissão,2012,Não há,Min. Meio Ambiente,Federal,Sem SRC,-,Shapefile,Linha,"1. No link, a fonte dos dados é indicada como a SIGEL. Há também uma base de torres de transmissão teste de 2008 da ANEEL, porém como é mais antiga e está indicada como camada teste, não realizou-se sua inclusão na planilha.
+
+2. Dado vetorial está sem SRC. Apesar disso, aparenta estar locado corretamente.
+
+3. Não é possível verificar a periodicidade das atualizações, porém tendo em vista a data da última atualização, não parece ser recorrente.",http://mapas.mma.gov.br/i3geo/datadownload.htm
+Geração de Energia,Linhas de Transmissão,2025,Diária,OpenStreetMap (OSM),Federal,WGS 84,4326,Shapefile,Linha,"1. Dados em constante atualização pelos usuários, por ser uma fonte de dados aberta.
+
+2. Site possui uma API. Necessário verificar como utilizá-la pois a exportação de dados diretamente do site é limitada a uma área bem restrita.
+
+3. A base de dados do OSM também inclue algumas rotas de aeronaves. Assim, apesar de não ser um dado oficial, pode ser útil.",https://www.openstreetmap.org/export
+Geodiversidade,Diverso,Variável de acordo com o dado,Variável de acordo com o dado,CPRM,Federal,SIRGAS 2000,4674,Shapefile,Polígono,Dados diversos sobre geologia.,Serviço Geológico do Brasil (cprm.gov.br)
+Biomas ,Diverso,Variável de acordo com o dado,Variável de acordo com o dado,IBGE,Federal,SIRGAS 2000,4674,Shapefile,Polígono,Dados diversos sobre biomas.,https://www.ibge.gov.br/geociencias/cartas-e-mapas/informacoes-ambientais/15842-biomas.html?=&t=downloads
+Dados sobre os lixões,Lixão,Variável de acordo com o Estado,Variável de acordo com o Estado,Min. Meio Ambiente,Federal,N/A,N/A,PDF,N/A,"1. Necessário verificar de cada estado.
+
+2. Não possui é apresentada a informação de localização geográfica exata, há apenas mapas indicando.
+
+3. Ressalta-se que o dado não está atualizado.",https://antigo.mma.gov.br/cidades-sustentaveis/residuos-solidos/item/10611-planos-estaduais.html
+Dados Anemométricos,Velocidade e direção do vento,2013,Não há,INPE,Regional,WGS 84,4326,Kmz,Polígono,-,https://novoatlas.cepel.br/index.php/mapas-tematicos/
