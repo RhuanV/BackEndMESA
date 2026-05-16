@@ -71,7 +71,7 @@ Use esse doc como prompt para gerar as outras tabelas uma vez que o .sql de cria
 ## Realacionamento entre as tabelas
 Não foram decididos os relacionamentos. Um relacionamento óbvio é Estado - Município, mas a tabela de município já é carregada com a unidade da federação...
 Deve-se pensar em relacionamentos que ajudem na visualização dos dados, economizando cálculos do servidor.
-
+**Update**: Estruturado agora com 3 camadas: Raw (dados brutos da ingestão ETL, auditoria e rastreamento); Catalogo (organização dos planos, padronizações) e Análise(criar critérios, scores e restrições). As reações podem ser melhor entendidades vendo o modelo conceitual.
 ## Implementação no backend
 É necessário criar as requisições do backend para entregar os dados ao front. A ideia inicialmente é visualizar. Vamos começar com os dados vetoriais apenas e expandir depois.
 Uma requisição de visualiação deve vir com um ponto central (local onde o usuário vê) e um zoom (z1, z2, z3, dependendo do grau de detalhe). a requisição deve entregar os planos de informação no retângulo pedido com a resolução selecionada. O cálculo do zoom deve ser feito pelo front
