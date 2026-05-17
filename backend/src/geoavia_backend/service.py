@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from geoavia_backend.database import ALGORITHM, SECRET_KEY
 from geoavia_backend.repository import UserRepository
 
-ALLOWED_ROLES = {"analyst", "admin", "dev"}
+ALLOWED_ROLES = {"coordenador", "gestor", "supervisor", "operador", "administrador"}
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
@@ -48,7 +48,7 @@ class UserService:
         # Future logic: filter active users or check permissions
         return self.repo.get_all()
 
-    def register_user(self, username: str, password: str, role: str = "analyst") -> int:
+    def register_user(self, username: str, password: str, role: str = "operador") -> int:
         """Registers a user by generating a password hash before persisting it."""
 
         clean_username = username.strip()
@@ -61,7 +61,9 @@ class UserService:
 
         clean_role = role.strip().lower()
         if clean_role not in ALLOWED_ROLES:
-            raise ValueError("Invalid role. Use: analyst, admin or dev")
+            raise ValueError(
+                "Invalid role. Use: coordenador, gestor, supervisor, operador or administrador"
+            )
 
         password_hash = self.security.get_password_hash(clean_password)
         return self.repo.create(clean_username, password_hash, clean_role)
