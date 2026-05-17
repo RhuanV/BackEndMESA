@@ -70,23 +70,38 @@ if [ "$RETRY" -lt "$MAX_RETRIES" ]; then
   echo -e "  ${GREEN}✓${NC} Backend is healthy (port ${API_PORT})"
 fi
 
-# --- Step 3.5: Bootstrap demo user ---
-# The seeded users in 002_insert_data.sql have placeholder hashes and cannot
-# log in. Create a real demo user idempotently via the signup endpoint so the
-# frontend has working credentials out of the box.
-DEMO_USER="demo"
-DEMO_PASS="demo1234"
-DEMO_ROLE="analyst"
-SIGNUP_HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "http://localhost:${API_PORT}/users/signup?username=${DEMO_USER}&password=${DEMO_PASS}&role=${DEMO_ROLE}" \
-  || echo "000")
-if [ "$SIGNUP_HTTP" = "200" ]; then
-  echo -e "  ${GREEN}✓${NC} Demo user created (${DEMO_USER}/${DEMO_PASS}, role: ${DEMO_ROLE})"
-elif [ "$SIGNUP_HTTP" = "400" ]; then
-  echo -e "  ${GREEN}✓${NC} Demo user already exists (${DEMO_USER}/${DEMO_PASS})"
-else
-  echo -e "  ${YELLOW}⚠${NC} Demo user signup returned HTTP ${SIGNUP_HTTP} — login may not work"
-fi
+# --- Step 3.5: Bootstrap admin user ---
+# Sprint 3: o endpoint POST /users/signup agora exige JWT de coordenador/supervisor.
+# Como o BD nasce sem nenhum usuário real (seeds têm hash placeholder e não logam),
+# o bootstrap é feito chamando UserService direto dentro do container, bypassando
+# o endpoint. Idempotente: checa existência antes de criar.
+DEMO_USER="admin"
+DEMO_PASS="admin123"
+DEMO_ROLE="coordenador"
+
+BOOTSTRAP_RESULT=$(docker exec -i geoavia_backend python - <<PY 2>/dev/null || echo "error"
+from geoavia_backend.repository import UserRepository
+from geoavia_backend.service import UserService
+
+if UserRepository().obtain_user_from_username("${DEMO_USER}") is None:
+    UserService().register_user("${DEMO_USER}", "${DEMO_PASS}", "${DEMO_ROLE}")
+    print("created")
+else:
+    print("exists")
+PY
+)
+
+case "$BOOTSTRAP_RESULT" in
+  created)
+    echo -e "  ${GREEN}✓${NC} Bootstrap user created (${DEMO_USER}/${DEMO_PASS}, role: ${DEMO_ROLE})"
+    ;;
+  exists)
+    echo -e "  ${GREEN}✓${NC} Bootstrap user already exists (${DEMO_USER}/${DEMO_PASS})"
+    ;;
+  *)
+    echo -e "  ${YELLOW}⚠${NC} Bootstrap failed (${BOOTSTRAP_RESULT}) — login may not work"
+    ;;
+esac
 
 # --- Step 4: Start Frontend ---
 echo ""
