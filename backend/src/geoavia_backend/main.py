@@ -36,13 +36,26 @@ def get_users(current_user: dict = Depends(obtain_current_user)):
     return service.list_users()
 
 
+USER_CREATION_ROLES = {"coordenador", "supervisor"}
+
+
 @app.post("/users/signup")
 def create_user(
     username: str,
     password: str,
-    role: str = "analyst",
+    role: str = "operador",
+    current_user: dict = Depends(obtain_current_user),
 ):
-    """Creates a user through the intermediate service layer."""
+    """Creates a user through the intermediate service layer.
+
+    Per Sprint 3 requirement: only coordenador and supervisor can create users.
+    """
+    if current_user["role"] not in USER_CREATION_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas coordenador e supervisor podem criar usuários",
+        )
+
     try:
         new_id = service.register_user(username, password, role)
     except ValueError as exc:

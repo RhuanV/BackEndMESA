@@ -1,15 +1,20 @@
 /**
  * Authentication and RBAC type definitions for GeoAvia.
  *
- * RBAC Model: Roles are NON-OVERLAPPING silos. 'dev' does not inherit
- * 'admin' access and vice-versa. Each role has explicit permissions.
+ * RBAC Model: 5 perfis MESA-A (Sprint 3). Cada perfil tem permissões explícitas;
+ * não há herança entre eles.
  *
  * Security note: No sensitive data (tokens, passwords) is stored in these types.
  * Tokens are managed exclusively via HttpOnly cookies by the backend.
  */
 
 /** All valid user roles */
-export type UserRole = 'analyst' | 'admin' | 'dev';
+export type UserRole =
+  | 'coordenador'
+  | 'gestor'
+  | 'supervisor'
+  | 'operador'
+  | 'administrador';
 
 /** All valid feature permissions */
 export type Permission =
@@ -21,6 +26,7 @@ export type Permission =
   | 'results:view'
   | 'export:download'
   | 'admin:users'
+  | 'admin:users:create'
   | 'admin:layers'
   | 'admin:audit'
   | 'dev:health'
@@ -28,11 +34,41 @@ export type Permission =
   | 'dev:debug';
 
 /**
- * Per-role permission sets.
- * IMPORTANT: These are NON-OVERLAPPING — admin cannot access dev features and vice-versa.
+ * Per-role permission sets — Sprint 3.
+ * Baseado nas responsabilidades de cada perfil no documento da PO.
  */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
-  analyst: [
+  coordenador: [
+    'map:view',
+    'map:layers',
+    'analysis:configure',
+    'analysis:run',
+    'assessment:create',
+    'results:view',
+    'export:download',
+    'admin:users',
+    'admin:users:create',
+    'admin:layers',
+    'admin:audit',
+  ],
+  gestor: [
+    'map:view',
+    'map:layers',
+    'assessment:create',
+    'results:view',
+    'export:download',
+    'admin:users',
+  ],
+  supervisor: [
+    'map:view',
+    'map:layers',
+    'analysis:configure',
+    'results:view',
+    'export:download',
+    'admin:users',
+    'admin:users:create',
+  ],
+  operador: [
     'map:view',
     'map:layers',
     'analysis:configure',
@@ -41,18 +77,11 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     'results:view',
     'export:download',
   ],
-  admin: [
+  administrador: [
     'map:view',
     'map:layers',
-    'results:view',
-    'admin:users',
     'admin:layers',
     'admin:audit',
-  ],
-  dev: [
-    'map:view',
-    'map:layers',
-    'results:view',
     'dev:health',
     'dev:logs',
     'dev:debug',

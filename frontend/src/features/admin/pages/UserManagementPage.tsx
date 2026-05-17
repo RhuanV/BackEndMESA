@@ -1,53 +1,150 @@
 /**
- * UserManagementPage — Admin-only user management.
- * Protected by allowedRoles={['admin']} in the router.
+ * UserManagementPage — Gestão de usuários do sistema (Sprint 3).
+ *
+ * Acesso (Router): coordenador, gestor, supervisor.
+ * Form de criação: visível apenas para perfis com permission
+ * `admin:users:create` (coordenador e supervisor).
+ *
+ * Defense in depth: o gate na UI é cosmético; a fronteira de segurança real
+ * fica em POST /users/signup, que valida o role do JWT no back.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import type { FormEvent } from 'react';
 import apiClient from '@/lib/api/axiosInstance';
 import { sanitize } from '@/lib/security/sanitize';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { hasPermission } from '@/types/auth';
+import type { UserRole } from '@/types/auth';
 
 interface UserRecord {
   readonly id: number;
   readonly username: string;
-  readonly role: string;
+  readonly role: UserRole;
   readonly created_at?: string;
 }
 
-const roleBadgeColors: Record<string, string> = {
-  analyst: 'bg-blue-100 text-blue-700',
-  admin: 'bg-purple-100 text-purple-700',
-  dev: 'bg-teal-100 text-teal-700',
+const roleBadgeColors: Record<UserRole, string> = {
+  coordenador: 'bg-purple-100 text-purple-700',
+  gestor: 'bg-amber-100 text-amber-700',
+  supervisor: 'bg-blue-100 text-blue-700',
+  operador: 'bg-emerald-100 text-emerald-700',
+  administrador: 'bg-teal-100 text-teal-700',
 };
 
+const roleOptions: ReadonlyArray<{ value: UserRole; label: string }> = [
+  { value: 'coordenador', label: 'Coordenador' },
+  { value: 'gestor', label: 'Gestor' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'operador', label: 'Operador' },
+  { value: 'administrador', label: 'Administrador' },
+];
+
 export function UserManagementPage() {
+  const { user } = useAuth();
+  const canCreateUsers = user ? hasPermission(user.role, 'admin:users:create') : false;
+
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await apiClient.get<UserRecord[]>('/users');
-        setUsers(res.data);
-      } catch {
-        setError('Erro ao carregar usuários.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void fetchUsers();
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<UserRole>('operador');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await apiClient.get<UserRecord[]>('/users');
+      setUsers(res.data);
+      setError(null);
+    } catch {
+      setError('Erro ao carregar usuários.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+    setIsSubmitting(true);
+    try {
+      await apiClient.post('/users/signup', null, {
+        params: { username: newUsername.trim(), password: newPassword, role: newRole },
+      });
+      setFormSuccess(`Usuário "${newUsername.trim()}" criado.`);
+      setNewUsername('');
+      setNewPassword('');
+      setNewRole('operador');
+      await fetchUsers();
+    } catch (err) {
+      const detail =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined;
+      setFormError(detail ?? 'Não foi possível criar o usuário.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Gestão de Usuários</h2>
-          <p className="mt-1 text-sm text-neutral-500">Gerencie permissões e acessos do sistema.</p>
-        </div>
-        <Button size="sm">+ Novo Usuário</Button>
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-neutral-900">Gestão de Usuários</h2>
+        <p className="mt-1 text-sm text-neutral-500">Gerencie permissões e acessos do sistema.</p>
       </div>
+
+      {canCreateUsers && (
+        <div className="mb-8 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+          <h3 className="mb-4 text-lg font-semibold text-neutral-900">Novo Usuário</h3>
+          <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-3">
+            <Input
+              label="Usuário"
+              type="text"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              required
+              minLength={3}
+              autoComplete="off"
+            />
+            <Input
+              label="Senha"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={6}
+              autoComplete="new-password"
+            />
+            <Select
+              label="Perfil"
+              options={roleOptions}
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as UserRole)}
+            />
+            <div className="sm:col-span-3 flex items-center justify-between gap-4">
+              <div className="text-sm" aria-live="polite">
+                {formError && <p role="alert" className="text-danger-600">{formError}</p>}
+                {formSuccess && <p className="text-emerald-600">{formSuccess}</p>}
+              </div>
+              <Button type="submit" size="sm" disabled={isSubmitting}>
+                {isSubmitting ? 'Criando...' : 'Criar Usuário'}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {error && (
         <div role="alert" className="mb-4 rounded-lg border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-600">{error}</div>

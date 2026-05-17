@@ -1,16 +1,18 @@
 /**
  * Router — Application routing with RBAC-protected routes.
  *
- * Route structure:
+ * Route structure (Sprint 3 — 5 perfis MESA-A):
  * - /login                    → Public
  * - /dashboard/*              → Protected (authenticated)
- *   - /dashboard/map          → All roles
- *   - /dashboard/analysis     → analyst
- *   - /dashboard/assessment   → analyst
- *   - /dashboard/results      → analyst, admin
- *   - /dashboard/export       → analyst
- *   - /dashboard/admin/*      → admin only
- *   - /dashboard/dev/*        → dev only
+ *   - /dashboard/map          → todos
+ *   - /dashboard/analysis     → coordenador, supervisor, operador
+ *   - /dashboard/assessment   → coordenador, gestor, operador
+ *   - /dashboard/results      → coordenador, gestor, supervisor, operador
+ *   - /dashboard/export       → coordenador, gestor, supervisor, operador
+ *   - /dashboard/admin/users  → coordenador, gestor, supervisor
+ *   - /dashboard/admin/layers → coordenador, administrador
+ *   - /dashboard/admin/audit  → coordenador, administrador
+ *   - /dashboard/dev/*        → administrador
  */
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -41,50 +43,50 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard/map" replace /> },
       { path: 'map', element: <MapPage /> },
 
-      // Analyst routes
+      // Fluxo MESA — análise/avaliação/resultados/exportação
       {
         path: 'analysis',
-        element: <ProtectedRoute allowedRoles={['analyst']}><AnalysisPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'supervisor', 'operador']}><AnalysisPage /></ProtectedRoute>,
       },
       {
         path: 'assessment',
-        element: <ProtectedRoute allowedRoles={['analyst']}><AssessmentPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'operador']}><AssessmentPage /></ProtectedRoute>,
       },
       {
         path: 'results',
-        element: <ProtectedRoute allowedRoles={['analyst', 'admin']}><ResultsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador']}><ResultsPage /></ProtectedRoute>,
       },
       {
         path: 'export',
-        element: <ProtectedRoute allowedRoles={['analyst']}><ExportPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador']}><ExportPage /></ProtectedRoute>,
       },
 
-      // Admin routes
+      // Administração
       {
         path: 'admin/users',
-        element: <ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor']}><UserManagementPage /></ProtectedRoute>,
       },
       {
         path: 'admin/layers',
-        element: <ProtectedRoute allowedRoles={['admin']}><LayerConfigPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador']}><LayerConfigPage /></ProtectedRoute>,
       },
       {
         path: 'admin/audit',
-        element: <ProtectedRoute allowedRoles={['admin']}><AuditLogPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador']}><AuditLogPage /></ProtectedRoute>,
       },
 
-      // Dev routes
+      // Operação técnica do sistema
       {
         path: 'dev/health',
-        element: <ProtectedRoute allowedRoles={['dev']}><ApiHealthPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['administrador']}><ApiHealthPage /></ProtectedRoute>,
       },
       {
         path: 'dev/logs',
-        element: <ProtectedRoute allowedRoles={['dev']}><ProcessingLogsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['administrador']}><ProcessingLogsPage /></ProtectedRoute>,
       },
       {
         path: 'dev/debug',
-        element: <ProtectedRoute allowedRoles={['dev']}><DebugPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['administrador']}><DebugPage /></ProtectedRoute>,
       },
     ],
   },

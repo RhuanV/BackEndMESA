@@ -89,15 +89,15 @@ function parseJwtPayload(token: string): { sub: string; username: string; role: 
       'role' in payload
     ) {
       const p = payload as { sub: string; username: string; role: string };
-      const validRoles = ['analyst', 'admin', 'dev'] as const;
+      const validRoles = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador'] as const;
       const role = validRoles.includes(p.role as AuthUser['role'])
         ? (p.role as AuthUser['role'])
-        : 'analyst';
+        : 'operador';
 
       return { sub: p.sub, username: p.username, role };
     }
     throw new Error('Invalid payload structure');
   } catch {
-    return { sub: '', username: 'Usuário', role: 'analyst' };
+    return { sub: '', username: 'Usuário', role: 'operador' };
   }
 }
