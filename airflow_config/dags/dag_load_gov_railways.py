@@ -89,14 +89,12 @@ def transform_railways(**kwargs) -> str:
         props = {str(k).lower(): (None if (isinstance(v, float) and v != v) else v) for k, v in props_raw.items()}
         
         data_to_insert.append({
-            "original_id": props.get('id') or props.get('objectid_1') or props.get('objectid'),
             "uf": props.get('uf'),
             "nome": props.get('nome'),
             "sigla": props.get('sigla'),
             "bitola": props.get('bitola'),
             "extensao": props.get('extensao'),
             "municipio": props.get('municipio'),
-            "tip_situ": props.get('tip_situ') or props.get('tipo_situacao'),
             "geom_wkt": row['geometry'].wkt
         })
         
@@ -121,14 +119,12 @@ def load_railways(**kwargs) -> None:
         
     data_to_insert = [
         (
-            d["original_id"],
             d["uf"],
             d["nome"],
             d["sigla"],
             d["bitola"],
             d["extensao"],
             d["municipio"],
-            d["tip_situ"],
             d["geom_wkt"]
         ) 
         for d in data
@@ -145,8 +141,8 @@ def load_railways(**kwargs) -> None:
     """)
     
     sql_insert = """
-        INSERT INTO gov_railways (original_id, uf, nome, sigla, bitola, extensao, municipio, tip_situ, geom)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
+        INSERT INTO gov_railways (uf, nome, sigla, bitola, extensao, municipio, geom)
+        VALUES (%s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)
     

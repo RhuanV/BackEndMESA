@@ -88,14 +88,11 @@ def transform_highways(**kwargs) -> str:
         props = {str(k).lower(): (None if (isinstance(v, float) and v != v) else v) for k, v in props_raw.items()}
         
         data_to_insert.append({
-            "original_id": props.get('id') or props.get('objectid_1') or props.get('objectid'),
             "uf": props.get('sg_uf') or props.get('uf'),
             "br": props.get('vl_br') or props.get('br'),
             "codigo": props.get('vl_codigo') or props.get('codigo'),
-            "tipo": props.get('ds_tipo') or props.get('tipo'),
             "superficie": props.get('ds_sup_fed') or props.get('superficie'),
             "extensao": props.get('vl_extensa') or props.get('extensao'),
-            "situacao": props.get('ds_situaca') or props.get('situacao'),
             "jurisdicao": props.get('ds_jurisdi') or props.get('jurisdicao'),
             "geom_wkt": row['geometry'].wkt
         })
@@ -121,14 +118,11 @@ def load_highways(**kwargs) -> None:
         
     data_to_insert = [
         (
-            d["original_id"],
             d["uf"],
             d["br"],
             d["codigo"],
-            d["tipo"],
             d["superficie"],
             d["extensao"],
-            d["situacao"],
             d["jurisdicao"],
             d["geom_wkt"]
         ) 
@@ -146,8 +140,8 @@ def load_highways(**kwargs) -> None:
     """)
     
     sql_insert = """
-        INSERT INTO gov_federal_highways (original_id, uf, br, codigo, tipo, superficie, extensao, situacao, jurisdicao, geom)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
+        INSERT INTO gov_federal_highways (uf, br, codigo, superficie, extensao, jurisdicao, geom)
+        VALUES (%s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)
     
@@ -164,7 +158,7 @@ def load_highways(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_federal_highways",
     start_date=datetime(2024, 1, 1),
-    schedule_interval=None, # Runs manually
+    schedule_interval="@daily", # Runs daily
     catchup=False,
     tags=["geodata", "dnit", "highways"]
 ) as dag:

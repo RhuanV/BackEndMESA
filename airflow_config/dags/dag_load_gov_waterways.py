@@ -164,7 +164,7 @@ def load_waterways(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_waterways",
     start_date=datetime(2024, 1, 1),
-    schedule_interval=None, # Runs manually
+    schedule_interval="@daily", # Runs daily
     catchup=False,
     tags=["geodata", "mt", "waterways"]
 ) as dag:

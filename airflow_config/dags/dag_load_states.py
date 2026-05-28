@@ -132,7 +132,7 @@ def load_states(**kwargs) -> None:
 with DAG(
     dag_id="load_state_boundaries",
     start_date=datetime(2024, 1, 1),
-    schedule_interval=None, # Runs manually
+    schedule_interval="@daily", # Runs daily
     catchup=False,
     tags=["geodata", "ibge", "states"]
 ) as dag:

@@ -92,7 +92,6 @@ def transform_ports(**kwargs) -> str:
             nome = nome.strip()
             
         data_to_insert.append({
-            "idseq": props.get('idseq'),
             "nome": nome,
             "tipo": props.get('tipo'),
             "fonte": props.get('fonte'),
@@ -129,7 +128,6 @@ def load_ports(**kwargs) -> None:
         
     data_to_insert = [
         (
-            d["idseq"],
             d["nome"],
             d["tipo"],
             d["fonte"],
@@ -158,8 +156,8 @@ def load_ports(**kwargs) -> None:
     """)
     
     sql_insert = """
-        INSERT INTO gov_ports (idseq, nome, tipo, fonte, gestao, cidade, estado, endereco, numero, bairro, cep, cnpj, idcidade, geom)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4674))
+        INSERT INTO gov_ports (nome, tipo, fonte, gestao, cidade, estado, endereco, numero, bairro, cep, cnpj, idcidade, geom)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4674))
     """
     execute_batch(cursor, sql_insert, data_to_insert)
     
