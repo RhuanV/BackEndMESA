@@ -174,7 +174,7 @@ def load_ports(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_ports",
     start_date=datetime(2024, 1, 1),
-    schedule_interval=None, # Runs manually
+    schedule=None, # Runs manually
     catchup=False,
     tags=["geodata", "mt", "ports"]
 ) as dag:

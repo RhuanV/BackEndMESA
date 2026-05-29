@@ -39,7 +39,7 @@ def download_geofabrik_pbf(**kwargs):
 with DAG(
     dag_id="download_geofabrik_data",
     start_date=datetime(2024, 1, 1),
-    schedule_interval=None, # Runs manually
+    schedule=None, # Runs manually
     catchup=False,
     tags=["geodata", "osm", "geofabrik"]
 ) as dag:

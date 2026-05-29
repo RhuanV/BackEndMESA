@@ -11,7 +11,7 @@ IBGE_MUNICIPALITIES_URL = "https://geoftp.ibge.gov.br/organizacao_do_territorio/
 
 # Geofabrik URL for Brazil OSM PBF
 GEOFABRIK_BRAZIL_URL = "https://download.geofabrik.de/south-america/brazil-latest.osm.pbf"
-GEODIFF_URL = "https://download.geofabrik.de/south-america/brazil-updates/"
+GEODIFF_URL = "https://download.geofabrik.de/south-america/brazil-updates"
 
 # Ministério de Transportes URL for downloading railway geometries in Brazil
 RAILWAY_BRAZIL_URL = "https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/Base-GEO/BaseFerro.zip"

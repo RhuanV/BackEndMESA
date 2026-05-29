@@ -2,3 +2,4 @@
 geopandas
 geoalchemy2
 osmium
+pytest

@@ -45,10 +45,14 @@ def extract_and_transform_highways(**kwargs) -> str:
     filtered_pbf = os.path.join(work_dir, "highways_filtered.osm.pbf")
     geojson_path = os.path.join(work_dir, "highways.geojson")
     
+    osmium_bin = shutil.which("osmium")
+    if not osmium_bin:
+        raise RuntimeError("Executable 'osmium' not found. Verify the installation of 'osmium-tool' in the Dockerfile and ensure the image was rebuilt (--build).")
+
     logging.info("Filtering features using osmium tags-filter...")
     # We extract all ways with a 'ref' tag to keep the export fast and small.
     subprocess.run([
-        "osmium", "tags-filter", pbf_path, 
+        osmium_bin, "tags-filter", pbf_path, 
         "w/ref",
         "-o", filtered_pbf, "--overwrite"
     ], check=True)
@@ -78,7 +82,7 @@ def extract_and_transform_highways(**kwargs) -> str:
         json.dump(export_config, f)
 
     subprocess.run([
-        "osmium", "export", filtered_pbf, 
+        osmium_bin, "export", filtered_pbf, 
         "-c", config_path,
         "-o", geojson_path, "--overwrite"
     ], check=True)

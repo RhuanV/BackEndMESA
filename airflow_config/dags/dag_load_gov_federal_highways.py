@@ -158,7 +158,7 @@ def load_highways(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_federal_highways",
     start_date=datetime(2024, 1, 1),
-    schedule_interval="@daily", # Runs daily
+    schedule="@daily", # Runs daily
     catchup=False,
     tags=["geodata", "dnit", "highways"]
 ) as dag:
