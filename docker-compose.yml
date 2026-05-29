@@ -53,6 +53,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      permission-fixer:
+        condition: service_completed_successfully
       airflow-init:
         condition: service_completed_successfully
     environment:
@@ -64,6 +66,7 @@ services:
     volumes:
       - ./airflow_config/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
+      - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
@@ -81,6 +84,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      permission-fixer:
+        condition: service_completed_successfully
       airflow-init:
         condition: service_completed_successfully
     environment:
@@ -91,6 +96,7 @@ services:
     volumes:
       - ./airflow_config/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
+      - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
     command: scheduler
 
@@ -103,6 +109,8 @@ services:
       db:
         # It only tries to initialize airflow after the postgres database is created
         condition: service_healthy 
+      permission-fixer:
+        condition: service_completed_successfully
     env_file:
       - .env
     environment:
@@ -116,8 +124,19 @@ services:
 
 
 # ========================
+# PERMISSION FIXER
+# ========================
+  permission-fixer:
+    image: alpine
+    container_name: geoavia_permission_fixer
+    command: chown -R 50000:0 /opt/airflow/data
+    volumes:
+      - geo_data:/opt/airflow/data
+
+# ========================
 # DATA PERSISTENCE
 # ========================
 volumes:
   postgres_data:
   airflow_logs:
+  geo_data:

@@ -1,4 +1,10 @@
-FROM apache/airflow:2.9.3
+FROM apache/airflow:2.9.3-python3.12
+
+USER root
+RUN apt-get update && \
+    apt-get install -y osmium-tool wget && \
+    rm -rf /var/lib/apt/lists/*
+USER airflow
 
 COPY requirements.txt /
 

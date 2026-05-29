@@ -1,2 +1,4 @@
 # Airflow specific dependencies
 geopandas
+geoalchemy2
+osmium
