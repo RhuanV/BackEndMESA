@@ -60,7 +60,7 @@ def update_osm_diffs(**kwargs):
 with DAG(
     dag_id="update_osm_diffs",
     start_date=datetime(2024, 1, 1),
-    schedule_interval="@daily",
+    schedule="@daily",
     catchup=False,
     tags=["osm", "incremental", "geofabrik"]
 ) as dag:

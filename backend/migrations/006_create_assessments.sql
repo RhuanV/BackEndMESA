@@ -1,11 +1,11 @@
--- Sprint 2 — Tabela simplificada de avaliações MESA (GEO-26).
--- Cobre os critérios classificatórios do Manual de Apoio 2021 que o front
--- coleta hoje no AssessmentForm: declividade, distância de centros urbanos,
--- presença de obstáculos, custo estimado e coordenadas.
---
--- O esquema completo MESA (Terreno, PlanoInformacao, CriterioMESA, AHP, ...)
--- é responsabilidade da Maria Antonia e virá em sprint posterior — aqui
--- mantemos só o suficiente pro fluxo end-to-end do demo.
+-- Sprint 2 — Simplified MESA assessments table (GEO-26).
+-- Covers the qualifying criteria from the 2021 Support Manual that the frontend
+-- currently collects in AssessmentForm: slope, distance to urban centers,
+-- presence of obstacles, estimated cost, and coordinates.
+
+-- The complete MESA schema (Terrain, InformationPlan, MESACriterion, AHP, ...)
+-- is Maria Antonia's responsibility and will come in a later sprint — here
+-- we only keep enough for the end-to-end demo flow.
 
 CREATE TABLE IF NOT EXISTS assessments (
     id SERIAL PRIMARY KEY,

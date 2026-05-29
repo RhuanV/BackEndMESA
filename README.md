@@ -215,3 +215,30 @@ Practical suggestions to evolve the repository as a team:
 
 - Implementation guidelines: .github/copilot-instructions.md
 - API entry point: backend/src/geoavia_backend/main.py
+
+## Testing
+
+### Airflow Test Suite
+
+Our Airflow data pipelines are covered by a comprehensive, automated test suite built with `pytest`. These tests ensure that our orchestration logic, DAG integrity, and task execution are highly robust and resilient.
+
+To run the entire Airflow test suite at once, execute the following script from the root directory:
+
+```bash
+./run_airflow_tests.sh
+```
+
+
+The test suite is divided into the following key modules:
+
+- DAG Integrity (test_dags_integrity.py): Dynamically loads all DAGs in the dags/ folder to check for Python syntax errors, missing imports, and circular dependencies. It guarantees that no DAG silently fails during the parsing phase.
+
+- Database Connection (test_db_connection.py): Verifies that the Airflow environment can successfully establish a connection to the main GeoAvia PostgreSQL database (geoavia_main_conn), validating authentication and query execution via the PostgresHook.
+
+- Environment Initialization (test_initialization.py): Parses the init_airflow.sh script and asserts against the Airflow metadata database to ensure that the required bootstrap DAGs are automatically unpaused and triggered when the environment starts.
+
+- Scheduler & Triggers (test_scheduler.py): Simulates the passage of time to validate that Airflow's scheduling engine correctly infers data intervals and creates DagRun records for both CRON-scheduled and Dataset-triggered DAGs.
+
+- Task Execution Isolation (test_task_execution.py): Dynamically discovers all tasks across the project (Check, Extract, Transform, Load) and executes their Python logic in complete isolation. It uses extensive mocking (unittest.mock) to simulate network requests, subprocesses (like the osmium tool), file I/O, and database operations. This allows for fast and safe unit testing without modifying the real database or downloading large datasets.
+
+- Failure Handling & Recovery (test_failure_handling.py): Uses an in-memory dummy DAG to simulate real-world operational failures. It validates that Airflow correctly updates task states (up_for_retry, failed, upstream_failed), respects retry delays, maintains DagRun consistency, and supports safe manual reprocessing (task clearing).

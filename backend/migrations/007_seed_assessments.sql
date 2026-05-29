@@ -1,7 +1,7 @@
--- Sprint 2 — Dados de exemplo para o demo do PO.
--- Coordenadas reais em território brasileiro, valores plausíveis mas fictícios.
--- Coerentes com o MOCK_RESULTS antigo do ResultsPanel para o front parecer
--- familiar enquanto a integração é validada.
+-- Sprint 2 — Example data for the PO demo.
+-- Real coordinates in Brazilian territory, plausible but fictitious values.
+-- Consistent with the old MOCK_RESULTS from ResultsPanel so the frontend looks
+-- familiar while the integration is validated.
 
 INSERT INTO assessments (
     site_name, average_slope, urban_center_distance,

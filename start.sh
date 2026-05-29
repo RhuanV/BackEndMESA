@@ -71,10 +71,10 @@ if [ "$RETRY" -lt "$MAX_RETRIES" ]; then
 fi
 
 # --- Step 3.5: Bootstrap admin user ---
-# Sprint 3: o endpoint POST /users/signup agora exige JWT de coordenador/supervisor.
-# Como o BD nasce sem nenhum usuário real (seeds têm hash placeholder e não logam),
-# o bootstrap é feito chamando UserService direto dentro do container, bypassando
-# o endpoint. Idempotente: checa existência antes de criar.
+# Sprint 3: the POST /users/signup endpoint now requires a coordinator/supervisor JWT.
+# Since the DB starts without any real users (seeds have placeholder hashes and can't log in),
+# the bootstrap is done by calling UserService directly inside the container, bypassing
+# the endpoint. Idempotent: checks for existence before creating.
 DEMO_USER="admin"
 DEMO_PASS="admin123"
 DEMO_ROLE="coordenador"

@@ -68,6 +68,8 @@ services:
       - airflow_logs:/opt/airflow/logs
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
+      - ./tests:/opt/airflow/tests
+      - ./airflow_config/init_airflow.sh:/opt/airflow/init_airflow.sh:ro
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
     command: webserver
@@ -98,6 +100,8 @@ services:
       - airflow_logs:/opt/airflow/logs
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
+      - ./tests:/opt/airflow/tests
+      - ./airflow_config/init_airflow.sh:/opt/airflow/init_airflow.sh:ro
     command: scheduler
 
 # ========================

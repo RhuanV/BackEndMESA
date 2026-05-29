@@ -44,10 +44,14 @@ def extract_and_transform_airports(**kwargs) -> str:
     filtered_pbf = os.path.join(work_dir, "airports_filtered.osm.pbf")
     geojson_path = os.path.join(work_dir, "airports.geojson")
     
+    osmium_bin = shutil.which("osmium")
+    if not osmium_bin:
+        raise RuntimeError("Executable 'osmium' not found. Verify the installation of 'osmium-tool' in the Dockerfile and ensure the image was rebuilt (--build).")
+
     logging.info("Filtering airports using osmium tags-filter...")
     tags = "aeroway=aerodrome"
     subprocess.run([
-        "osmium", "tags-filter", pbf_path, 
+        osmium_bin, "tags-filter", pbf_path, 
         f"n/{tags}", f"w/{tags}", f"r/{tags}",
         "-o", filtered_pbf, "--overwrite"
     ], check=True)
@@ -77,7 +81,7 @@ def extract_and_transform_airports(**kwargs) -> str:
         json.dump(export_config, f)
 
     subprocess.run([
-        "osmium", "export", filtered_pbf, 
+        osmium_bin, "export", filtered_pbf, 
         "-c", config_path,
         "-o", geojson_path, "--overwrite"
     ], check=True)
