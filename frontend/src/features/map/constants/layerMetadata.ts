@@ -8,6 +8,15 @@
  * via DOMPurify before DOM rendering (Defense in Depth).
  */
 
+/**
+ * MapLibre paint properties for a vector layer. Kept loose (Record) to avoid
+ * pulling the maplibre-gl type for paint specs into this constants file.
+ */
+export interface LayerPaint {
+  readonly maplibreType: 'line' | 'fill' | 'circle';
+  readonly paint: Readonly<Record<string, unknown>>;
+}
+
 export interface LayerMetadata {
   readonly id: string;
   readonly name: string;
@@ -18,6 +27,12 @@ export interface LayerMetadata {
   readonly description: string;
   readonly type: 'vector' | 'raster';
   readonly defaultVisible: boolean;
+  /** Name used in the backend /layers/{name} endpoint. Omitted = no API yet. */
+  readonly backendName?: string;
+  /** MapLibre paint configuration. Required when backendName is set. */
+  readonly paint?: LayerPaint;
+  /** False = visible but disabled in UI (no backend yet). Defaults to true. */
+  readonly available?: boolean;
 }
 
 export const LAYER_REGISTRY: readonly LayerMetadata[] = [
@@ -32,6 +47,15 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Limites administrativos dos estados brasileiros.',
     type: 'vector',
     defaultVisible: true,
+    backendName: 'state_boundaries',
+    paint: {
+      maplibreType: 'line',
+      paint: {
+        'line-color': '#2563eb',
+        'line-width': 1.5,
+        'line-opacity': 0.9,
+      },
+    },
   },
   {
     id: 'ibge-municipios',
@@ -43,6 +67,15 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Limites administrativos dos municípios brasileiros.',
     type: 'vector',
     defaultVisible: false,
+    backendName: 'municipality_boundaries',
+    paint: {
+      maplibreType: 'line',
+      paint: {
+        'line-color': '#10b981',
+        'line-width': 0.8,
+        'line-opacity': 0.6,
+      },
+    },
   },
   {
     id: 'dnit-rodovias',
@@ -54,6 +87,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Rede rodoviária federal e estadual do Brasil.',
     type: 'vector',
     defaultVisible: false,
+    available: false,
   },
   {
     id: 'dnit-ferrovias',
@@ -65,6 +99,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Rede ferroviária brasileira ativa e planejada.',
     type: 'vector',
     defaultVisible: false,
+    available: false,
   },
 
   // === Análise MESA ===
@@ -78,6 +113,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Mapa de declividade derivado do MDE, resolução 30m. Critério classificatório MESA.',
     type: 'raster',
     defaultVisible: false,
+    available: false,
   },
   {
     id: 'mapbiomas-uso-solo',
@@ -89,6 +125,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Mapeamento anual de cobertura e uso do solo do Brasil. Resolução 30m.',
     type: 'raster',
     defaultVisible: false,
+    available: false,
   },
   {
     id: 'cprm-geologia',
@@ -100,6 +137,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Mapa geológico do Brasil com unidades litoestratigráficas.',
     type: 'vector',
     defaultVisible: false,
+    available: false,
   },
 
   // === Áreas Excludentes ===
@@ -113,6 +151,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Terras indígenas homologadas, declaradas e em estudo. Área de exclusão imediata.',
     type: 'vector',
     defaultVisible: false,
+    available: false,
   },
   {
     id: 'icmbio-ucs',
@@ -124,6 +163,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     description: 'Unidades de conservação federais, estaduais e municipais. Área de exclusão imediata.',
     type: 'vector',
     defaultVisible: false,
+    available: false,
   },
 ] as const;
 
