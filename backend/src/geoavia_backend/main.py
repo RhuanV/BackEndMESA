@@ -1,10 +1,12 @@
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from geoavia_backend.auth_dep import obtain_current_user
+from geoavia_backend.layers_service import LayersService
 from geoavia_backend.mesa_router import router as mesa_router
+from geoavia_backend.screening_service import LayersNotReadyError, ScreeningService
 from geoavia_backend.service import UserService
 
 app = FastAPI(title="GeoAvia - Initial Test")
@@ -18,6 +20,8 @@ app.add_middleware(
 )
 
 service = UserService()
+layers_service = LayersService()
+screening_service = ScreeningService()
 
 
 @app.get("/health")
@@ -110,6 +114,62 @@ def delete_user(user_id: int):
         raise HTTPException(status_code=404, detail="User not found")
 
     return {"message": "User was successfully deleted"}
+
+
+@app.get("/layers/{layer_name}")
+def get_layer(
+    layer_name: str,
+    zoom: str | None = None,
+    bbox: str | None = None,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Returns the requested layer as GeoJSON, simplified per zoom level.
+
+    See LAYER_REGISTRY in layers_service for the allowed layer names.
+    """
+    try:
+        return layers_service.fetch(layer_name, zoom, bbox)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+SCREENING_ROLES = {"coordenador", "gestor", "operador"}
+
+
+class ScreeningRequest(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    target_municipality_ibge_code: str = Field(min_length=7, max_length=7, pattern=r"^[0-9]{7}$")
+
+
+@app.post("/screening")
+def screen_site(
+    payload: ScreeningRequest,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Spatial screening (Sprint 4 HU-29) — classifies a point as viavel/restrito
+    based on containment in the target municipality and intersection with
+    restrictive infrastructure layers. Requires coordenador, gestor or operador.
+    """
+    if current_user["role"] not in SCREENING_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas coordenador, gestor e operador podem rodar a triagem",
+        )
+
+    try:
+        return screening_service.screen(
+            payload.latitude,
+            payload.longitude,
+            payload.target_municipality_ibge_code,
+        )
+    except LayersNotReadyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"message": str(exc), "missing_layers": exc.missing_layers},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 app.include_router(mesa_router)
