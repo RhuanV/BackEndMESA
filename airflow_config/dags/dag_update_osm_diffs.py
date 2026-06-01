@@ -5,6 +5,7 @@ Incremental OSM update DAG using Geofabrik replication diffs.
 import os
 import logging
 import subprocess
+import shutil
 from datetime import datetime
 
 from airflow import DAG
@@ -25,36 +26,51 @@ def update_osm_diffs(**kwargs):
     pbf_path = os.path.join(DATA_DIR, "brazil-latest.osm.pbf")
 
     if not os.path.exists(pbf_path):
-        raise FileNotFoundError(f"Arquivo base não encontrado: {pbf_path}. Execute a DAG de download primeiro.")
+        raise FileNotFoundError(f"Base file not found: {pbf_path}. Execute the download DAG first.")
         
-    logging.info(f"Atualizando {pbf_path} de forma incremental a partir de {GEODIFF_URL}...")
+    backup_path = f"{pbf_path}.bak"
+    logging.info(f"Creating safety backup at {backup_path}...")
+    shutil.copy2(pbf_path, backup_path)
     
-    # O pyosmium-up-to-date descobre a data do PBF automaticamente, baixa os diffs e os aplica.
+    logging.info(f"Incrementally updating {pbf_path} from {GEODIFF_URL}...")
+    
+    # pyosmium-up-to-date automatically discovers the PBF date, downloads the diffs, and applies them.
     cmd = [
         "pyosmium-up-to-date",
         pbf_path,
         "--ignore-osmosis-headers",
         "--server", GEODIFF_URL,
-        "--size", "10000" # Aumentamos o limite para garantir que baixe tudo de uma vez
+        "--size", "10000" # Increased size limit to ensure it downloads everything at once
     ]
     
-    # Executamos o comando capturando os logs do terminal para descobrir o motivo exato
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    if result.stdout:
-        logging.info(f"STDOUT: {result.stdout.strip()}")
-    if result.stderr:
-        logging.warning(f"STDERR: {result.stderr.strip()}")
+    try:
+        # Execute the command capturing terminal logs to find the exact reason on failure
+        result = subprocess.run(cmd, capture_output=True, text=True)
         
-    if result.returncode == 0:
-        logging.info("Atualização incremental concluída com sucesso!")
-    elif result.returncode == 1:
-        # pyosmium-up-to-date retorna 1 em caso de limite de tamanho atingido ou PBF mais novo que o servidor
-        logging.warning("O pyosmium retornou código 1. Isso pode indicar uma atualização parcial ou que seu arquivo PBF já é tão recente que o servidor ainda não gerou atualizações para ele.")
-    elif result.returncode == 3:
-        logging.info("O arquivo PBF já está totalmente atualizado. Nenhuma nova atualização foi encontrada.")
-    else:
-        raise RuntimeError(f"O pyosmium-up-to-date falhou com código {result.returncode}.")
+        if result.stdout:
+            logging.info(f"STDOUT: {result.stdout.strip()}")
+        if result.stderr:
+            logging.warning(f"STDERR: {result.stderr.strip()}")
+            
+        if result.returncode == 0:
+            logging.info("Incremental update completed successfully!")
+        elif result.returncode == 1:
+            logging.warning("pyosmium returned code 1 (partial update due to size limit reached).")
+        elif result.returncode == 3:
+            logging.info("The PBF file is already fully up-to-date. No new updates were found.")
+        else:
+            raise RuntimeError(f"pyosmium-up-to-date failed with code {result.returncode}.")
+            
+        # If execution is successful and reaches here, delete the backup to save space
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+            
+    except Exception as e:
+        logging.error(f"Catastrophic error detected: {e}")
+        if os.path.exists(backup_path):
+            logging.warning("Restoring PBF file from safety backup...")
+            shutil.move(backup_path, pbf_path)
+        raise
 
 
 with DAG(

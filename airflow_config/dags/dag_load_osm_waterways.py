@@ -196,14 +196,14 @@ def load_osm_waterways(**kwargs) -> None:
     cursor.execute("""
         CREATE TEMP TABLE temp_osm_waterways (
             osm_id BIGINT,
-            name VARCHAR(255),
-            waterway VARCHAR(50),
+            nome VARCHAR(255),
+            tipo_hidrovia VARCHAR(50),
             geom_wkt TEXT
         ) ON COMMIT DROP;
     """)
     
     sql_insert_temp = """
-        INSERT INTO temp_osm_waterways (osm_id, name, waterway, geom_wkt)
+        INSERT INTO temp_osm_waterways (osm_id, nome, tipo_hidrovia, geom_wkt)
         VALUES (%s, %s, %s, %s)
     """
     logging.info(f"Upserting {len(data_to_insert)} records into the temporary table...")
@@ -211,13 +211,13 @@ def load_osm_waterways(**kwargs) -> None:
     
     logging.info("Upserting data into main table from temporary table...")
     cursor.execute("""
-        INSERT INTO osm_waterways (osm_id, name, waterway, geom)
-        SELECT DISTINCT ON (osm_id) osm_id, name, waterway, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
+        INSERT INTO mesa_a.vetor_osm_hidrovias (osm_id, nome, tipo_hidrovia, geom)
+        SELECT DISTINCT ON (osm_id) osm_id, nome, tipo_hidrovia, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
         FROM temp_osm_waterways
         ORDER BY osm_id
         ON CONFLICT (osm_id) DO UPDATE SET
-            name = EXCLUDED.name,
-            waterway = EXCLUDED.waterway,
+            nome = EXCLUDED.nome,
+            tipo_hidrovia = EXCLUDED.tipo_hidrovia,
             geom = EXCLUDED.geom;
     """)
     

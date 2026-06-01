@@ -1,7 +1,7 @@
 """
 DAG to automate the download, extraction, and database insertion of Brazil's Federal Highways.
 Downloads a Shapefile from the DNIT (SNV), processes it using GeoPandas, 
-and loads it into the gov_federal_highways PostGIS table.
+and loads it into the mesa_a.vetor_gov_rodovias_federais PostGIS table.
 """
 import os
 import zipfile
@@ -136,11 +136,11 @@ def load_highways(**kwargs) -> None:
     
     logging.info("Truncating table and inserting new records...")
     cursor.execute("""
-        TRUNCATE TABLE gov_federal_highways RESTART IDENTITY;
+        TRUNCATE TABLE mesa_a.vetor_gov_rodovias_federais RESTART IDENTITY;
     """)
     
     sql_insert = """
-        INSERT INTO gov_federal_highways (uf, br, codigo, superficie, extensao, jurisdicao, geom)
+        INSERT INTO mesa_a.vetor_gov_rodovias_federais (uf, br, codigo, superficie, extensao, jurisdicao, geom)
         VALUES (%s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)
@@ -158,7 +158,7 @@ def load_highways(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_federal_highways",
     start_date=datetime(2024, 1, 1),
-    schedule="@daily", # Runs daily
+    schedule=None, # Runs manually
     catchup=False,
     tags=["geodata", "dnit", "highways"]
 ) as dag:

@@ -1,7 +1,7 @@
 """
 DAG to automate the download, extraction, and database insertion of Brazil's Waterways.
 Downloads a Shapefile from the Ministério dos Transportes, processes it using GeoPandas, 
-and loads it into the gov_waterways PostGIS table.
+and loads it into the mesa_a.vetor_gov_hidrovias PostGIS table.
 """
 import os
 import zipfile
@@ -142,11 +142,11 @@ def load_waterways(**kwargs) -> None:
     
     logging.info("Truncating table and inserting new records...")
     cursor.execute("""
-        TRUNCATE TABLE gov_waterways RESTART IDENTITY;
+        TRUNCATE TABLE mesa_a.vetor_gov_hidrovias RESTART IDENTITY;
     """)
     
     sql_insert = """
-        INSERT INTO gov_waterways (idhidrovia, nome, tipo, nome_rio, estudos, extensao, classificacao, est_origem, est_destino, geom)
+        INSERT INTO mesa_a.vetor_gov_hidrovias (idhidrovia, nome, tipo, nome_rio, estudos, extensao, classificacao, est_origem, est_destino, geom)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)
@@ -164,7 +164,7 @@ def load_waterways(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_waterways",
     start_date=datetime(2024, 1, 1),
-    schedule="@daily", # Runs daily
+    schedule=None, # Runs manually
     catchup=False,
     tags=["geodata", "mt", "waterways"]
 ) as dag:

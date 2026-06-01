@@ -1,7 +1,7 @@
 """
 DAG to automate the download, extraction, and database insertion of Brazil's Ports.
 Downloads a Shapefile from the Ministério dos Transportes, processes it using GeoPandas, 
-and loads it into the gov_ports PostGIS table for data inspection via JSONB.
+and loads it into the mesa_a.vetor_gov_portos PostGIS table.
 """
 import os
 import zipfile
@@ -152,11 +152,11 @@ def load_ports(**kwargs) -> None:
     
     logging.info("Truncating table and inserting new records...")
     cursor.execute("""
-        TRUNCATE TABLE gov_ports RESTART IDENTITY;
+        TRUNCATE TABLE mesa_a.vetor_gov_portos RESTART IDENTITY;
     """)
     
     sql_insert = """
-        INSERT INTO gov_ports (nome, tipo, fonte, gestao, cidade, estado, endereco, numero, bairro, cep, cnpj, idcidade, geom)
+        INSERT INTO mesa_a.vetor_gov_portos (nome, tipo, fonte, gestao, cidade, estado, endereco, numero, bairro, cep, cnpj, idcidade, geom)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4674))
     """
     execute_batch(cursor, sql_insert, data_to_insert)

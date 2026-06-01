@@ -1,7 +1,7 @@
 """
 DAG to automate the download, extraction, and database insertion of Municipality Boundaries.
 Downloads a Shapefile from the IBGE FTP, processes it using GeoPandas, 
-and loads it into the municipality_boundaries PostGIS table.
+and loads it into the mesa_a.vetor_limites_municipais PostGIS table.
 """
 import os
 import zipfile
@@ -111,10 +111,10 @@ def load_municipalities(**kwargs) -> None:
     cursor = conn.cursor()
     
     logging.info("Truncating table and inserting new boundaries...")
-    cursor.execute("TRUNCATE TABLE municipality_boundaries RESTART IDENTITY;")
+    cursor.execute("TRUNCATE TABLE mesa_a.vetor_limites_municipais RESTART IDENTITY;")
     
     sql_insert = """
-        INSERT INTO municipality_boundaries (ibge_code, municipality_name, state_abbr, geom)
+        INSERT INTO mesa_a.vetor_limites_municipais (codigo_ibge, nome_municipio, sigla_estado, geom)
         VALUES (%s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)
