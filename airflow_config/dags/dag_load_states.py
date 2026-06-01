@@ -11,10 +11,15 @@ import json
 import shutil
 from datetime import datetime
 from airflow import DAG
+from airflow.datasets import Dataset
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 import geopandas as gpd
 from psycopg2.extras import execute_batch
+
+# Dataset emitted when state_boundaries is loaded. Consumed by
+# dag_refresh_resolution_views to keep the simplified views in sync.
+states_dataset = Dataset("postgres://geoavia_main_db/state_boundaries")
 
 import sys
 # Dynamically adds the 'plugins' directory to Python's path
@@ -149,7 +154,8 @@ with DAG(
     
     load_task = PythonOperator(
         task_id="load_states",
-        python_callable=load_states
+        python_callable=load_states,
+        outlets=[states_dataset]
     )
     
     extract_task >> transform_task >> load_task
