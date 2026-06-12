@@ -1,7 +1,7 @@
 """
 DAG to automate the download, extraction, and database insertion of State Boundaries.
 Downloads a Shapefile from the IBGE FTP, processes it using GeoPandas, 
-and loads it into the state_boundaries PostGIS table.
+and loads it into the mesa_a.vetor_limites_estaduais PostGIS table.
 """
 import os
 import zipfile
@@ -116,10 +116,10 @@ def load_states(**kwargs) -> None:
     cursor = conn.cursor()
     
     logging.info("Truncating table and inserting new boundaries...")
-    cursor.execute("TRUNCATE TABLE state_boundaries RESTART IDENTITY;")
+    cursor.execute("TRUNCATE TABLE mesa_a.vetor_limites_estaduais RESTART IDENTITY;")
     
     sql_insert = """
-        INSERT INTO state_boundaries (ibge_code, state_name, state_abbr, geom)
+        INSERT INTO mesa_a.vetor_limites_estaduais (codigo_ibge, nome_estado, sigla_estado, geom)
         VALUES (%s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)

@@ -180,15 +180,15 @@ def load_osm_highways(**kwargs) -> None:
     cursor.execute("""
         CREATE TEMP TABLE temp_osm_highways (
             osm_id BIGINT,
-            name VARCHAR(255),
-            ref VARCHAR(50),
-            highway VARCHAR(50),
+            nome VARCHAR(255),
+            referencia VARCHAR(50),
+            tipo_rodovia VARCHAR(50),
             geom_wkt TEXT
         ) ON COMMIT DROP;
     """)
     
     sql_insert_temp = """
-        INSERT INTO temp_osm_highways (osm_id, name, ref, highway, geom_wkt)
+        INSERT INTO temp_osm_highways (osm_id, nome, referencia, tipo_rodovia, geom_wkt)
         VALUES (%s, %s, %s, %s, %s)
     """
     logging.info(f"Upserting {len(data_to_insert)} records into the temporary table...")
@@ -196,14 +196,14 @@ def load_osm_highways(**kwargs) -> None:
     
     logging.info("Upserting data into main table from temporary table...")
     cursor.execute("""
-        INSERT INTO osm_federal_highways (osm_id, name, ref, highway, geom)
-        SELECT DISTINCT ON (osm_id) osm_id, name, ref, highway, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
+        INSERT INTO mesa_a.vetor_osm_rodovias_federais (osm_id, nome, referencia, tipo_rodovia, geom)
+        SELECT DISTINCT ON (osm_id) osm_id, nome, referencia, tipo_rodovia, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
         FROM temp_osm_highways
         ORDER BY osm_id
         ON CONFLICT (osm_id) DO UPDATE SET
-            name = EXCLUDED.name,
-            ref = EXCLUDED.ref,
-            highway = EXCLUDED.highway,
+            nome = EXCLUDED.nome,
+            referencia = EXCLUDED.referencia,
+            tipo_rodovia = EXCLUDED.tipo_rodovia,
             geom = EXCLUDED.geom;
     """)
     

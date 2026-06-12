@@ -195,14 +195,14 @@ def load_osm_railways(**kwargs) -> None:
     cursor.execute("""
         CREATE TEMP TABLE temp_osm_railways (
             osm_id BIGINT,
-            name VARCHAR(255),
-            railway VARCHAR(50),
+            nome VARCHAR(255),
+            tipo_ferrovia VARCHAR(50),
             geom_wkt TEXT
         ) ON COMMIT DROP;
     """)
     
     sql_insert_temp = """
-        INSERT INTO temp_osm_railways (osm_id, name, railway, geom_wkt)
+        INSERT INTO temp_osm_railways (osm_id, nome, tipo_ferrovia, geom_wkt)
         VALUES (%s, %s, %s, %s)
     """
     logging.info(f"Upserting {len(data_to_insert)} records into the temporary table...")
@@ -210,13 +210,13 @@ def load_osm_railways(**kwargs) -> None:
     
     logging.info("Upserting data into main table from temporary table...")
     cursor.execute("""
-        INSERT INTO osm_railways (osm_id, name, railway, geom)
-        SELECT DISTINCT ON (osm_id) osm_id, name, railway, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
+        INSERT INTO mesa_a.vetor_osm_ferrovias (osm_id, nome, tipo_ferrovia, geom)
+        SELECT DISTINCT ON (osm_id) osm_id, nome, tipo_ferrovia, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
         FROM temp_osm_railways
         ORDER BY osm_id
         ON CONFLICT (osm_id) DO UPDATE SET
-            name = EXCLUDED.name,
-            railway = EXCLUDED.railway,
+            nome = EXCLUDED.nome,
+            tipo_ferrovia = EXCLUDED.tipo_ferrovia,
             geom = EXCLUDED.geom;
     """)
     

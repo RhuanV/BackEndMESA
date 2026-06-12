@@ -185,7 +185,7 @@ def load_osm_airports(**kwargs) -> None:
     cursor.execute("""
         CREATE TEMP TABLE temp_osm_airports (
             osm_id BIGINT,
-            name VARCHAR(255),
+            nome VARCHAR(255),
             icao VARCHAR(10),
             iata VARCHAR(10),
             geom_wkt TEXT
@@ -193,7 +193,7 @@ def load_osm_airports(**kwargs) -> None:
     """)
     
     sql_insert_temp = """
-        INSERT INTO temp_osm_airports (osm_id, name, icao, iata, geom_wkt)
+        INSERT INTO temp_osm_airports (osm_id, nome, icao, iata, geom_wkt)
         VALUES (%s, %s, %s, %s, %s)
     """
     logging.info(f"Upserting {len(data_to_insert)} records into the temporary table...")
@@ -201,12 +201,12 @@ def load_osm_airports(**kwargs) -> None:
     
     logging.info("Upserting data into main table from temporary table...")
     cursor.execute("""
-        INSERT INTO osm_airports (osm_id, name, icao, iata, geom)
-        SELECT DISTINCT ON (osm_id) osm_id, name, icao, iata, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
+        INSERT INTO mesa_a.vetor_osm_aeroportos (osm_id, nome, icao, iata, geom)
+        SELECT DISTINCT ON (osm_id) osm_id, nome, icao, iata, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
         FROM temp_osm_airports
         ORDER BY osm_id
         ON CONFLICT (osm_id) DO UPDATE SET
-            name = EXCLUDED.name,
+            nome = EXCLUDED.nome,
             icao = EXCLUDED.icao,
             iata = EXCLUDED.iata,
             geom = EXCLUDED.geom;

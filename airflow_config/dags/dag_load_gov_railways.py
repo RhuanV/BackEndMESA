@@ -1,7 +1,7 @@
 """
 DAG to automate the download, extraction, and database insertion of Brazil's Railway Network.
 Downloads a Shapefile from the Ministério dos Transportes, processes it using GeoPandas, 
-and loads it into the gov_railways PostGIS table.
+and loads it into the mesa_a.vetor_gov_ferrovias PostGIS table.
 """
 import os
 import zipfile
@@ -137,11 +137,11 @@ def load_railways(**kwargs) -> None:
     
     logging.info("Truncating table and inserting new records...")
     cursor.execute("""
-        TRUNCATE TABLE gov_railways RESTART IDENTITY;
+        TRUNCATE TABLE mesa_a.vetor_gov_ferrovias RESTART IDENTITY;
     """)
     
     sql_insert = """
-        INSERT INTO gov_railways (uf, nome, sigla, bitola, extensao, municipio, geom)
+        INSERT INTO mesa_a.vetor_gov_ferrovias (uf, nome, sigla, bitola, extensao, municipio, geom)
         VALUES (%s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4674)))
     """
     execute_batch(cursor, sql_insert, data_to_insert)

@@ -50,11 +50,15 @@ def extract_and_transform_power_lines(**kwargs) -> str:
 
     logging.info("Filtering features using osmium tags-filter...")
     # Matches way["power"="line"] and relation["power"="line"]
-    subprocess.run([
-        osmium_bin, "tags-filter", pbf_path, 
-        "w/power=line", "r/power=line",
-        "-o", filtered_pbf, "--overwrite"
-    ], check=True)
+    try:
+        subprocess.run([
+            osmium_bin, "tags-filter", pbf_path, 
+            "w/power=line", "r/power=line",
+            "-o", filtered_pbf, "--overwrite"
+        ], check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Osmium tags-filter failed!\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}")
+        raise RuntimeError(f"Error in osmium tags-filter: {e.stderr}")
     
     logging.info("Exporting filtered data to GeoJSON...")
     
@@ -80,11 +84,15 @@ def extract_and_transform_power_lines(**kwargs) -> str:
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(export_config, f)
 
-    subprocess.run([
-        osmium_bin, "export", filtered_pbf, 
-        "-c", config_path,
-        "-o", geojson_path, "--overwrite"
-    ], check=True)
+    try:
+        subprocess.run([
+            osmium_bin, "export", filtered_pbf, 
+            "-c", config_path,
+            "-o", geojson_path, "--overwrite"
+        ], check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Osmium export failed!\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}")
+        raise RuntimeError(f"Error in osmium export: {e.stderr}")
     
     logging.info("Parsing GeoJSON to prepare WKT formats for database insertion...")
     with open(geojson_path, "r", encoding="utf-8") as f:
@@ -176,14 +184,14 @@ def load_osm_power_lines(**kwargs) -> None:
     cursor.execute("""
         CREATE TEMP TABLE temp_osm_power_lines (
             osm_id BIGINT,
-            name VARCHAR(255),
-            power VARCHAR(50),
+            nome VARCHAR(255),
+            tipo_energia VARCHAR(50),
             geom_wkt TEXT
         ) ON COMMIT DROP;
     """)
     
     sql_insert_temp = """
-        INSERT INTO temp_osm_power_lines (osm_id, name, power, geom_wkt)
+        INSERT INTO temp_osm_power_lines (osm_id, nome, tipo_energia, geom_wkt)
         VALUES (%s, %s, %s, %s)
     """
     logging.info(f"Upserting {len(data_to_insert)} records into the temporary table...")
@@ -191,13 +199,13 @@ def load_osm_power_lines(**kwargs) -> None:
     
     logging.info("Upserting data into main table from temporary table...")
     cursor.execute("""
-        INSERT INTO osm_power_lines (osm_id, name, power, geom)
-        SELECT DISTINCT ON (osm_id) osm_id, name, power, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
+        INSERT INTO mesa_a.vetor_osm_linhas_transmissao (osm_id, nome, tipo_energia, geom)
+        SELECT DISTINCT ON (osm_id) osm_id, nome, tipo_energia, ST_SetSRID(ST_GeomFromText(geom_wkt), 4674)
         FROM temp_osm_power_lines
         ORDER BY osm_id
         ON CONFLICT (osm_id) DO UPDATE SET
-            name = EXCLUDED.name,
-            power = EXCLUDED.power,
+            nome = EXCLUDED.nome,
+            tipo_energia = EXCLUDED.tipo_energia,
             geom = EXCLUDED.geom;
     """)
     
