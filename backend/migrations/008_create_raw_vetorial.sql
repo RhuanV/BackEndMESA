@@ -222,3 +222,86 @@ CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_sicar_imoveis (
     geom GEOMETRY(MultiPolygon, 4674)
 );
 CREATE INDEX IF NOT EXISTS idx_gov_sicar_imoveis_geom ON mesa_a.vetor_gov_sicar_imoveis USING GIST(geom);
+
+-- Tema: Unidades Territoriais
+-- Tabela para o Plano de Informação: Terra Indígena (FUNAI) — DAG Airflow
+CREATE TABLE mesa_a.vetor_gov_terra_indigena (
+    gid SERIAL PRIMARY KEY,
+    nome_ti VARCHAR(255),
+    etnia VARCHAR(255),
+    municipio VARCHAR(255),
+    uf VARCHAR(100),
+    situacao_juridica VARCHAR(255),
+    fase VARCHAR(255),
+    modalidade VARCHAR(255),
+    superficie_ha DOUBLE PRECISION,
+    geom GEOMETRY(MultiPolygon, 4674)
+);
+CREATE INDEX idx_gov_terra_indigena_geom ON mesa_a.vetor_gov_terra_indigena USING GIST(geom);
+
+-- Tema: Unidades Territoriais
+-- Tabela para o Plano de Informação: Cavernas (ICMBio) — DAG Airflow
+CREATE TABLE mesa_a.vetor_gov_cavernas (
+    gid SERIAL PRIMARY KEY,
+    nome_caverna VARCHAR(255),
+    municipio VARCHAR(255),
+    uf VARCHAR(100),
+    litologia VARCHAR(255),
+    grau_potencial VARCHAR(255),
+    geom GEOMETRY(MultiPolygon, 4674)
+);
+CREATE INDEX idx_gov_cavernas_geom ON mesa_a.vetor_gov_cavernas USING GIST(geom);
+
+-- Tema: Hidrografia, Fauna e Flora
+-- Tabela para o Plano de Informação: Rios ANA (Base Hidrográfica Ottocodificada) — DAG Airflow
+CREATE TABLE mesa_a.vetor_gov_rios_ana (
+    gid SERIAL PRIMARY KEY,
+    nome_rio VARCHAR(255),
+    cocurso VARCHAR(50),
+    corio VARCHAR(50),
+    nucompam VARCHAR(50),
+    nuareaam DOUBLE PRECISION,
+    geom GEOMETRY(MultiLineString, 4674)
+);
+CREATE INDEX idx_gov_rios_ana_geom ON mesa_a.vetor_gov_rios_ana USING GIST(geom);
+
+-- Tema: Infraestrutura
+-- Tabela para o Plano de Informação: Aeroportos (Ministério da Infraestrutura) — DAG Airflow
+CREATE TABLE mesa_a.vetor_gov_aeroportos (
+    gid SERIAL PRIMARY KEY,
+    nome VARCHAR(255),
+    municipio VARCHAR(255),
+    uf VARCHAR(100),
+    codigo_iata VARCHAR(10),
+    codigo_icao VARCHAR(10),
+    tipo VARCHAR(255),
+    geom GEOMETRY(Point, 4674)
+);
+CREATE INDEX idx_gov_aeroportos_geom ON mesa_a.vetor_gov_aeroportos USING GIST(geom);
+
+-- Tema: Infraestrutura
+-- Tabela para o Plano de Informação: Aeródromos (ANA) — DAG Airflow
+CREATE TABLE mesa_a.vetor_gov_aerodromos (
+    gid SERIAL PRIMARY KEY,
+    nome VARCHAR(255),
+    municipio VARCHAR(255),
+    uf VARCHAR(100),
+    situacao VARCHAR(255),
+    geom GEOMETRY(MultiPoint, 4674)
+);
+CREATE INDEX idx_gov_aerodromos_geom ON mesa_a.vetor_gov_aerodromos USING GIST(geom);
+
+-- Tema: Geração de Energia
+-- Tabela para o Plano de Informação: Linhas de Transmissão (MMA/ANEEL) — DAG Airflow
+CREATE TABLE mesa_a.vetor_gov_linhas_transmissao (
+    gid SERIAL PRIMARY KEY,
+    nome_linha VARCHAR(255),
+    operador VARCHAR(255),
+    tensao VARCHAR(100),
+    situacao VARCHAR(255),
+    geom GEOMETRY(MultiLineString, 4674)
+);
+CREATE INDEX idx_gov_linhas_transmissao_geom ON mesa_a.vetor_gov_linhas_transmissao USING GIST(geom);
+
+
+
