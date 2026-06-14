@@ -5,13 +5,16 @@
  * Each layer can be toggled visible/hidden with an info button for metadata.
  */
 import { useState } from 'react';
-import { LAYER_REGISTRY, getLayersByGroup } from '@/features/map/constants/layerMetadata';
+import { getLayersByGroup } from '@/features/map/constants/layerMetadata';
 import type { LayerMetadata } from '@/features/map/constants/layerMetadata';
 
 interface LayerPanelProps {
   readonly isOpen: boolean;
   readonly onClose: () => void;
   readonly onLayerInfo: (layer: LayerMetadata) => void;
+  /** Visible layer IDs — owned by the parent so the map can react. */
+  readonly visibleLayers: ReadonlySet<string>;
+  readonly onToggleLayer: (id: string) => void;
 }
 
 interface LayerGroupConfig {
@@ -27,21 +30,14 @@ const groups: readonly LayerGroupConfig[] = [
   { key: 'exclusion', label: 'Áreas Excludentes', icon: '🚫', color: 'text-red-600' },
 ];
 
-export function LayerPanel({ isOpen, onClose, onLayerInfo }: LayerPanelProps) {
-  const [visibleLayers, setVisibleLayers] = useState<Set<string>>(() => {
-    const defaults = new Set<string>();
-    LAYER_REGISTRY.forEach((l) => { if (l.defaultVisible) defaults.add(l.id); });
-    return defaults;
-  });
+export function LayerPanel({
+  isOpen,
+  onClose,
+  onLayerInfo,
+  visibleLayers,
+  onToggleLayer,
+}: LayerPanelProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['base']));
-
-  const toggleLayer = (id: string) => {
-    setVisibleLayers((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
@@ -89,18 +85,22 @@ export function LayerPanel({ isOpen, onClose, onLayerInfo }: LayerPanelProps) {
 
               {isExpanded && (
                 <div className="ml-4 space-y-0.5 animate-fade-in">
-                  {layers.map((layer) => (
-                    <div key={layer.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-50 group">
+                  {layers.map((layer) => {
+                    const isDisabled = layer.available === false;
+                    return (
+                    <div key={layer.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 group ${isDisabled ? 'opacity-50' : 'hover:bg-neutral-50'}`}>
                       <input
                         type="checkbox"
                         checked={visibleLayers.has(layer.id)}
-                        onChange={() => toggleLayer(layer.id)}
-                        className="h-3.5 w-3.5 rounded border-neutral-300 text-primary-600 focus:ring-accent-500 cursor-pointer"
+                        onChange={() => onToggleLayer(layer.id)}
+                        disabled={isDisabled}
+                        className="h-3.5 w-3.5 rounded border-neutral-300 text-primary-600 focus:ring-accent-500 cursor-pointer disabled:cursor-not-allowed"
                         id={`layer-${layer.id}`}
-                        aria-label={`Camada: ${layer.name}`}
+                        aria-label={`Camada: ${layer.name}${isDisabled ? ' (indisponível)' : ''}`}
                       />
-                      <label htmlFor={`layer-${layer.id}`} className="flex-1 text-xs text-neutral-700 cursor-pointer select-none">
+                      <label htmlFor={`layer-${layer.id}`} className={`flex-1 text-xs text-neutral-700 select-none ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                         {layer.name}
+                        {isDisabled && <span className="ml-1 text-[9px] text-neutral-400">(em breve)</span>}
                       </label>
                       <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${layer.type === 'raster' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                         {layer.type === 'raster' ? 'R' : 'V'}
@@ -116,7 +116,8 @@ export function LayerPanel({ isOpen, onClose, onLayerInfo }: LayerPanelProps) {
                         </svg>
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

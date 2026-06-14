@@ -2,6 +2,50 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_raster;
 
+-- Criar esquema de catalogo
+CREATE SCHEMA IF NOT EXISTS catalogo;
+
+-- tabela de temas (unidades territoriais, hidrografia, etc)
+CREATE TABLE catalogo.tema (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(200) NOT NULL UNIQUE,
+    descricao TEXT
+);
+INSERT INTO catalogo.tema (nome, descricao)
+VALUES
+('Unidades Territoriais', 'Limites administrativos e fundiários'),
+('Áreas Protegidas', 'Unidades de conservação e áreas protegidas'),
+('Hidrografia Fauna Flora', 'Recursos hídricos e biodiversidade'),
+('Infraestrutura', 'Infraestrutura logística e energética'),
+('Meio Físico', 'Geologia, geodiversidade e biomas'),
+('Energia', 'Infraestrutura energética'),
+('Meteorologia', 'Dados climáticos e anemométricos');
+-- tabela de fonte de dados (ibge, funai, etc)
+CREATE TABLE catalogo.fonte_dados (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    sigla VARCHAR(50),
+    url TEXT,
+    licenca VARCHAR(200),
+    esfera VARCHAR(50),
+    observacoes TEXT
+);
+INSERT INTO catalogo.fonte_dados (
+    nome,
+    sigla,
+    esfera
+)
+VALUES
+('IBGE','IBGE','Federal'),
+('SICAR','SICAR','Federal'),
+('INCRA','INCRA','Federal'),
+('FUNAI','FUNAI','Federal'),
+('ICMBIO','ICMBIO','Federal'),
+('ANA','ANA','Federal'),
+('Ministério da Infraestrutura','MINFRA','Federal'),
+('OpenStreetMap','OSM','Global');
+
+
 -- Criar o esquema MESA-A
 CREATE SCHEMA IF NOT EXISTS mesa_a;
 
@@ -275,6 +319,20 @@ CREATE TABLE mesa_a.vetor_rodovias_federais (
     geom GEOMETRY(MultiLineString, 4674)
 );
 CREATE INDEX idx_rodovias_federais_geom ON mesa_a.vetor_rodovias_federais USING GIST(geom);
+INSERT INTO catalogo.plano_informacao(
+    tema_id,
+    fonte_id,
+    nome,
+    tabela_fisica,
+    tipo_dado
+)
+VALUES (
+    1,
+    1,
+    'Rodovias Federais',
+    'mesa_a.vetor_rodovias_federais',
+    'VETOR'
+);
 
 -- Tabela para o Plano de Informação: Rodovias Federais e Estaduais (OpenStreetMap)
 CREATE TABLE mesa_a.vetor_rodovias_osm (
@@ -405,87 +463,342 @@ CREATE TABLE mesa_a.vetor_dados_anemometricos (
 );
 CREATE INDEX idx_dados_anemometricos_geom ON mesa_a.vetor_dados_anemometricos USING GIST(geom);
 
+-- Relacionar temas com planos de informação
+CREATE TABLE catalogo.plano_informacao (
+    id SERIAL PRIMARY KEY,
 
--- =============================================================================
--- Tabelas adicionais para DAGs Airflow (prefixo vetor_gov_)
--- =============================================================================
+    tema_id INTEGER NOT NULL
+        REFERENCES catalogo.tema(id),
 
--- Tema: Unidades Territoriais
--- Tabela para o Plano de Informação: Terra Indígena (FUNAI) — DAG Airflow
-CREATE TABLE mesa_a.vetor_gov_terra_indigena (
-    gid SERIAL PRIMARY KEY,
-    nome_ti VARCHAR(255),
-    etnia VARCHAR(255),
-    municipio VARCHAR(255),
-    uf VARCHAR(100),
-    situacao_juridica VARCHAR(255),
-    fase VARCHAR(255),
-    modalidade VARCHAR(255),
-    superficie_ha DOUBLE PRECISION,
-    geom GEOMETRY(MultiPolygon, 4674)
+    fonte_id INTEGER
+        REFERENCES catalogo.fonte_dados(id),
+
+    nome VARCHAR(255) NOT NULL,
+
+    descricao TEXT,
+
+    tabela_fisica VARCHAR(255) NOT NULL,
+
+    tipo_dado VARCHAR(20) NOT NULL
+        CHECK(tipo_dado IN ('VETOR','RASTER')),
+
+    ativo BOOLEAN DEFAULT TRUE,
+
+    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_gov_terra_indigena_geom ON mesa_a.vetor_gov_terra_indigena USING GIST(geom);
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
 
--- Tema: Unidades Territoriais
--- Tabela para o Plano de Informação: Cavernas (ICMBio) — DAG Airflow
-CREATE TABLE mesa_a.vetor_gov_cavernas (
-    gid SERIAL PRIMARY KEY,
-    nome_caverna VARCHAR(255),
-    municipio VARCHAR(255),
-    uf VARCHAR(100),
-    litologia VARCHAR(255),
-    grau_potencial VARCHAR(255),
-    geom GEOMETRY(MultiPolygon, 4674)
+(1,'Estado',
+'mesa_a.vetor_estado',
+'VETOR'),
+
+(1,'Município',
+'mesa_a.vetor_municipio',
+'VETOR'),
+
+(1,'Setor Censitário',
+'mesa_a.vetor_setores_censitarios',
+'VETOR'),
+
+(1,'Área do Imóvel SICAR',
+'mesa_a.vetor_area_do_imovel_sicar',
+'VETOR'),
+
+(1,'Área do Imóvel INCRA',
+'mesa_a.vetor_area_do_imovel_incra',
+'VETOR');
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
+
+(2,'Unidades de Conservação',
+'mesa_a.vetor_uc_todas',
+'VETOR'),
+
+(2,'Área de Preservação Permanente',
+'mesa_a.vetor_app',
+'VETOR'),
+
+(2,'Reserva Legal',
+'mesa_a.vetor_reserva_legal',
+'VETOR'),
+
+(2,'Terra Indígena',
+'mesa_a.vetor_terra_indigena',
+'VETOR'),
+
+(2,'Terra Quilombola',
+'mesa_a.vetor_terra_quilombola',
+'VETOR'),
+
+(2,'Assentamentos',
+'mesa_a.vetor_assentamentos',
+'VETOR'),
+
+(2,'Florestas Públicas',
+'mesa_a.vetor_florestas_publicas',
+'VETOR'),
+
+(2,'Cavernas',
+'mesa_a.vetor_cavernas',
+'VETOR');
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
+
+(3,'Rios SICAR',
+'mesa_a.vetor_rios_sicar',
+'VETOR'),
+
+(3,'Rios ANA',
+'mesa_a.vetor_rios_ana',
+'VETOR'),
+
+(3,'Banhados',
+'mesa_a.vetor_banhados',
+'VETOR'),
+
+(3,'Vegetação Nativa',
+'mesa_a.vetor_vegetacao_nativa',
+'VETOR'),
+
+(3,'Área de Pousio',
+'mesa_a.vetor_area_pousio',
+'VETOR'),
+
+(3,'Áreas de Atratividade de Aves',
+'mesa_a.vetor_aves',
+'VETOR'),
+
+(3,'Lagos',
+'mesa_a.vetor_lagos',
+'VETOR'),
+
+(3,'Nascentes',
+'mesa_a.vetor_nascentes',
+'VETOR');
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
+
+(4,'Aeroportos',
+'mesa_a.vetor_aeroportos',
+'VETOR'),
+
+(4,'Aeroportos OSM',
+'mesa_a.vetor_aeroportos_osm',
+'VETOR'),
+
+(4,'Aeródromos',
+'mesa_a.vetor_aerodromos',
+'VETOR'),
+
+(4,'Rodovias Federais',
+'mesa_a.vetor_rodovias_federais',
+'VETOR'),
+
+(4,'Rodovias OSM',
+'mesa_a.vetor_rodovias_osm',
+'VETOR'),
+
+(4,'Ferrovias',
+'mesa_a.vetor_ferrovias',
+'VETOR'),
+
+(4,'Ferrovias OSM',
+'mesa_a.vetor_ferrovias_osm',
+'VETOR'),
+
+(4,'Hidrovias',
+'mesa_a.vetor_hidrovias',
+'VETOR'),
+
+(4,'Hidrovias OSM',
+'mesa_a.vetor_hidrovias_osm',
+'VETOR'),
+
+(4,'Dutos',
+'mesa_a.vetor_dutos',
+'VETOR'),
+
+(4,'Portos',
+'mesa_a.vetor_portos',
+'VETOR'),
+
+(4,'Portos OSM',
+'mesa_a.vetor_portos_osm',
+'VETOR');
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
+
+(5,'Geodiversidade',
+'mesa_a.vetor_geodiversidade',
+'VETOR'),
+
+(5,'Biomas',
+'mesa_a.vetor_biomas',
+'VETOR');
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
+
+(6,'Linhas de Transmissão',
+'mesa_a.vetor_linhas_transmissao',
+'VETOR'),
+
+(6,'Linhas de Transmissão OSM',
+'mesa_a.vetor_linhas_transmissao_osm',
+'VETOR');
+INSERT INTO catalogo.plano_informacao
+(tema_id,nome,tabela_fisica,tipo_dado)
+VALUES
+
+(7,'Dados Anemométricos',
+'mesa_a.vetor_dados_anemometricos',
+'VETOR');
+-- Metadados especiais
+CREATE TABLE catalogo.metadado_espacial (
+    id SERIAL PRIMARY KEY,
+
+    plano_id INTEGER NOT NULL
+        REFERENCES catalogo.plano_informacao(id),
+
+    epsg INTEGER,
+
+    datum VARCHAR(100),
+
+    formato_arquivo VARCHAR(50),
+
+    geometria VARCHAR(50),
+
+    resolucao_espacial VARCHAR(100),
+
+    resolucao_temporal VARCHAR(100),
+
+    periodicidade VARCHAR(100),
+
+    data_ultima_atualizacao DATE,
+
+    url_download TEXT,
+
+    url_metadado TEXT
 );
-CREATE INDEX idx_gov_cavernas_geom ON mesa_a.vetor_gov_cavernas USING GIST(geom);
+-- Criar esquema de análise
+CREATE SCHEMA IF NOT EXISTS analise;
 
--- Tema: Hidrografia, Fauna e Flora
--- Tabela para o Plano de Informação: Rios ANA (Base Hidrográfica Ottocodificada) — DAG Airflow
-CREATE TABLE mesa_a.vetor_gov_rios_ana (
-    gid SERIAL PRIMARY KEY,
-    nome_rio VARCHAR(255),
-    cocurso VARCHAR(50),
-    corio VARCHAR(50),
-    nucompam VARCHAR(50),
-    nuareaam DOUBLE PRECISION,
-    geom GEOMETRY(MultiLineString, 4674)
+-- Tabela de critérios (distancia minima, dentro de plano, etc)
+CREATE TABLE analise.criterio (
+    id SERIAL PRIMARY KEY,
+
+    nome VARCHAR(255) NOT NULL,
+
+    descricao TEXT,
+
+    operador VARCHAR(50) NOT NULL,
+
+    valor_limite NUMERIC,
+
+    unidade VARCHAR(50),
+
+    peso NUMERIC(10,2) DEFAULT 1,
+
+    obrigatorio BOOLEAN DEFAULT TRUE
 );
-CREATE INDEX idx_gov_rios_ana_geom ON mesa_a.vetor_gov_rios_ana USING GIST(geom);
 
--- Tema: Infraestrutura
--- Tabela para o Plano de Informação: Aeroportos (Ministério da Infraestrutura) — DAG Airflow
-CREATE TABLE mesa_a.vetor_gov_aeroportos (
-    gid SERIAL PRIMARY KEY,
+-- Tabela associativa de criterio e plano
+CREATE TABLE analise.criterio_plano (
+    id SERIAL PRIMARY KEY,
+
+    criterio_id INTEGER NOT NULL
+        REFERENCES analise.criterio(id),
+
+    plano_id INTEGER NOT NULL
+        REFERENCES catalogo.plano_informacao(id),
+
+    funcao_espacial VARCHAR(100) NOT NULL
+);
+
+-- Tabela de territórios em analise
+CREATE TABLE analise.territorio_analise (
+    id SERIAL PRIMARY KEY,
+
     nome VARCHAR(255),
-    municipio VARCHAR(255),
-    uf VARCHAR(100),
-    codigo_iata VARCHAR(10),
-    codigo_icao VARCHAR(10),
-    tipo VARCHAR(255),
-    geom GEOMETRY(Point, 4674)
-);
-CREATE INDEX idx_gov_aeroportos_geom ON mesa_a.vetor_gov_aeroportos USING GIST(geom);
 
--- Tema: Infraestrutura
--- Tabela para o Plano de Informação: Aeródromos (ANA) — DAG Airflow
-CREATE TABLE mesa_a.vetor_gov_aerodromos (
-    gid SERIAL PRIMARY KEY,
-    nome VARCHAR(255),
-    municipio VARCHAR(255),
-    uf VARCHAR(100),
-    situacao VARCHAR(255),
-    geom GEOMETRY(MultiPoint, 4674)
-);
-CREATE INDEX idx_gov_aerodromos_geom ON mesa_a.vetor_gov_aerodromos USING GIST(geom);
+    descricao TEXT,
 
--- Tema: Geração de Energia
--- Tabela para o Plano de Informação: Linhas de Transmissão (MMA/ANEEL) — DAG Airflow
-CREATE TABLE mesa_a.vetor_gov_linhas_transmissao (
-    gid SERIAL PRIMARY KEY,
-    nome_linha VARCHAR(255),
-    operador VARCHAR(255),
-    tensao VARCHAR(100),
-    situacao VARCHAR(255),
-    geom GEOMETRY(MultiLineString, 4674)
+    area_ha NUMERIC(18,4),
+
+    geom GEOMETRY(MultiPolygon,4674)
 );
-CREATE INDEX idx_gov_linhas_transmissao_geom ON mesa_a.vetor_gov_linhas_transmissao USING GIST(geom);
+CREATE INDEX idx_territorio_geom
+ON analise.territorio_analise
+USING GIST(geom);
+
+-- Tabela de execução de análise
+CREATE TABLE analise.execucao_analise (
+    id SERIAL PRIMARY KEY,
+
+    territorio_id INTEGER NOT NULL
+        REFERENCES analise.territorio_analise(id),
+
+    data_execucao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    tipo_projeto VARCHAR(100),
+
+    score NUMERIC(10,2),
+
+    apto BOOLEAN,
+
+    observacoes TEXT
+);
+
+-- Tabela de resultado por critério
+CREATE TABLE analise.resultado_criterio (
+    id SERIAL PRIMARY KEY,
+
+    execucao_id INTEGER NOT NULL
+        REFERENCES analise.execucao_analise(id),
+
+    criterio_id INTEGER NOT NULL
+        REFERENCES analise.criterio(id),
+
+    aprovado BOOLEAN,
+
+    valor_encontrado NUMERIC,
+
+    observacao TEXT
+);
+-- Pra governança, tabela de versionamento dos planos
+CREATE TABLE catalogo.versao_plano (
+    id SERIAL PRIMARY KEY,
+
+    plano_id INTEGER NOT NULL
+        REFERENCES catalogo.plano_informacao(id),
+
+    versao VARCHAR(50),
+
+    data_inicio DATE,
+
+    data_fim DATE,
+
+    observacoes TEXT
+);
+
+-- tabela de controle de qualidade
+CREATE TABLE catalogo.qualidade_dado (
+    id SERIAL PRIMARY KEY,
+
+    plano_id INTEGER NOT NULL
+        REFERENCES catalogo.plano_informacao(id),
+
+    completude NUMERIC(5,2),
+
+    consistencia NUMERIC(5,2),
+
+    precisao_posicional NUMERIC(10,2),
+
+    observacoes TEXT
+);
