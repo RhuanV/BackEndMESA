@@ -24,3 +24,9 @@ WATERWAYS_BRAZIL_URL = "https://www.gov.br/transportes/pt-br/assuntos/dados-de-t
 
 # Ministério de Transportes URL for downloading port geometries in Brazil
 PORTS_BRAZIL_URL = "https://www.gov.br/transportes/pt-br/assuntos/dados-de-transportes/bit/Base-GEO/BaseHidroPortos.zip"
+
+# ICMBio URL for downloading Federal Conservation Units geometries in Brazil
+FEDERAL_UCS_BRAZIL_URL = "https://www.gov.br/icmbio/pt-br/dados-icmbio/dados_geoespaciais/mapa-tematico-e-dados-geoestatisticos-das-unidades-de-conservacao-federais/limite_ucs_federais_052026_a.zip"
+
+# SICAR URL template for downloading properties boundaries by state (AC, AL, etc.)
+SICAR_STATE_URL_TEMPLATE = "https://geoserver.car.gov.br/geoserver/sicar/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=sicar%3Asicar_imoveis_{state}&outputFormat=SHAPE-ZIP"
