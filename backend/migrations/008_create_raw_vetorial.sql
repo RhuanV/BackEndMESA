@@ -118,6 +118,20 @@ CREATE TABLE mesa_a.vetor_gov_portos (
 );
 CREATE INDEX idx_gov_portos_geom ON mesa_a.vetor_gov_portos USING GIST(geom);
 
+-- Tabela para Portos (OpenStreetMap)
+
+CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_portos (
+    gid SERIAL PRIMARY KEY,
+    osm_id BIGINT UNIQUE NOT NULL,
+    nome_porto VARCHAR(255),
+    tipo_porto VARCHAR(100),
+    uf CHAR(2),
+    geom GEOMETRY(Point, 4674)
+);
+
+CREATE INDEX IF NOT EXISTS idx_osm_portos_geom ON mesa_a.vetor_osm_portos USING GIST(geom);
+
+
 -- Tabela para Rodovias Federais (OpenStreetMap)
 CREATE TABLE mesa_a.vetor_osm_rodovias_federais (
     gid SERIAL PRIMARY KEY,
@@ -169,3 +183,42 @@ CREATE TABLE mesa_a.vetor_osm_linhas_transmissao (
     geom GEOMETRY(GEOMETRY, 4674)
 );
 CREATE INDEX idx_osm_linhas_transmissao_geom ON mesa_a.vetor_osm_linhas_transmissao USING GIST(geom);
+
+-- Tabela para o Plano de Informação: Dutos (OpenStreetMap)
+CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_dutos (
+    gid SERIAL PRIMARY KEY,
+    osm_id BIGINT UNIQUE NOT NULL,
+    substancia VARCHAR(50),
+    operador VARCHAR(150),
+    geom GEOMETRY(MultiLineString, 4326)
+);
+CREATE INDEX IF NOT EXISTS idx_dutos_osm_geom ON mesa_a.vetor_osm_dutos USING GIST(geom);
+
+-- Tabela para o Plano de Informação: Unidade de Conservação 
+CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_uc (
+    gid SERIAL PRIMARY KEY,
+    nome_uc VARCHAR(255),
+    categoria VARCHAR(100),
+    esfera VARCHAR(50), -- Federal, Estadual, Municipal
+    ano_criacao INTEGER,
+    geom GEOMETRY(MultiPolygon, 4674)
+);
+CREATE INDEX IF NOT EXISTS idx_uc_gov_geom ON mesa_a.vetor_gov_uc USING GIST(geom);
+
+-- Tabela para o Plano de Informação: Áreas de Imóveis (SICAR)
+CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_sicar_imoveis (
+    gid SERIAL PRIMARY KEY,
+    codigo_imovel VARCHAR(100) UNIQUE NOT NULL,
+    status_imovel VARCHAR(10),
+    data_criacao TIMESTAMP,
+    data_atualizacao TIMESTAMP,
+    area_hectares DOUBLE PRECISION,
+    condicao_analise VARCHAR(150),
+    uf CHAR(2),
+    municipio VARCHAR(150),
+    codigo_municipio INTEGER,
+    modulo_fiscal DOUBLE PRECISION,
+    tipo_imovel VARCHAR(50),
+    geom GEOMETRY(MultiPolygon, 4674)
+);
+CREATE INDEX IF NOT EXISTS idx_gov_sicar_imoveis_geom ON mesa_a.vetor_gov_sicar_imoveis USING GIST(geom);
