@@ -4,8 +4,15 @@ FROM python:3.12-slim
 # Defines the working directory inside the container
 WORKDIR /app
 
-# Installs system dependencies required for psycopg2
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# Installs system dependencies:
+#   libpq-dev/gcc: psycopg2
+#   libgdal-dev: geopandas/fiona (HU-31 shapefile parsing)
+#   libproj-dev: pyproj (reprojection to SRID 4674)
+#   libgeos-dev: shapely
+RUN apt-get update && apt-get install -y \
+        libpq-dev gcc \
+        libgdal-dev libproj-dev libgeos-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copies only the requirements first (optimizes Docker cache)
 COPY backend/requirements.txt .

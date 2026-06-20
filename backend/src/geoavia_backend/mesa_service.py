@@ -7,9 +7,16 @@ calculamos um score determinístico simples a partir dos dados gravados.
 """
 from __future__ import annotations
 
+import io
+import os
+import tempfile
 import time
 import uuid
+import zipfile
 from threading import Lock
+
+import geopandas as gpd
+from shapely.geometry import Point
 
 from geoavia_backend.mesa_repository import AssessmentRepository
 
@@ -103,6 +110,50 @@ class AssessmentService:
         scored = [_score(a, weights) for a in self.list_all()]
         scored.sort(key=lambda r: r["totalScore"], reverse=True)
         return [{"rank": i + 1, **r} for i, r in enumerate(scored)]
+
+    def export_as_shapefile(self, weights: dict | None = None) -> bytes:
+        """Builds a real Esri Shapefile (zipped .shp/.dbf/.shx/.prj/.cpg) from
+        the current ranking. Each row becomes a POINT feature in SIRGAS 2000
+        (EPSG:4674) with the assessment scores as attributes.
+
+        Returns the ZIP archive as bytes ready to stream.
+        """
+        ranking = self.ranking(weights)
+        if not ranking:
+            raise ValueError("No assessments to export — submit a site first.")
+
+        # Shapefile DBF field names are capped at 10 chars. Truncate explicitly
+        # so we don't get cryptic geopandas warnings or silent renames.
+        records = []
+        geometries = []
+        for r in ranking:
+            records.append(
+                {
+                    "rank": r["rank"],
+                    "site_name": r["siteName"][:80],
+                    "total": r["totalScore"],
+                    "slope": r["slopeScore"],
+                    "distance": r["distanceScore"],
+                    "obstacle": r["obstacleScore"],
+                    "cost": r["costScore"],
+                    "lat": r["latitude"],
+                    "lon": r["longitude"],
+                }
+            )
+            geometries.append(Point(r["longitude"], r["latitude"]))
+
+        gdf = gpd.GeoDataFrame(records, geometry=geometries, crs="EPSG:4674")
+
+        with tempfile.TemporaryDirectory() as work_dir:
+            shp_path = os.path.join(work_dir, "mesa_ranking.shp")
+            gdf.to_file(shp_path, driver="ESRI Shapefile", encoding="utf-8")
+
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                for fname in os.listdir(work_dir):
+                    if fname.startswith("mesa_ranking."):
+                        zf.write(os.path.join(work_dir, fname), arcname=fname)
+            return buf.getvalue()
 
 
 class AnalysisJobService:

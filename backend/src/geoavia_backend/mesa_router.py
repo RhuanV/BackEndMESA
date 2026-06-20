@@ -86,10 +86,39 @@ def get_analysis_status(job_id: str):
 
 @router.get("/export/{format}")
 def export_results(format: str):
-    """Mock export — returns CSV no matter the requested format until EP-04
-    plugs in the real Shapefile/GeoTIFF generation."""
+    """Exports the current ranking.
+
+    - `shapefile`: zipped Esri Shapefile (.shp/.dbf/.shx/.prj/.cpg) with one
+      POINT feature per assessment in SIRGAS 2000 (EPSG:4674), attributes
+      include the scores. (RNF01)
+    - `csv`: CSV of the same ranking — fallback for spreadsheet tools.
+    - `geotiff`: 501 — depende de raster (declividade/uso do solo) que ainda
+      não está no pipeline. Será implementado quando RF03 (matriciais) entrar.
+    """
     if format not in {"shapefile", "geotiff", "csv"}:
         raise HTTPException(status_code=400, detail="Unsupported format")
+
+    if format == "geotiff":
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "GeoTIFF export ainda não disponível — depende do pipeline de "
+                "dados matriciais (RF03). Exporte como shapefile ou csv por enquanto."
+            ),
+        )
+
+    if format == "shapefile":
+        try:
+            zip_bytes = assessment_service.export_as_shapefile()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return StreamingResponse(
+            BytesIO(zip_bytes),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="mesa_ranking.zip"'
+            },
+        )
 
     rows = assessment_service.ranking()
     header = "rank,site_name,total_score,latitude,longitude\n"
@@ -101,5 +130,5 @@ def export_results(format: str):
     return StreamingResponse(
         buffer,
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="ranking.{format}.csv"'},
+        headers={"Content-Disposition": 'attachment; filename="mesa_ranking.csv"'},
     )

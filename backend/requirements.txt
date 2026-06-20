@@ -26,6 +26,10 @@ bcrypt==4.0.1
 # Allows Python to read .env files (where we securely store the database password)
 python-dotenv
 
+# Geospatial parsing for HU-31 (user shapefile upload).
+# geopandas bundles fiona/shapely/pyproj transitively.
+geopandas
+
 # Development tools (code quality and commit standardization)
 pre-commit
 commitizen
