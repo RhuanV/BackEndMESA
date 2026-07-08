@@ -13,6 +13,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 
+# Default: do not force rebuild
+FORCE_BUILD=""
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    --build|-b)
+      FORCE_BUILD="--build"
+      shift
+      ;;
+  esac
+done
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -44,7 +57,11 @@ fi
 echo ""
 echo -e "${YELLOW}[2/4]${NC} Starting Docker services..."
 cd "$ROOT_DIR"
-docker compose up --build -d 2>&1 | tail -5
+if docker compose version >/dev/null 2>&1; then
+  docker compose up $FORCE_BUILD -d 2>&1 | tail -5
+else
+  docker-compose up $FORCE_BUILD -d 2>&1 | tail -5
+fi
 echo -e "  ${GREEN}✓${NC} Docker services started"
 
 # --- Step 3: Wait for Backend ---
@@ -52,6 +69,8 @@ echo ""
 echo -e "${YELLOW}[3/4]${NC} Waiting for backend health..."
 API_PORT=$(grep -E '^API_PORT=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "8000")
 API_PORT="${API_PORT:-8000}"
+FRONTEND_PORT=$(grep -E '^FRONTEND_PORT=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "5173")
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
 MAX_RETRIES=30
 RETRY=0
@@ -75,16 +94,19 @@ fi
 # Since the DB starts without any real users (seeds have placeholder hashes and can't log in),
 # the bootstrap is done by calling UserService directly inside the container, bypassing
 # the endpoint. Idempotent: checks for existence before creating.
-DEMO_USER="admin"
-DEMO_PASS="admin123"
-DEMO_ROLE="coordenador"
+DEV_USER=$(grep -E '^DEV_USER=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "admin")
+DEV_USER="${DEV_USER:-admin}"
+DEV_PASS=$(grep -E '^DEV_PASS=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "admin123")
+DEV_PASS="${DEV_PASS:-admin123}"
+DEV_ROLE=$(grep -E '^DEV_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "coordenador")
+DEV_ROLE="${DEV_ROLE:-coordenador}"
 
 BOOTSTRAP_RESULT=$(docker exec -i geoavia_backend python - <<PY 2>/dev/null || echo "error"
 from geoavia_backend.repository import UserRepository
 from geoavia_backend.service import UserService
 
-if UserRepository().obtain_user_from_username("${DEMO_USER}") is None:
-    UserService().register_user("${DEMO_USER}", "${DEMO_PASS}", "${DEMO_ROLE}")
+if UserRepository().obtain_user_from_username("${DEV_USER}") is None:
+    UserService().register_user("${DEV_USER}", "${DEV_PASS}", "${DEV_ROLE}")
     print("created")
 else:
     print("exists")
@@ -93,10 +115,10 @@ PY
 
 case "$BOOTSTRAP_RESULT" in
   created)
-    echo -e "  ${GREEN}✓${NC} Bootstrap user created (${DEMO_USER}/${DEMO_PASS}, role: ${DEMO_ROLE})"
+    echo -e "  ${GREEN}✓${NC} Bootstrap user created (${DEV_USER}/${DEV_PASS}, role: ${DEV_ROLE})"
     ;;
   exists)
-    echo -e "  ${GREEN}✓${NC} Bootstrap user already exists (${DEMO_USER}/${DEMO_PASS})"
+    echo -e "  ${GREEN}✓${NC} Bootstrap user already exists (${DEV_USER}/${DEV_PASS})"
     ;;
   *)
     echo -e "  ${YELLOW}⚠${NC} Bootstrap failed (${BOOTSTRAP_RESULT}) — login may not work"
@@ -117,7 +139,7 @@ echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║           GeoAvia is running!            ║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════╣${NC}"
-echo -e "${GREEN}║${NC}  Frontend:  ${CYAN}http://localhost:5173${NC}        ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Frontend:  ${CYAN}http://localhost:${FRONTEND_PORT}${NC}        ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Backend:   ${CYAN}http://localhost:${API_PORT}${NC}        ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Swagger:   ${CYAN}http://localhost:${API_PORT}/docs${NC}   ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"

@@ -22,6 +22,13 @@ class UserRepository:
                 cur.execute("SELECT * FROM users WHERE username = %s;", (username,))
                 return cur.fetchone()
 
+    def obtain_user_from_id(self, user_id: int) -> dict | None:
+        """Retrieves a user profile by their ID."""
+        with psycopg2.connect(self.conn_params) as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT * FROM users WHERE id = %s;", (user_id,))
+                return cur.fetchone()
+
     def create(self, username: str, hash_password: str, role: str) -> int:
         with psycopg2.connect(self.conn_params) as conn:
             with conn.cursor() as cur:
@@ -38,6 +45,16 @@ class UserRepository:
                 cur.execute(
                     "UPDATE users SET username = %s WHERE id = %s;",
                     (new_username, user_id)
+                )
+                conn.commit()
+                return cur.rowcount > 0
+
+    def update_password_hash(self, user_id: int, new_hash: str) -> bool:
+        with psycopg2.connect(self.conn_params) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE users SET hash = %s WHERE id = %s;",
+                    (new_hash, user_id)
                 )
                 conn.commit()
                 return cur.rowcount > 0

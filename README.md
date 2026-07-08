@@ -79,30 +79,88 @@ Notes:
 - When running locally outside Docker, use DB_HOST=localhost.
 - SECRET_KEY must be unique per environment and should not be versioned.
 
+## Prerequisites (Linux/WSL)
+
+To run the application, you need Docker (with Docker Compose V2) and Node.js installed in your environment.
+
+### 1. Docker & Docker Compose V2
+Install the Docker engine and the modern Compose plugin (which provides the `docker compose` command instead of the deprecated, hyphenated `docker-compose` tool):
+
+```bash
+# Update package lists
+sudo apt update
+
+# Install Docker
+sudo apt install -y docker.io
+
+# Install Docker Compose V2 plugin
+sudo apt install -y docker-compose-v2
+
+# Optional: Allow running Docker without sudo
+sudo usermod -aG docker $USER
+```
+*Note: Remember to restart your terminal or log out/in for the group changes to take effect.*
+
+### 2. Node.js & NPM (for Frontend)
+The frontend runs locally. You can install Node.js and NPM using one of these options:
+
+#### Option A: Via Ubuntu APT (Quick & Simple)
+```bash
+sudo apt install -y nodejs npm
+```
+
+#### Option B: Via NVM (Recommended for Version Management)
+```bash
+# Install NVM (Node Version Manager)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+# Load NVM into your session (or restart terminal)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Install and use LTS version of Node.js
+nvm install --lts
+nvm use --lts
+```
+
 ## How to Run
 
-### Option A: Docker (recommended)
-Copie o template de ambiente:
-```bash
-Copy-Item .env_example .env
-```
-Edite o arquivo .env:
+### Option A: Unified Monorepo Startup (Recommended)
 
-mantenha DB_HOST=db para Docker
-configure DB_USER, DB_PASS, DB_NAME
-defina SECRET_KEY forte
+Starts the entire application (Backend & Database inside Docker + Frontend locally in Vite dev mode) with a single command:
 
-Suba o ambiente:
+1. Copy the environment file template:
+   ```bash
+   cp .env_example .env
+   ```
+2. Configure the `.env` file (e.g. set a strong `SECRET_KEY` and adjust DB variables if needed).
+3. Run the startup script:
+   ```bash
+   ./start.sh
+   ```
+
+> [!TIP]
+> By default, `./start.sh` uses cached Docker images to start up quickly. If you have modified the backend dependencies (`requirements.txt`) or the `Dockerfile` and want to force a clean rebuild, pass the `--build` (or `-b`) flag:
+> ```bash
+> ./start.sh --build
+> ```
+
+### Option B: Docker Only (Backend & Airflow)
+If you want to run only the backend services, database, and Airflow orchestrator (without starting the frontend):
 ```bash
-docker-compose up --build
+# Start backend services using cached images
+docker compose up -d
+
+# Start backend services forcing image rebuild
+docker compose up --build -d
 ```
 
 Expected services:
-
-- API: http://127.0.0.1:8000
-- Swagger: http://127.0.0.1:8000/docs
-- Airflow: http://127.0.0.1:8080 (User: admin / Pass: admin)
-- Database: Ports are configured in .env file
+- **Frontend:** http://localhost:5173
+- **API:** http://localhost:8000
+- **Swagger Docs:** http://localhost:8000/docs
+- **Airflow Web UI:** http://localhost:8080 (User: admin / Pass: admin)
+- **Database:** Ports configured in `.env` (default external port is `5433`)
 
 #### Accessing the Database via DBeaver
 
@@ -181,6 +239,34 @@ Users:
 - Authenticate with POST /login
 - Receive access_token
 - Send Authorization: Bearer <token> when calling GET /usuarios
+
+## Access Control (RBAC)
+
+The system enforces Role-Based Access Control (RBAC) with 6 distinct user profiles. Feature flags and page accessibility are checked on both the frontend and backend:
+
+### 1. User Profiles & Permissions Matrix
+
+| Profile | Description | Core Permissions |
+| :--- | :--- | :--- |
+| **Desenvolvedor** | System developer root profile. Dynamically bound to `DEV_USER` in `.env`. Cannot be deleted or modified by anyone. | All permissions of Coordenador + Supervisor, plus developer tools (system health, logs, debug views). |
+| **Coordenador** | Full administrative and operational permissions. | View maps/layers, configure/run analyses, write evaluations, manage and create users, configure layers, view audit logs. |
+| **Supervisor** | Focuses on user management and analysis setup. | View maps/layers, configure analyses, view results, download exports, manage and create users. |
+| **Gestor** | High-level read-only access for evaluation and decision making. | View maps/layers, write evaluations, view results, download exports, view read-only user lists. |
+| **Operador** | Core technical user for spatial data processing. | View maps/layers, configure/run analyses, write evaluations, view results, download exports. |
+| **Administrador** | Infrastructure and developer actions. | View maps/layers, configure backend infrastructure layers, view audit logs, access dev health/logs/debug. |
+
+### 2. Frontend Page Accessibility Gating
+
+- **/dashboard/map** (Map View): All profiles
+- **/dashboard/analysis** (MESA Analysis): `coordenador`, `supervisor`, `operador`, `desenvolvedor`
+- **/dashboard/assessment** (MESA Evaluation): `coordenador`, `gestor`, `operador`, `desenvolvedor`
+- **/dashboard/results** (Results View): `coordenador`, `gestor`, `supervisor`, `operador`, `desenvolvedor`
+- **/dashboard/export** (Data Export): `coordenador`, `gestor`, `supervisor`, `operador`, `desenvolvedor`
+- **/dashboard/admin/users** (User Management): `coordenador`, `gestor` (read-only), `supervisor`, `desenvolvedor`
+- **/dashboard/admin/layers** (Layer Configuration): `coordenador`, `administrador`, `desenvolvedor`
+- **/dashboard/admin/audit** (Audit Logs): `coordenador`, `administrador`, `desenvolvedor`
+- **/dashboard/dev/health** (API Health): `administrador`, `desenvolvedor`
+- **/dashboard/dev/logs** (Processing Logs): `administrador`, `desenvolvedor`
 
 ## Colaboration Guidelines
 

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
 
-from geoavia_backend.database import ALGORITHM, SECRET_KEY
+from geoavia_backend.database import ALGORITHM, SECRET_KEY, DEV_USER
 from geoavia_backend.repository import UserRepository
 
 ALLOWED_ROLES = {"coordenador", "gestor", "supervisor", "operador", "administrador"}
@@ -46,7 +46,10 @@ class UserService:
 
     def list_users(self) -> list[dict]:
         # Future logic: filter active users or check permissions
-        return self.repo.get_all()
+        users = self.repo.get_all()
+        for u in users:
+            u["is_protected"] = (u["username"] == DEV_USER)
+        return users
 
     def register_user(self, username: str, password: str, role: str = "operador") -> int:
         """Registers a user by generating a password hash before persisting it."""
@@ -74,11 +77,40 @@ class UserService:
         if not clean_username:
             raise ValueError("Username must not be empty")
 
+        # Protect root 'admin' user
+        user = self.repo.obtain_user_from_id(user_id)
+        if not user:
+            return False
+        if user["username"] == DEV_USER:
+            raise ValueError(f"O usuário administrador padrão ('{DEV_USER}') não pode ser alterado.")
+        if clean_username == DEV_USER:
+            raise ValueError(f"Não é permitido renomear outro usuário para '{DEV_USER}'.")
+
         return self.repo.update_username(user_id, clean_username)
 
     def delete_user(self, user_id: int) -> bool:
         """Deletes a user by ID in the database."""
+        # Protect root 'admin' user
+        user = self.repo.obtain_user_from_id(user_id)
+        if user and user["username"] == DEV_USER:
+            raise ValueError(f"O usuário administrador padrão ('{DEV_USER}') não pode ser excluído.")
         return self.repo.delete(user_id)
+
+    def change_password(self, user_id: int, new_password: str) -> bool:
+        """Updates the password for a user after generating a secure hash."""
+        clean_password = new_password.strip()
+        if not clean_password:
+            raise ValueError("Password must not be empty")
+
+        # Verify that the user exists and is not the root DEV_USER
+        user = self.repo.obtain_user_from_id(user_id)
+        if not user:
+            return False
+        if user["username"] == DEV_USER:
+            raise ValueError(f"A senha do usuário administrador padrão ('{DEV_USER}') não pode ser alterada através desta rota.")
+
+        password_hash = self.security.get_password_hash(clean_password)
+        return self.repo.update_password_hash(user_id, password_hash)
 
     def authenticate_user(self, username: str, password: str) -> dict | None:
         """Validates credentials and returns the user data if correct."""

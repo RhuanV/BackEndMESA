@@ -34,11 +34,14 @@ When implementing user features, login, or route protection, follow these mandat
 - **Token Security:** The `SECRET_KEY` used to sign the JWT must be strictly read from the `.env` file through `database.py`.
 
 ### 3. Authorization and Roles (RBAC)
-The system must support three access levels (Role-Based Access Control):
+The system supports six access levels (Role-Based Access Control):
 
-- **Analyst:** Access to site queries, MESA data entry, and map visualization.
-- **Administrator:** User management, modification of criteria weights, and report approval.
-- **Developer:** Access to system logs, performance metrics, and maintenance endpoints.
+- **Coordenador:** Full administrative permission, manages access, and approves deliverables.
+- **Supervisor:** Access to user management, creates users, and configures analyses.
+- **Gestor:** View-only access to user lists, creates evaluations, and views results and exports.
+- **Operador:** Data processing and vectorization, configures and runs analyses, and creates evaluations.
+- **Administrador:** System configuration, database layers, audit logs, and developer views.
+- **Desenvolvedor (Developer):** Developer system root. Inherits all permissions from Coordenador and Supervisor, plus access to developer logs, health, and debug views. The default system bootstrap user (`DEV_USER` defined in `.env`) has this role and cannot be modified or deleted by anyone.
 
 ### 4. FastAPI Implementation
 - Use FastAPI’s `OAuth2PasswordBearer` to extract tokens.

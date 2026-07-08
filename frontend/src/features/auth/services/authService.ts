@@ -89,7 +89,7 @@ function parseJwtPayload(token: string): { sub: string; username: string; role: 
       'role' in payload
     ) {
       const p = payload as { sub: string; username: string; role: string };
-      const validRoles = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador'] as const;
+      const validRoles = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador', 'desenvolvedor'] as const;
       const role = validRoles.includes(p.role as AuthUser['role'])
         ? (p.role as AuthUser['role'])
         : 'operador';

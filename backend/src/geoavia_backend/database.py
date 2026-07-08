@@ -23,6 +23,8 @@ else:
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
+FRONTEND_PORT = os.getenv("FRONTEND_PORT", "5173")
+DEV_USER = os.getenv("DEV_USER", "admin")
 
 # Builds the connection string (example for psycopg2)
 DATABASE_URL = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"

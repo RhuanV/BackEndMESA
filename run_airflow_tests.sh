@@ -12,7 +12,7 @@ echo ""
 # Check if the Airflow container is running
 if ! docker ps | grep -q geoavia_airflow; then
     echo -e "\033[0;31mError: The container 'geoavia_airflow' is not running.\033[0m"
-    echo "Please start the environment first with: docker-compose up -d"
+    echo "Please start the environment first with: ./start.sh or docker compose up -d"
     exit 1
 fi
 
