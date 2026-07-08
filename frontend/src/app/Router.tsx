@@ -48,19 +48,19 @@ export const router = createBrowserRouter([
       // Fluxo MESA — análise/avaliação/resultados/exportação
       {
         path: 'analysis',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'supervisor', 'operador']}><AnalysisPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'supervisor', 'operador', 'desenvolvedor']}><AnalysisPage /></ProtectedRoute>,
       },
       {
         path: 'assessment',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'operador']}><AssessmentPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'operador', 'desenvolvedor']}><AssessmentPage /></ProtectedRoute>,
       },
       {
         path: 'results',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador']}><ResultsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor']}><ResultsPage /></ProtectedRoute>,
       },
       {
         path: 'export',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador']}><ExportPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor']}><ExportPage /></ProtectedRoute>,
       },
       {
         path: 'screening',
@@ -76,29 +76,29 @@ export const router = createBrowserRouter([
       // Administração
       {
         path: 'admin/users',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor']}><UserManagementPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'desenvolvedor']}><UserManagementPage /></ProtectedRoute>,
       },
       {
         path: 'admin/layers',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador']}><LayerConfigPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador', 'desenvolvedor']}><LayerConfigPage /></ProtectedRoute>,
       },
       {
         path: 'admin/audit',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador']}><AuditLogPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador', 'desenvolvedor']}><AuditLogPage /></ProtectedRoute>,
       },
 
       // Operação técnica do sistema
       {
         path: 'dev/health',
-        element: <ProtectedRoute allowedRoles={['administrador']}><ApiHealthPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['administrador', 'desenvolvedor']}><ApiHealthPage /></ProtectedRoute>,
       },
       {
         path: 'dev/logs',
-        element: <ProtectedRoute allowedRoles={['administrador']}><ProcessingLogsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['administrador', 'desenvolvedor']}><ProcessingLogsPage /></ProtectedRoute>,
       },
       {
         path: 'dev/debug',
-        element: <ProtectedRoute allowedRoles={['administrador']}><DebugPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={['administrador', 'desenvolvedor']}><DebugPage /></ProtectedRoute>,
       },
     ],
   },

@@ -14,7 +14,8 @@ export type UserRole =
   | 'gestor'
   | 'supervisor'
   | 'operador'
-  | 'administrador';
+  | 'administrador'
+  | 'desenvolvedor';
 
 /** All valid feature permissions */
 export type Permission =
@@ -80,6 +81,22 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   administrador: [
     'map:view',
     'map:layers',
+    'admin:layers',
+    'admin:audit',
+    'dev:health',
+    'dev:logs',
+    'dev:debug',
+  ],
+  desenvolvedor: [
+    'map:view',
+    'map:layers',
+    'analysis:configure',
+    'analysis:run',
+    'assessment:create',
+    'results:view',
+    'export:download',
+    'admin:users',
+    'admin:users:create',
     'admin:layers',
     'admin:audit',
     'dev:health',

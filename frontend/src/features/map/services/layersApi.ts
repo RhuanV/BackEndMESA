@@ -22,7 +22,7 @@ export async function fetchLayer({
 }: FetchLayerParams): Promise<FeatureCollection> {
   const params: Record<string, string> = { zoom };
   if (bbox) {
-    params.bbox = bbox.join(',');
+    params['bbox'] = bbox.join(',');
   }
 
   const response = await apiClient.get<FeatureCollection>(

@@ -9,6 +9,7 @@ from geoavia_backend.airflow_trigger_service import (
     UnknownDagError,
 )
 from geoavia_backend.auth_dep import obtain_current_user
+from geoavia_backend.database import FRONTEND_PORT
 from geoavia_backend.layers_service import LayersService
 from geoavia_backend.mesa_router import router as mesa_router
 from geoavia_backend.regions_router import router as regions_router
@@ -20,7 +21,10 @@ app = FastAPI(title="GeoAvia - Initial Test")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        f"http://localhost:{FRONTEND_PORT}",
+        f"http://127.0.0.1:{FRONTEND_PORT}",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,13 +47,17 @@ class UpdateUsernameRequest(BaseModel):
     username: str
 
 
+class PasswordResetRequest(BaseModel):
+    new_password: str = Field(min_length=6)
+
+
 @app.get("/users")
 def get_users(current_user: dict = Depends(obtain_current_user)):
     """Returns the list of users through the service and repository layers."""
     return service.list_users()
 
 
-USER_CREATION_ROLES = {"coordenador", "administrador"}
+USER_CREATION_ROLES = {"coordenador", "supervisor", "desenvolvedor"}
 
 
 @app.post("/users/signup")
@@ -102,8 +110,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
 def update_username(
     user_id: int,
     payload: UpdateUsernameRequest,
+    current_user: dict = Depends(obtain_current_user),
 ):
     """Updates a user's username based on their ID."""
+    if current_user["role"] not in USER_CREATION_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas coordenador e supervisor podem alterar o nome de usuários",
+        )
+
     try:
         updated = service.change_username(user_id, payload.username)
     except ValueError as exc:
@@ -116,13 +131,46 @@ def update_username(
 
 
 @app.delete("/users/{user_id}")
-def delete_user(user_id: int):
+def delete_user(
+    user_id: int,
+    current_user: dict = Depends(obtain_current_user),
+):
     """Removes a user from the database based on their ID."""
+    if current_user["role"] not in USER_CREATION_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas coordenador e supervisor podem excluir usuários",
+        )
+
     deleted = service.delete_user(user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
 
     return {"message": "User was successfully deleted"}
+
+
+@app.put("/users/{user_id}/password")
+def change_password(
+    user_id: int,
+    payload: PasswordResetRequest,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Resets the password for a user. Available only to DEV_USER."""
+    from geoavia_backend.database import DEV_USER
+    if current_user["username"] != DEV_USER:
+        raise HTTPException(
+            status_code=403,
+            detail="Apenas o desenvolvedor principal pode redefinir senhas através desta rota.",
+        )
+
+    try:
+        updated = service.change_password(user_id, payload.new_password)
+        if not updated:
+            raise HTTPException(status_code=404, detail="User not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {"message": "Password was successfully changed"}
 
 
 @app.get("/layers/{layer_name}")
@@ -142,8 +190,7 @@ def get_layer(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-SCREENING_ROLES = {"coordenador", "operador", "administrador"}
-
+SCREENING_ROLES = {"coordenador", "gestor", "operador", "administrador", "desenvolvedor"}
 
 class ScreeningRequest(BaseModel):
     latitude: float = Field(ge=-90, le=90)
@@ -187,6 +234,7 @@ DAG_TRIGGER_ROLES = {
     "coordenador",
     "operador",
     "administrador",
+    "desenvolvedor",
 }
 
 

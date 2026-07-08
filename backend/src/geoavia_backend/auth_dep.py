@@ -5,7 +5,7 @@ from jose import JWTError, jwt
 
 from geoavia_backend.database import ALGORITHM, SECRET_KEY
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 
 async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
