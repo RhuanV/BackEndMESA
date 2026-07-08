@@ -9,7 +9,7 @@ interface LayerControlProps {
 
 const layers = [
   { id: 'bdg-mesa' as const, label: 'BDG MESA', icon: '🗺️' },
-  { id: 'satellite' as const, label: 'Satélite', icon: '🛰️' },
+  { id: 'satellite' as const, label: 'Satélite Híbrido', icon: '🛰️' },
   { id: 'osm' as const, label: 'OSM', icon: '🌐' },
 ];
 

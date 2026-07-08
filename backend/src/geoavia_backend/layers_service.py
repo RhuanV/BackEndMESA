@@ -15,11 +15,11 @@ DEFAULT_ZOOM = "z2"
 LAYER_REGISTRY: dict[str, dict] = {
     "state_boundaries": {
         "base_view_prefix": "state_boundaries",
-        "properties": ["gid", "codigo_ibge", "nome_estado", "sigla_estado"],
+        "properties": ["id", "ibge_code", "state_name", "state_abbr"],
     },
     "municipality_boundaries": {
         "base_view_prefix": "municipality_boundaries",
-        "properties": ["gid", "codigo_ibge", "nome_municipio", "sigla_estado"],
+        "properties": ["ibge_code", "municipality_name", "state_abbr"],
     },
 }
 
