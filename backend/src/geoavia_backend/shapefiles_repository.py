@@ -10,9 +10,15 @@ import psycopg2
 from psycopg2.extras import RealDictCursor, execute_batch
 
 from geoavia_backend.database import DATABASE_URL
+from geoavia_backend.geo_params import tolerance_for
 
 
 class ShapefilesRepository:
+    # Feature cap for the display endpoint. Higher than the static-layer cap
+    # (5000) so a national base like BR_Municipios (~5570) is not truncated at
+    # zoom-out; geometry is simplified per zoom, so the payload stays light.
+    MAX_DISPLAY_FEATURES = 20_000
+
     def __init__(self) -> None:
         self.conn_params = DATABASE_URL
 
@@ -100,31 +106,51 @@ class ShapefilesRepository:
                 )
                 return cur.fetchall()
 
-    def fetch_features_as_geojson(self, upload_id: int, max_features: int = 5000) -> dict:
-        """Returns a GeoJSON FeatureCollection of the upload's features."""
+    def fetch_features_as_geojson(
+        self,
+        upload_id: int,
+        zoom: str | None = None,
+        bbox: tuple[float, float, float, float] | None = None,
+    ) -> dict:
+        """Returns a GeoJSON FeatureCollection of the upload's features.
+
+        Geometry is simplified on-the-fly per zoom level (same tolerances as
+        the static resolution views) and, when a bbox is given, filtered to the
+        viewport via the GIST index — keeping the payload small enough for the
+        browser to render without blocking the main thread.
+        """
+        tolerance = tolerance_for(zoom)
+
+        bbox_sql = "AND geom && ST_MakeEnvelope(%s, %s, %s, %s, 4674)" if bbox else ""
+
+        query = f"""
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', COALESCE(json_agg(
+                    json_build_object(
+                        'type', 'Feature',
+                        'geometry', ST_AsGeoJSON(
+                            ST_SimplifyPreserveTopology(sub.geom, %s)
+                        )::json,
+                        'properties', sub.properties
+                    )
+                ), '[]'::json)
+            ) AS geojson
+            FROM (
+                SELECT properties, geom
+                FROM mesa_a.user_uploaded_features
+                WHERE upload_id = %s {bbox_sql}
+                LIMIT %s
+            ) sub;
+        """
+
+        # psycopg2 binds %s positionally in order of appearance: tolerance
+        # (outer ST_SimplifyPreserveTopology) → upload_id → bbox → limit.
+        params = (tolerance, upload_id, *(bbox or ()), self.MAX_DISPLAY_FEATURES)
+
         with psycopg2.connect(self.conn_params) as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    """
-                    SELECT json_build_object(
-                        'type', 'FeatureCollection',
-                        'features', COALESCE(json_agg(
-                            json_build_object(
-                                'type', 'Feature',
-                                'geometry', ST_AsGeoJSON(sub.geom)::json,
-                                'properties', sub.properties
-                            )
-                        ), '[]'::json)
-                    ) AS geojson
-                    FROM (
-                        SELECT properties, geom
-                        FROM mesa_a.user_uploaded_features
-                        WHERE upload_id = %s
-                        LIMIT %s
-                    ) sub;
-                    """,
-                    (upload_id, max_features),
-                )
+                cur.execute(query, params)
                 row = cur.fetchone()
                 return (
                     row["geojson"]
