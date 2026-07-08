@@ -23,6 +23,8 @@ import { AssessmentPage } from '@/features/assessment/pages/AssessmentPage';
 import { ResultsPage } from '@/features/results/pages/ResultsPage';
 import { AnalysisPage } from '@/features/analysis/pages/AnalysisPage';
 import { ExportPage } from '@/features/export/pages/ExportPage';
+import { ShapefileImportPage } from '@/features/data/pages/ShapefileImportPage';
+import { ScreeningPage } from '@/features/screening/pages/ScreeningPage';
 import { UserManagementPage } from '@/features/admin/pages/UserManagementPage';
 import { LayerConfigPage } from '@/features/admin/pages/LayerConfigPage';
 import { AuditLogPage } from '@/features/admin/pages/AuditLogPage';
@@ -59,6 +61,16 @@ export const router = createBrowserRouter([
       {
         path: 'export',
         element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor']}><ExportPage /></ProtectedRoute>,
+      },
+      {
+        path: 'screening',
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'operador']}><ScreeningPage /></ProtectedRoute>,
+      },
+
+      // Dados — ingestão/importação (HU-31)
+      {
+        path: 'data/shapefiles',
+        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'administrador']}><ShapefileImportPage /></ProtectedRoute>,
       },
 
       // Administração

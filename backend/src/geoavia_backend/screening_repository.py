@@ -42,7 +42,7 @@ class ScreeningRepository:
     def municipality_exists(self, ibge_code: str) -> bool:
         query = """
             SELECT EXISTS(
-                SELECT 1 FROM municipality_boundaries WHERE ibge_code = %s
+                SELECT 1 FROM mesa_a.vetor_limites_municipais WHERE codigo_ibge = %s
             ) AS exists
         """
         return self._exec_scalar(query, (ibge_code,))
@@ -53,8 +53,8 @@ class ScreeningRepository:
         """True iff the input point falls inside the municipality polygon."""
         query = """
             SELECT EXISTS(
-                SELECT 1 FROM municipality_boundaries
-                WHERE ibge_code = %s
+                SELECT 1 FROM mesa_a.vetor_limites_municipais
+                WHERE codigo_ibge = %s
                   AND ST_Within(
                     ST_SetSRID(ST_MakePoint(%s, %s), %s),
                     geom
@@ -77,3 +77,33 @@ class ScreeningRepository:
             ) AS intersects
         """
         return self._exec_scalar(query, (longitude, latitude, self.SRID))
+
+    def is_point_within_buffer(
+        self,
+        latitude: float,
+        longitude: float,
+        table_name: str,
+        distance_meters: float,
+    ) -> bool:
+        """True iff the point is within `distance_meters` of any feature in the
+        given table — i.e., falls inside the layer's protective buffer (HU-26
+        intermediate zone).
+
+        Uses ST_DWithin with a geography cast so the distance is in meters
+        regardless of the layer's stored SRID. Both sides of the comparison are
+        cast — geography distance on geometry inputs returns degrees, which would
+        silently give wrong answers.
+        """
+        query = f"""
+            SELECT EXISTS(
+                SELECT 1 FROM {table_name}
+                WHERE ST_DWithin(
+                    geom::geography,
+                    ST_SetSRID(ST_MakePoint(%s, %s), %s)::geography,
+                    %s
+                )
+            ) AS within_buffer
+        """
+        return self._exec_scalar(
+            query, (longitude, latitude, self.SRID, distance_meters)
+        )

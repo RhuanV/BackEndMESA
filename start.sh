@@ -98,8 +98,8 @@ DEV_USER=$(grep -E '^DEV_USER=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "admin")
 DEV_USER="${DEV_USER:-admin}"
 DEV_PASS=$(grep -E '^DEV_PASS=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "admin123")
 DEV_PASS="${DEV_PASS:-admin123}"
-DEV_ROLE=$(grep -E '^DEV_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "coordenador")
-DEV_ROLE="${DEV_ROLE:-coordenador}"
+DEV_ROLE=$(grep -E '^DEV_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "desenvolvedor")
+DEV_ROLE="${DEV_ROLE:-desenvolvedor}"
 
 BOOTSTRAP_RESULT=$(docker exec -i geoavia_backend python - <<PY 2>/dev/null || echo "error"
 from geoavia_backend.repository import UserRepository

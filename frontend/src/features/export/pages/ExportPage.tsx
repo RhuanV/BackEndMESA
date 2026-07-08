@@ -19,17 +19,32 @@ export function ExportPage() {
     setError(null);
     try {
       const blob = await downloadExport(format);
-      const ext = format === 'shapefile' ? 'zip' : 'tif';
+      const filename = format === 'shapefile' ? 'mesa_ranking.zip' : 'mesa_ranking.tif';
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `geoavia_export.${ext}`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      setError('Erro ao exportar. Verifique se há resultados disponíveis.');
+    } catch (err) {
+      // Surface backend detail when present (e.g., 501 for GeoTIFF, 400 if no
+      // assessments) instead of a generic message.
+      let detail: string | undefined;
+      if (err && typeof err === 'object' && 'response' in err) {
+        const data = (err as { response?: { data?: { detail?: string } | Blob } }).response?.data;
+        if (data instanceof Blob) {
+          try {
+            detail = JSON.parse(await data.text()).detail;
+          } catch {
+            /* keep undefined */
+          }
+        } else if (data && typeof data === 'object') {
+          detail = data.detail;
+        }
+      }
+      setError(detail ?? 'Erro ao exportar. Verifique se há resultados disponíveis.');
     } finally {
       setIsExporting(false);
       setExportType(null);
@@ -64,12 +79,17 @@ export function ExportPage() {
             Baixar Shapefile
           </Button>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm text-center">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-6 shadow-sm text-center opacity-75">
           <div className="text-4xl mb-3" aria-hidden="true">🗺️</div>
-          <h3 className="text-sm font-semibold text-neutral-900 mb-1">GeoTIFF (.tif)</h3>
-          <p className="text-xs text-neutral-500 mb-4">Formato raster com georreferenciamento embutido.</p>
-          <Button onClick={() => void handleExport('geotiff')} disabled={isExporting} className="w-full">
-            Baixar GeoTIFF
+          <div className="mb-1 flex items-center justify-center gap-2">
+            <h3 className="text-sm font-semibold text-neutral-900">GeoTIFF (.tif)</h3>
+            <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-600">
+              em breve
+            </span>
+          </div>
+          <p className="text-xs text-neutral-500 mb-4">Depende do pipeline de dados matriciais (RF03).</p>
+          <Button disabled className="w-full" title="GeoTIFF ainda não disponível">
+            Indisponível
           </Button>
         </div>
       </div>

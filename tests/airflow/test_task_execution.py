@@ -103,14 +103,30 @@ def test_osm_extract_and_transform_tasks(mock_open, mock_subproc, mock_makedirs,
 
 @pytest.mark.parametrize("dag_id, task_id", GOV_EXTRACT_TASKS)
 @mock.patch('requests.get')
+@mock.patch('requests.Session')
 @mock.patch('zipfile.ZipFile')
+@mock.patch('zipfile.is_zipfile', return_value=True)
 @mock.patch('os.makedirs')
-@mock.patch('builtins.open', new_callable=mock.mock_open)
-def test_gov_extract_tasks(mock_open, mock_makedirs, mock_zipfile, mock_requests, dag_id, task_id, dag_bag):
+@mock.patch('os.remove')
+@mock.patch('os.path.exists', return_value=True)
+@mock.patch('os.path.getsize', return_value=1024)
+@mock.patch('subprocess.run')
+@mock.patch('builtins.open', new_callable=mock.mock_open, read_data=b"")
+def test_gov_extract_tasks(mock_open, mock_subproc, mock_getsize, mock_exists, mock_remove, mock_makedirs, mock_is_zipfile, mock_zipfile, mock_session_class, mock_requests, dag_id, task_id, dag_bag):
     mock_response = mock.Mock()
     mock_response.raise_for_status.return_value = None
+    mock_response.status_code = 200
+    mock_response.headers = {"Content-Type": "application/zip"}
     mock_response.iter_content.return_value = [b"fake_data"]
+    mock_response.json.return_value = {"features": []}
     mock_requests.return_value = mock_response
+
+    mock_session = mock.Mock()
+    mock_session.get.return_value = mock_response
+    mock_session_class.return_value = mock_session
+
+    mock_subproc.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout='200', stderr='')
+
     state = _run_isolated_task(dag_id, task_id, dag_bag)
     assert state == State.SUCCESS, f"Gov Extraction failed for task {task_id} in {dag_id}"
 
@@ -122,6 +138,7 @@ def test_gov_extract_tasks(mock_open, mock_makedirs, mock_zipfile, mock_requests
 @mock.patch.object(TaskInstance, 'xcom_pull', return_value='/tmp/fake')
 def test_gov_transform_tasks(mock_xcom, mock_open, mock_walk, mock_read_file, dag_id, task_id, dag_bag):
     import geopandas as gpd
+    import pandas as pd
     from shapely.geometry import Point
     mock_read_file.return_value = gpd.GeoDataFrame({
         'geometry': [Point(0, 0)],
@@ -131,16 +148,37 @@ def test_gov_transform_tasks(mock_xcom, mock_open, mock_walk, mock_read_file, da
         'CD_UF': ['12'],
         'NM_UF': ['Dummy State']
     }, crs="EPSG:4674")
-    state = _run_isolated_task(dag_id, task_id, dag_bag)
+
+    if task_id == 'transform_aeroportos':
+        with mock.patch('pandas.read_csv') as mock_read_csv:
+            mock_read_csv.return_value = pd.DataFrame({
+                'latitude': ['25° 31\' 54\'\' S'],
+                'longitude': ['049°10\'34\'\'W'],
+                'nome': ['Dummy Airport'],
+                'município atendido': ['Dummy City'],
+                'uf': ['XX'],
+                'código iata': ['DMY'],
+                'código oaci': ['SBDY'],
+                'operação': ['público']
+            })
+            state = _run_isolated_task(dag_id, task_id, dag_bag)
+    else:
+        state = _run_isolated_task(dag_id, task_id, dag_bag)
+
     assert state == State.SUCCESS, f"Gov Transform failed for task {task_id} in {dag_id}"
 
 
 @pytest.mark.parametrize("dag_id, task_id", LOAD_TASKS)
-@mock.patch('airflow.providers.postgres.hooks.postgres.PostgresHook')
+@mock.patch('airflow.providers.postgres.hooks.postgres.PostgresHook.get_conn')
 @mock.patch('builtins.open', new_callable=mock.mock_open, read_data='[]')
 @mock.patch.object(TaskInstance, 'xcom_pull', return_value='/tmp/dummy.json')
-def test_load_tasks(mock_xcom, mock_open, mock_hook, dag_id, task_id, dag_bag):
-    # Mocking PostgresHook totally shields the actual database from TRUNCATE/INSERT operations
+def test_load_tasks(mock_xcom, mock_open, mock_get_conn, dag_id, task_id, dag_bag):
+    # Mocking PostgresHook.get_conn totally shields the actual database
+    mock_conn = mock.Mock()
+    mock_cursor = mock.Mock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_get_conn.return_value = mock_conn
+
     state = _run_isolated_task(dag_id, task_id, dag_bag)
     assert state == State.SUCCESS, f"Load failed for task {task_id} in {dag_id}"
     
@@ -170,6 +208,8 @@ def test_download_geofabrik_data_task(dag_bag):
             
             mock_response = mock.Mock()
             mock_response.raise_for_status.return_value = None
+            mock_response.status_code = 200
+            mock_response.headers = {'content-length': '9'}
             mock_response.iter_content.return_value = [b"fake_data"]
             mock_requests.return_value = mock_response
             

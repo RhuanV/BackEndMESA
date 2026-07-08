@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
@@ -12,8 +12,10 @@ from geoavia_backend.auth_dep import obtain_current_user
 from geoavia_backend.database import FRONTEND_PORT
 from geoavia_backend.layers_service import LayersService
 from geoavia_backend.mesa_router import router as mesa_router
+from geoavia_backend.regions_router import router as regions_router
 from geoavia_backend.screening_service import LayersNotReadyError, ScreeningService
 from geoavia_backend.service import UserService
+from geoavia_backend.shapefiles_service import ShapefileError, ShapefilesService
 
 app = FastAPI(title="GeoAvia - Initial Test")
 
@@ -32,6 +34,7 @@ service = UserService()
 layers_service = LayersService()
 screening_service = ScreeningService()
 airflow_trigger_service = AirflowTriggerService()
+shapefiles_service = ShapefilesService()
 
 
 @app.get("/health")
@@ -187,8 +190,7 @@ def get_layer(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-SCREENING_ROLES = {"coordenador", "gestor", "operador", "desenvolvedor"}
-
+SCREENING_ROLES = {"coordenador", "gestor", "operador", "administrador", "desenvolvedor"}
 
 class ScreeningRequest(BaseModel):
     latitude: float = Field(ge=-90, le=90)
@@ -201,9 +203,11 @@ def screen_site(
     payload: ScreeningRequest,
     current_user: dict = Depends(obtain_current_user),
 ):
-    """Spatial screening (Sprint 4 HU-29) — classifies a point as viavel/restrito
-    based on containment in the target municipality and intersection with
-    restrictive infrastructure layers. Requires coordenador, gestor or operador.
+    """Spatial screening (HU-29 + HU-26) — classifies a point as
+    viavel / intermediario / restrito based on (a) containment in the target
+    municipality, (b) intersection with restrictive infrastructure layers, and
+    (c) proximity within layer-specific protective buffers (HU-26).
+    Requires coordenador, gestor or operador.
     """
     if current_user["role"] not in SCREENING_ROLES:
         raise HTTPException(
@@ -228,8 +232,6 @@ def screen_site(
 
 DAG_TRIGGER_ROLES = {
     "coordenador",
-    "gestor",
-    "supervisor",
     "operador",
     "administrador",
     "desenvolvedor",
@@ -280,6 +282,79 @@ def list_airflow_triggers(
     }
 
 
+SHAPEFILE_UPLOAD_ROLES = {
+    "coordenador",
+    "operador",
+    "administrador",
+}
+SHAPEFILE_MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+
+
+@app.post("/shapefiles/upload")
+async def upload_shapefile(
+    file: UploadFile = File(...),
+    layer_name: str = Form(..., min_length=1, max_length=150),
+    description: str | None = Form(default=None, max_length=1000),
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Receives a zipped shapefile and ingests it into the mesa_a schema (HU-31).
+
+    The ZIP must contain a single shapefile set (.shp + .dbf + .shx [+ .prj]).
+    Geometries are reprojected to SIRGAS 2000 (EPSG:4674).
+    """
+    if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Upload must be a .zip archive")
+
+    zip_bytes = await file.read()
+    if len(zip_bytes) > SHAPEFILE_MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds {SHAPEFILE_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit",
+        )
+
+    try:
+        return shapefiles_service.import_zip(
+            layer_name=layer_name,
+            description=description,
+            original_filename=file.filename,
+            zip_bytes=zip_bytes,
+            user_id=int(current_user["sub"]) if current_user.get("sub") else None,
+            username=current_user["username"],
+            user_role=current_user["role"],
+        )
+    except ShapefileError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/shapefiles")
+def list_shapefiles(
+    limit: int = 100,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Lists all uploaded shapefiles (audit view)."""
+    if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    return {"uploads": shapefiles_service.list_layers(limit=limit)}
+
+
+@app.get("/shapefiles/{upload_id}/features")
+def get_shapefile_features(
+    upload_id: int,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Returns the upload's features as GeoJSON (for rendering on the map)."""
+    if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    try:
+        return shapefiles_service.fetch_features(upload_id)
+    except ShapefileError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 app.include_router(mesa_router)
+app.include_router(regions_router)
 
 # To run the server: uvicorn backend.main:app --reload
