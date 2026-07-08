@@ -6,10 +6,8 @@ service falls back to a user-uploaded shapefile configured via /layers/{name}/so
 """
 from __future__ import annotations
 
+from geoavia_backend.geo_params import normalize_zoom, parse_bbox
 from geoavia_backend.layers_repository import LayersRepository
-
-ALLOWED_ZOOMS = ("z1", "z2", "z3")
-DEFAULT_ZOOM = "z2"
 
 # Whitelist of layers that have resolution views. Each entry maps the public
 # layer name to the base table and the properties to expose.
@@ -40,11 +38,9 @@ class LayersService:
         if layer_name not in LAYER_REGISTRY:
             raise ValueError(f"Unknown layer: {layer_name}")
 
-        zoom = zoom or DEFAULT_ZOOM
-        if zoom not in ALLOWED_ZOOMS:
-            raise ValueError(f"Invalid zoom level: {zoom}. Use z1, z2 or z3.")
+        zoom = normalize_zoom(zoom)
 
-        bbox = self._parse_bbox(bbox_raw) if bbox_raw else None
+        bbox = parse_bbox(bbox_raw) if bbox_raw else None
 
         cfg = LAYER_REGISTRY[layer_name]
         view_name = f"{cfg['base_view_prefix']}_{zoom}"
@@ -70,19 +66,3 @@ class LayersService:
         if layer_name not in LAYER_REGISTRY:
             raise ValueError(f"Unknown layer: {layer_name}")
         self.repo.set_source(layer_name, upload_id)
-
-    @staticmethod
-    def _parse_bbox(raw: str) -> tuple[float, float, float, float]:
-        """Parses 'west,south,east,north' into a 4-float tuple."""
-        parts = raw.split(",")
-        if len(parts) != 4:
-            raise ValueError("bbox must have 4 comma-separated values: west,south,east,north")
-        try:
-            west, south, east, north = (float(p) for p in parts)
-        except ValueError as exc:
-            raise ValueError("bbox values must be valid numbers") from exc
-
-        if west >= east or south >= north:
-            raise ValueError("bbox must satisfy west < east and south < north")
-
-        return (west, south, east, north)

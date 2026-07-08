@@ -50,8 +50,12 @@ export function MapComponent() {
 
   const [currentZoomLevel, setCurrentZoomLevel] = useState<ZoomLevel>('z1');
 
-  // Tracks which (layerId, zoom) tuples are currently sourced on the map
-  const sourceVersions = useRef<Map<string, ZoomLevel>>(new Map());
+  // Bumped (debounced) on map pan/zoom so viewport-filtered uploads refetch.
+  const [bboxTick, setBboxTick] = useState(0);
+
+  // Tracks the resolution token currently sourced for each layer/upload key.
+  // Static layers store a ZoomLevel; uploads store a zoom or "z3:<bbox>" token.
+  const sourceVersions = useRef<Map<string, string>>(new Map());
 
   const toggleLayer = useCallback((id: string) => {
     setVisibleLayers((prev) => {
@@ -128,6 +132,21 @@ export function MapComponent() {
     return () => { m.off('zoomend', handleZoom); };
   }, [map, isMapReady]);
 
+  // Debounced pan/zoom signal so viewport-filtered uploads refetch on move
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !isMapReady) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const handleMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setBboxTick((v) => v + 1), 300);
+    };
+
+    m.on('moveend', handleMove);
+    return () => { if (timer) clearTimeout(timer); m.off('moveend', handleMove); };
+  }, [map, isMapReady]);
+
   // Sync static LAYER_REGISTRY layers
   useEffect(() => {
     const m = map.current;
@@ -202,23 +221,43 @@ export function MapComponent() {
         tracked.delete(key);
       }
 
-      // Add newly selected upload layers
+      // Bbox filtering only at the most detailed zoom; z1/z2 load the whole
+      // (simplified) base since it's already light enough to render.
+      const useBbox = currentZoomLevel === 'z3';
+      const b = useBbox ? m.getBounds() : null;
+      const bbox: [number, number, number, number] | undefined = b
+        ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+        : undefined;
+      // Round the bbox so tiny pans don't trigger a refetch.
+      const token = bbox
+        ? `z3:${bbox.map((n) => n.toFixed(2)).join(',')}`
+        : currentZoomLevel;
+
+      // Add or refetch visible upload layers
       for (const uploadId of visibleUploads) {
         const key = `upload-${uploadId}`;
-        if (tracked.has(key)) continue; // already loaded
+        if (tracked.get(key) === token) continue; // already at this resolution/viewport
 
         try {
-          const geojson = await fetchShapefileFeatures(uploadId);
-          if (m.getSource(key)) continue; // race guard
-
-          m.addSource(key, { type: 'geojson', data: geojson });
-          m.addLayer({
-            id: key,
-            type: 'line',
-            source: key,
-            paint: { 'line-color': '#f97316', 'line-width': 2, 'line-opacity': 0.85 },
+          const geojson = await fetchShapefileFeatures({
+            uploadId,
+            zoom: currentZoomLevel,
+            bbox,
           });
-          tracked.set(key, 'z1');
+
+          const existing = m.getSource(key);
+          if (existing) {
+            (existing as maplibregl.GeoJSONSource).setData(geojson);
+          } else {
+            m.addSource(key, { type: 'geojson', data: geojson });
+            m.addLayer({
+              id: key,
+              type: 'line',
+              source: key,
+              paint: { 'line-color': '#f97316', 'line-width': 2, 'line-opacity': 0.85 },
+            });
+          }
+          tracked.set(key, token);
         } catch (err) {
           console.error(`[MapComponent] Failed to load upload ${uploadId}`, err);
         }
@@ -228,7 +267,7 @@ export function MapComponent() {
     syncUploads().catch((err) => {
       console.error('[MapComponent] Upload sync error', err);
     });
-  }, [map, isMapReady, visibleUploads]);
+  }, [map, isMapReady, visibleUploads, currentZoomLevel, bboxTick]);
 
   return (
     <div className="relative h-full w-full">

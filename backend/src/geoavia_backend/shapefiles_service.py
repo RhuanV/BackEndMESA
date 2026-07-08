@@ -18,6 +18,7 @@ import geopandas as gpd
 import math
 import psycopg2
 
+from geoavia_backend.geo_params import normalize_zoom, parse_bbox
 from geoavia_backend.shapefiles_repository import ShapefilesRepository
 
 TARGET_SRID = 4674  # SIRGAS 2000
@@ -83,10 +84,17 @@ class ShapefilesService:
     def list_layers(self, limit: int = 100) -> list[dict]:
         return self.repo.list_layers(limit=limit)
 
-    def fetch_features(self, upload_id: int) -> dict:
+    def fetch_features(
+        self,
+        upload_id: int,
+        zoom: str | None = None,
+        bbox_raw: str | None = None,
+    ) -> dict:
         if not self.repo.layer_exists(upload_id):
             raise ShapefileError(f"Upload not found: {upload_id}")
-        return self.repo.fetch_features_as_geojson(upload_id)
+        zoom = normalize_zoom(zoom)
+        bbox = parse_bbox(bbox_raw) if bbox_raw else None
+        return self.repo.fetch_features_as_geojson(upload_id, zoom=zoom, bbox=bbox)
 
     @staticmethod
     def _extract_shapefile(zip_bytes: bytes, work_dir: str) -> str:

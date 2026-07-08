@@ -377,13 +377,21 @@ def list_shapefiles(
 @app.get("/shapefiles/{upload_id}/features")
 def get_shapefile_features(
     upload_id: int,
+    zoom: str | None = None,
+    bbox: str | None = None,
     current_user: dict = Depends(obtain_current_user),
 ):
-    """Returns the upload's features as GeoJSON (for rendering on the map)."""
+    """Returns the upload's features as GeoJSON (for rendering on the map).
+
+    Geometry is simplified per zoom level (z1/z2/z3) and optionally filtered to
+    a viewport bbox ('west,south,east,north'), mirroring GET /layers/{name}.
+    """
     if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
         raise HTTPException(status_code=403, detail="Permission denied")
     try:
-        return shapefiles_service.fetch_features(upload_id)
+        return shapefiles_service.fetch_features(upload_id, zoom, bbox)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ShapefileError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
