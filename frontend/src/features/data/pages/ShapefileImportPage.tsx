@@ -93,7 +93,7 @@ export function ShapefileImportPage() {
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-neutral-900">Importar Shapefile</h2>
         <p className="mt-1 text-sm text-neutral-500">
-          Envie um arquivo ZIP contendo .shp + .dbf + .shx (+ .prj recomendado).
+          Envie um arquivo ZIP contendo .shp + .dbf + .shx (+ .prj recomendado). Limite: 500 MB.
           Geometrias são reprojetadas automaticamente para SIRGAS 2000 (EPSG:4674).
         </p>
       </div>

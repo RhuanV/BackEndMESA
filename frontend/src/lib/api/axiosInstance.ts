@@ -41,9 +41,15 @@ apiClient.interceptors.response.use(
       if (status === 403) {
         return Promise.reject(new Error('Acesso negado. Permissão insuficiente.'));
       }
+
+      // 4xx validation errors (400, 404, 422, …): pass through with the original
+      // axios error so callers can read error.response.data.detail for user feedback.
+      if (status < 500) {
+        return Promise.reject(error);
+      }
     }
 
-    // Generic error — never expose server error details to the user
+    // 5xx and network errors — never expose technical details to the user
     return Promise.reject(new Error('Erro de comunicação com o servidor.'));
   }
 );

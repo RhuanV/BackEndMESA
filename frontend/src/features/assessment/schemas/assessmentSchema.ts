@@ -74,6 +74,27 @@ export const assessmentSchema = z.object({
     .number({ error: 'Longitude deve ser um número' })
     .min(-180, 'Longitude mínima é -180°')
     .max(180, 'Longitude máxima é 180°'),
+
+  /** Largura da faixa em metros */
+  widthM: z
+    .number({ error: 'Largura deve ser um número' })
+    .min(1, 'Largura mínima é 1 m')
+    .max(10000, 'Largura máxima é 10.000 m')
+    .default(45),
+
+  /** Comprimento da pista em metros */
+  heightM: z
+    .number({ error: 'Comprimento deve ser um número' })
+    .min(1, 'Comprimento mínimo é 1 m')
+    .max(50000, 'Comprimento máximo é 50.000 m')
+    .default(1200),
+
+  /** Ângulo de orientação em graus (0–359°, sentido horário a partir do Norte) */
+  angleDeg: z
+    .number({ error: 'Ângulo deve ser um número' })
+    .min(0, 'Ângulo mínimo é 0°')
+    .max(359.9, 'Ângulo máximo é 359,9°')
+    .default(0),
 });
 
 export type AssessmentFormData = z.infer<typeof assessmentSchema>;

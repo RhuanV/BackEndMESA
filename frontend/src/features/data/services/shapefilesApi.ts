@@ -42,7 +42,10 @@ export async function uploadShapefile(params: {
   const response = await apiClient.post<UploadResult>(
     '/shapefiles/upload',
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 10 * 60 * 1000,  // 10 min — large shapefiles can take a while to upload + reproject
+    }
   );
   return response.data;
 }

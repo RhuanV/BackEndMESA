@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -190,6 +192,37 @@ def get_layer(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+LAYER_SOURCE_ROLES = {"coordenador", "administrador"}
+
+
+@app.get("/layers/{layer_name}/source")
+def get_layer_source(
+    layer_name: str,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Returns the upload configured as fallback data source for this layer."""
+    try:
+        return layers_service.get_source(layer_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.put("/layers/{layer_name}/source")
+def set_layer_source(
+    layer_name: str,
+    upload_id: int | None = None,
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Sets (or clears) the upload that feeds this layer when Airflow data is absent."""
+    if current_user["role"] not in LAYER_SOURCE_ROLES:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    try:
+        layers_service.set_source(layer_name, upload_id)
+        return {"ok": True, "layer_name": layer_name, "upload_id": upload_id}
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 SCREENING_ROLES = {"coordenador", "gestor", "operador", "administrador", "desenvolvedor"}
 
 class ScreeningRequest(BaseModel):
@@ -287,7 +320,8 @@ SHAPEFILE_UPLOAD_ROLES = {
     "operador",
     "administrador",
 }
-SHAPEFILE_MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+_MAX_MB = int(os.getenv("SHAPEFILE_MAX_UPLOAD_MB", "500"))
+SHAPEFILE_MAX_UPLOAD_BYTES = _MAX_MB * 1024 * 1024
 
 
 @app.post("/shapefiles/upload")
