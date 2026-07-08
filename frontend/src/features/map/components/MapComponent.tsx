@@ -61,10 +61,8 @@ export function MapComponent() {
   }, []);
 
   const bdgMesaStyle = import.meta.env.VITE_MAPLIBRE_STYLE_URL;
-  const satelliteStyle = import.meta.env.VITE_SATELLITE_STYLE_URL;
-  const osmStyle = import.meta.env.VITE_OSM_STYLE_URL;
 
-  const { map, isMapReady, setStyle, flyTo, cursorPosition } = useMap({
+  const { map, isMapReady, setBaseMap, flyTo, cursorPosition } = useMap({
     containerId: MAP_CONTAINER_ID,
     styleUrl: bdgMesaStyle,
   });
@@ -72,10 +70,9 @@ export function MapComponent() {
   const handleBaseMapChange = useCallback(
     (layer: 'bdg-mesa' | 'satellite' | 'osm') => {
       setActiveBaseMap(layer);
-      const styles = { 'bdg-mesa': bdgMesaStyle, satellite: satelliteStyle, osm: osmStyle };
-      setStyle(styles[layer]);
+      setBaseMap(layer);
     },
-    [bdgMesaStyle, satelliteStyle, osmStyle, setStyle]
+    [setBaseMap]
   );
 
   const handleRegionSelect = useCallback(

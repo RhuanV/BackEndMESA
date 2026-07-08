@@ -37,15 +37,43 @@ const OSM_RASTER_STYLE: StyleSpecification = {
   layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
 
+/**
+ * Google Satellite Hybrid raster style — renders high-resolution satellite imagery
+ * with roads and labels overlay.
+ */
+const GOOGLE_HYBRID_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    'google-hybrid': {
+      type: 'raster',
+      tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+      tileSize: 256,
+      attribution: '© Google',
+      maxzoom: 20,
+    },
+  },
+  layers: [{ id: 'google-hybrid', type: 'raster', source: 'google-hybrid' }],
+};
+
 const isUnusableStyle = (url: string | undefined) =>
   !url || url.includes('demotiles.maplibre.org');
 
-const resolveStyle = (url: string | undefined): string | StyleSpecification =>
-  isUnusableStyle(url) ? OSM_RASTER_STYLE : (url as string);
+const resolveStyle = (style: string | StyleSpecification | undefined): string | StyleSpecification => {
+  if (style === 'google-hybrid') {
+    return GOOGLE_HYBRID_STYLE;
+  }
+  if (style === 'osm') {
+    return OSM_RASTER_STYLE;
+  }
+  if (!style || (typeof style === 'string' && isUnusableStyle(style))) {
+    return OSM_RASTER_STYLE;
+  }
+  return style as string | StyleSpecification;
+};
 
 interface UseMapOptions {
   readonly containerId: string;
-  readonly styleUrl?: string;
+  readonly styleUrl?: string | StyleSpecification;
 }
 
 export function useMap({ containerId, styleUrl }: UseMapOptions) {
@@ -82,7 +110,78 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
 
-    map.on('load', () => setIsMapReady(true));
+    const timer = setTimeout(() => {
+      console.warn('[Map] Safety load timeout triggered - forcing isMapReady=true');
+      setIsMapReady(true);
+    }, 1500);
+
+    const onLoad = () => {
+      clearTimeout(timer);
+      const m = mapRef.current;
+      if (!m) return;
+
+      console.log('[Map] onLoad starting. isStyleLoaded:', m.isStyleLoaded(), 'loaded:', m.loaded());
+      try {
+        // 1) Add OSM source and layer if not present
+        if (!m.getSource('osm')) {
+          console.log('[Map] Adding OSM source...');
+          m.addSource('osm', {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors',
+            maxzoom: 19,
+          });
+        }
+        if (!m.getLayer('osm')) {
+          console.log('[Map] Adding OSM layer...');
+          m.addLayer({
+            id: 'osm',
+            type: 'raster',
+            source: 'osm',
+            layout: {
+              visibility: envStyle ? 'none' : 'visible',
+            },
+          });
+        }
+
+        // 2) Add Google Hybrid source and layer if not present
+        if (!m.getSource('google-hybrid')) {
+          console.log('[Map] Adding Google Hybrid source...');
+          m.addSource('google-hybrid', {
+            type: 'raster',
+            tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+            tileSize: 256,
+            attribution: '© Google',
+            maxzoom: 20,
+          });
+        }
+        if (!m.getLayer('google-hybrid')) {
+          console.log('[Map] Adding Google Hybrid layer...');
+          m.addLayer({
+            id: 'google-hybrid',
+            type: 'raster',
+            source: 'google-hybrid',
+            layout: {
+              visibility: 'none',
+            },
+          });
+        }
+        console.log('[Map] onLoad completed successfully.');
+      } catch (err) {
+        console.error('[Map] Error in onLoad style/layers injection:', err);
+      } finally {
+        setIsMapReady(true);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      onLoad();
+    } else {
+      map.on('load', onLoad);
+      // Fallback event for style loading
+      map.on('style.load', onLoad);
+    }
 
     // Track cursor for debug display
     map.on('mousemove', (e) => {
@@ -92,17 +191,31 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
     mapRef.current = map;
 
     return () => {
+      clearTimeout(timer);
       map.remove();
       mapRef.current = null;
       setIsMapReady(false);
     };
   }, [containerId, styleUrl]);
 
-  const setStyle = useCallback((newStyleUrl: string) => {
-    if (mapRef.current) {
-      mapRef.current.setStyle(resolveStyle(newStyleUrl));
+  const setBaseMap = useCallback((baseMapId: 'bdg-mesa' | 'satellite' | 'osm') => {
+    const m = mapRef.current;
+    if (!m) return;
+
+    const hasVectorStyle = !!styleUrl;
+
+    if (baseMapId === 'osm') {
+      if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', 'visible');
+      if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', 'none');
+    } else if (baseMapId === 'satellite') {
+      if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', 'none');
+      if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', 'visible');
+    } else {
+      // bdg-mesa
+      if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', hasVectorStyle ? 'none' : 'visible');
+      if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', 'none');
     }
-  }, []);
+  }, [styleUrl]);
 
   const flyTo = useCallback((center: [number, number], zoom: number) => {
     if (mapRef.current) {
@@ -110,5 +223,5 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
     }
   }, []);
 
-  return { map: mapRef, isMapReady, setStyle, flyTo, cursorPosition };
+  return { map: mapRef, isMapReady, setBaseMap, flyTo, cursorPosition };
 }
