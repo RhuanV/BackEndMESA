@@ -32,6 +32,22 @@ export async function fetchLayer({
   return response.data;
 }
 
+export interface LayerSource {
+  readonly layer_name: string;
+  readonly upload_id: number | null;
+}
+
+export async function getLayerSource(layerName: string): Promise<LayerSource> {
+  const r = await apiClient.get<LayerSource>(`/layers/${layerName}/source`);
+  return r.data;
+}
+
+export async function setLayerSource(layerName: string, uploadId: number | null): Promise<void> {
+  await apiClient.put(`/layers/${layerName}/source`, null, {
+    params: { upload_id: uploadId ?? '' },
+  });
+}
+
 /**
  * Maps a MapLibre zoom level to one of the three resolution views.
  *

@@ -16,6 +16,9 @@ export interface MesaAssessment {
   readonly estimatedCost: number;
   readonly latitude: number;
   readonly longitude: number;
+  readonly widthM: number;
+  readonly heightM: number;
+  readonly angleDeg: number;
   readonly createdAt?: string;
 }
 
@@ -30,4 +33,9 @@ export interface MesaRankingResult {
   readonly costScore: number;
   readonly latitude: number;
   readonly longitude: number;
+  readonly widthM: number;
+  readonly heightM: number;
+  readonly angleDeg: number;
+  /** GeoJSON geometry string (POLYGON) for the site rectangle */
+  readonly geometry: string;
 }

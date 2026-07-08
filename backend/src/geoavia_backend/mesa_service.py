@@ -4,10 +4,14 @@ Sprint 2 escopo: o front precisa de fluxo end-to-end (formulário → BD →
 ranking visível) para o demo. A análise MCDA real (épico EP-13) virá em
 sprint posterior — aqui geramos um job mock que progride sozinho e
 calculamos um score determinístico simples a partir dos dados gravados.
+
+Sprint 5 addendum: geometry column (POLYGON) replaces the POINT centroid.
+_build_polygon() constructs the rotated rectangle from centroid + dimensions.
 """
 from __future__ import annotations
 
 import io
+import math
 import os
 import tempfile
 import time
@@ -16,13 +20,34 @@ import zipfile
 from threading import Lock
 
 import geopandas as gpd
-from shapely.geometry import Point
+from shapely.affinity import rotate, translate
+from shapely.geometry import Point, Polygon
 
 from geoavia_backend.mesa_repository import AssessmentRepository
 
 
 def _to_float(value) -> float:
     return float(value) if value is not None else 0.0
+
+
+def _build_polygon(lon: float, lat: float, width_m: float, height_m: float, angle_deg: float) -> Polygon:
+    """Return a Shapely Polygon for the airport-site rectangle.
+
+    The rectangle is centred at (lon, lat), has the given dimensions in metres,
+    and is rotated clockwise from geographic North by angle_deg degrees.
+
+    Coordinate conversion uses a flat-Earth approximation valid for sites ≤ 50 km
+    across (well within runway-strip scale anywhere in Brazil).
+    """
+    lat_rad = math.radians(lat)
+    dlon = (width_m / 2) / (111320.0 * math.cos(lat_rad))
+    dlat = (height_m / 2) / 111320.0
+
+    # Build axis-aligned rectangle centred at origin
+    rect = Polygon([(-dlon, -dlat), (dlon, -dlat), (dlon, dlat), (-dlon, dlat)])
+    # Shapely rotate is CCW; clockwise-from-North → negate
+    rotated = rotate(rect, -angle_deg, origin=(0.0, 0.0))
+    return translate(rotated, xoff=lon, yoff=lat)
 
 
 def _serialize_assessment(row: dict) -> dict:
@@ -38,6 +63,9 @@ def _serialize_assessment(row: dict) -> dict:
         "estimatedCost": _to_float(row["estimated_cost"]),
         "latitude": _to_float(row["latitude"]),
         "longitude": _to_float(row["longitude"]),
+        "widthM": _to_float(row.get("width_m", 45.0)),
+        "heightM": _to_float(row.get("height_m", 1200.0)),
+        "angleDeg": _to_float(row.get("angle_deg", 0.0)),
         "createdAt": created.isoformat() if created else None,
     }
 
@@ -83,6 +111,10 @@ def _score(assessment: dict, weights: dict | None = None) -> dict:
         "costScore": round(cost_score, 1),
         "latitude": assessment["latitude"],
         "longitude": assessment["longitude"],
+        "widthM": assessment["widthM"],
+        "heightM": assessment["heightM"],
+        "angleDeg": assessment["angleDeg"],
+        "geometry": assessment.get("geometry") or "",
     }
 
 
@@ -91,6 +123,14 @@ class AssessmentService:
         self.repo = AssessmentRepository()
 
     def submit(self, data: dict) -> dict:
+        lon = data["longitude"]
+        lat = data["latitude"]
+        width_m = data.get("widthM", 45.0)
+        height_m = data.get("heightM", 1200.0)
+        angle_deg = data.get("angleDeg", 0.0)
+
+        polygon = _build_polygon(lon, lat, width_m, height_m, angle_deg)
+
         row = self.repo.insert(
             site_name=data["siteName"].strip(),
             average_slope=data["averageSlope"],
@@ -98,8 +138,12 @@ class AssessmentService:
             has_obstacles=data["hasObstacles"],
             obstacle_description=(data.get("obstacleDescription") or None) or None,
             estimated_cost=data["estimatedCost"],
-            latitude=data["latitude"],
-            longitude=data["longitude"],
+            latitude=lat,
+            longitude=lon,
+            width_m=width_m,
+            height_m=height_m,
+            angle_deg=angle_deg,
+            polygon_wkt=polygon.wkt,
         )
         return _serialize_assessment(row)
 
@@ -113,7 +157,7 @@ class AssessmentService:
 
     def export_as_shapefile(self, weights: dict | None = None) -> bytes:
         """Builds a real Esri Shapefile (zipped .shp/.dbf/.shx/.prj/.cpg) from
-        the current ranking. Each row becomes a POINT feature in SIRGAS 2000
+        the current ranking. Each row becomes a POLYGON feature in SIRGAS 2000
         (EPSG:4674) with the assessment scores as attributes.
 
         Returns the ZIP archive as bytes ready to stream.
@@ -122,8 +166,6 @@ class AssessmentService:
         if not ranking:
             raise ValueError("No assessments to export — submit a site first.")
 
-        # Shapefile DBF field names are capped at 10 chars. Truncate explicitly
-        # so we don't get cryptic geopandas warnings or silent renames.
         records = []
         geometries = []
         for r in ranking:
@@ -138,9 +180,18 @@ class AssessmentService:
                     "cost": r["costScore"],
                     "lat": r["latitude"],
                     "lon": r["longitude"],
+                    "width_m": r["widthM"],
+                    "height_m": r["heightM"],
+                    "angle_deg": r["angleDeg"],
                 }
             )
-            geometries.append(Point(r["longitude"], r["latitude"]))
+            # Use the stored polygon geometry; fall back to a centroid point if missing
+            if r.get("geometry"):
+                import json
+                from shapely.geometry import shape
+                geometries.append(shape(json.loads(r["geometry"])))
+            else:
+                geometries.append(Point(r["longitude"], r["latitude"]))
 
         gdf = gpd.GeoDataFrame(records, geometry=geometries, crs="EPSG:4674")
 

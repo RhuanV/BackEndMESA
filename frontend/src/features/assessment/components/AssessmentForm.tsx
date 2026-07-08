@@ -39,6 +39,9 @@ export function AssessmentForm() {
       estimatedCost: 0,
       latitude: 0,
       longitude: 0,
+      widthM: 45,
+      heightM: 1200,
+      angleDeg: 0,
     },
     mode: 'onBlur',
   });
@@ -203,6 +206,57 @@ export function AssessmentForm() {
             {...register('longitude', { valueAsNumber: true })}
           />
         </div>
+      </fieldset>
+
+      {/* Site Geometry */}
+      <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
+        <legend className="px-2 text-sm font-semibold text-primary-700">
+          Geometria do Sítio
+        </legend>
+        <p className="text-xs text-neutral-500">
+          Defina as dimensões da faixa de pista e sua orientação. O centróide é a coordenada acima.
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Largura (m)"
+            type="number"
+            placeholder="1 - 10.000"
+            step="1"
+            min={1}
+            max={10000}
+            error={errors.widthM?.message}
+            disabled={isSubmitting}
+            helperText="Largura da faixa em metros (padrão ANAC: 45 m)"
+            {...register('widthM', { valueAsNumber: true })}
+          />
+
+          <Input
+            label="Comprimento (m)"
+            type="number"
+            placeholder="1 - 50.000"
+            step="1"
+            min={1}
+            max={50000}
+            error={errors.heightM?.message}
+            disabled={isSubmitting}
+            helperText="Comprimento da pista em metros"
+            {...register('heightM', { valueAsNumber: true })}
+          />
+        </div>
+
+        <Input
+          label="Ângulo de Orientação (°)"
+          type="number"
+          placeholder="0 - 359"
+          step="0.1"
+          min={0}
+          max={359.9}
+          error={errors.angleDeg?.message}
+          disabled={isSubmitting}
+          helperText="Graus no sentido horário a partir do Norte geográfico"
+          {...register('angleDeg', { valueAsNumber: true })}
+        />
       </fieldset>
 
       {/* Submit */}

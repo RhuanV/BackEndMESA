@@ -15,6 +15,8 @@ import tempfile
 import zipfile
 
 import geopandas as gpd
+import math
+import psycopg2
 
 from geoavia_backend.shapefiles_repository import ShapefilesRepository
 
@@ -52,18 +54,23 @@ class ShapefilesService:
                     f"Too many features ({len(gdf)}). Limit is {MAX_FEATURES_PER_UPLOAD}."
                 )
 
-            upload_id = self.repo.create_layer(
-                layer_name=layer_name,
-                description=description,
-                user_id=user_id,
-                username=username,
-                user_role=user_role,
-                original_filename=original_filename,
-                source_srid=source_srid,
-            )
-
-            features = self._to_feature_rows(gdf)
-            inserted = self.repo.insert_features(upload_id, features)
+            try:
+                upload_id = self.repo.create_layer(
+                    layer_name=layer_name,
+                    description=description,
+                    user_id=user_id,
+                    username=username,
+                    user_role=user_role,
+                    original_filename=original_filename,
+                    source_srid=source_srid,
+                )
+                features = self._to_feature_rows(gdf)
+                inserted = self.repo.insert_features(upload_id, features)
+            except psycopg2.Error as exc:
+                logger.exception("DB error persisting shapefile upload")
+                raise ShapefileError(
+                    f"Falha ao salvar no banco de dados: {exc.pgcode or 'erro desconhecido'}"
+                ) from exc
 
             return {
                 "upload_id": upload_id,
@@ -142,11 +149,27 @@ class ShapefilesService:
         return gdf, source_srid
 
     @staticmethod
+    def _safe_json_value(value):
+        """Convert NaN/Inf floats (including numpy.float64 scalars) to None.
+
+        json.dumps(float('nan')) produces the bare token `NaN` which is not
+        valid JSON. PostgreSQL's ::jsonb cast rejects it with error 22P02
+        (invalid_text_representation). Converting to None serialises as null.
+        """
+        try:
+            if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+                return None
+        except (TypeError, ValueError):
+            pass
+        return value
+
+    @staticmethod
     def _to_feature_rows(gdf: gpd.GeoDataFrame) -> list[tuple[str, str]]:
         """Builds (properties_json, geom_wkt) tuples for bulk insert.
 
         Properties exclude the geometry column and convert any non-JSON-safe
-        values (Timestamps, numpy scalars) to strings.
+        values (Timestamps, numpy scalars, NaN/Inf) to safe equivalents.
+        NaN/Inf floats become null; other non-serialisable types become strings.
         """
         rows: list[tuple[str, str]] = []
         geom_col = gdf.geometry.name
@@ -158,11 +181,19 @@ class ShapefilesService:
             for col in gdf.columns:
                 if col == geom_col:
                     continue
-                value = row[col]
+                value = ShapefilesService._safe_json_value(row[col])
                 try:
                     json.dumps(value)
                     props[col] = value
                 except (TypeError, ValueError):
-                    props[col] = str(value)
-            rows.append((json.dumps(props, default=str), geom.wkt))
+                    props[col] = str(row[col]) if row[col] is not None else None
+
+            # allow_nan=False causes ValueError if any NaN slipped through,
+            # falling back to stringify everything as a last resort.
+            try:
+                props_json = json.dumps(props, default=str, allow_nan=False)
+            except ValueError:
+                props_json = json.dumps({k: str(v) for k, v in props.items()})
+
+            rows.append((props_json, geom.wkt))
         return rows

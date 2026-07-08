@@ -30,6 +30,9 @@ class AssessmentIn(BaseModel):
     estimatedCost: float = Field(ge=0)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
+    widthM: float = Field(default=45.0, ge=1, le=10000)
+    heightM: float = Field(default=1200.0, ge=1, le=50000)
+    angleDeg: float = Field(default=0.0, ge=0, lt=360)
 
 
 class AnalysisConfigIn(BaseModel):
