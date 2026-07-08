@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from geoavia_backend.database import ALGORITHM, SECRET_KEY
 from geoavia_backend.repository import UserRepository
 
-ALLOWED_ROLES = {"coordenador", "gestor", "supervisor", "operador", "administrador"}
+ALLOWED_ROLES = {"coordenador", "operador", "administrador"}
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
