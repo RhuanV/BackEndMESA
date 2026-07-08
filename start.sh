@@ -89,7 +89,23 @@ if [ "$RETRY" -lt "$MAX_RETRIES" ]; then
   echo -e "  ${GREEN}✓${NC} Backend is healthy (port ${API_PORT})"
 fi
 
-# --- Step 3.5: Bootstrap admin user ---
+# --- Step 3.5: Alembic stamp guard (existing installations) ---
+# If the DB already has tables from the old docker-entrypoint-initdb.d system but
+# alembic_version doesn't exist yet, stamp it as head so Alembic knows the schema
+# is already up to date and won't try to re-run all migrations from scratch.
+STAMP_RESULT=$(docker compose exec -T backend bash -c "
+  alembic current 2>&1 | grep -qE '(head|\(head\))' && echo 'already_at_head' ||
+  (alembic current 2>&1 | grep -qi 'no current revision' &&
+   alembic stamp head 2>&1 && echo 'stamped') ||
+  echo 'ok'
+" 2>/dev/null || echo "skipped")
+case "$STAMP_RESULT" in
+  already_at_head) echo -e "  ${GREEN}✓${NC} Alembic já está no head" ;;
+  stamped)         echo -e "  ${GREEN}✓${NC} Alembic: banco existente marcado como head" ;;
+  *)               echo -e "  ${GREEN}✓${NC} Alembic gerenciado pelo backend" ;;
+esac
+
+# --- Step 3.6: Bootstrap admin user ---
 # Sprint 3: the POST /users/signup endpoint now requires a coordinator/supervisor JWT.
 # Since the DB starts without any real users (seeds have placeholder hashes and can't log in),
 # the bootstrap is done by calling UserService directly inside the container, bypassing

@@ -1,0 +1,69 @@
+"""seed demo users
+
+Revision ID: 0002
+Revises: 0001
+Create Date: 2026-07-08
+"""
+from __future__ import annotations
+
+from alembic import op
+from sqlalchemy import text
+
+revision = "0002"
+down_revision = "0001"
+branch_labels = None
+depends_on = None
+
+_SEED_USERNAMES = (
+    "sac_coordinator_01", "anac_analyst_02", "ita_engineer_03",
+    "airport_manager_04", "geo_technician_05", "m_antonia_mesa",
+    "h_rossato_vm", "l_trevilato_repo", "p_ulisses_arch", "j_fernandes_wire",
+    "test_pilot_11", "control_tower_12", "runway_inspector_13",
+    "mesa_coordinator_14", "anac_auditor_15", "ita_intern_16",
+    "geo_consultant_17", "sac_secretary_18", "infrastructure_director_19",
+    "mesa_analyst_20", "backend_dev_21", "frontend_dev_22",
+    "postgis_expert_23", "test_user_24", "test_user_25", "test_user_26",
+    "test_user_27", "test_user_28", "test_user_29", "general_admin_30",
+)
+
+
+def upgrade() -> None:
+    op.execute(text("""
+        INSERT INTO users (username, hash, role) VALUES
+            ('sac_coordinator_01',      'hash_admin1',    'coordenador'),
+            ('anac_analyst_02',         'hash_analyst2',  'operador'),
+            ('ita_engineer_03',         'hash_eng3',      'administrador'),
+            ('airport_manager_04',      'hash_manager4',  'coordenador'),
+            ('geo_technician_05',       'hash_geo5',      'operador'),
+            ('m_antonia_mesa',          'hash_ma1',       'operador'),
+            ('h_rossato_vm',            'hash_hr2',       'administrador'),
+            ('l_trevilato_repo',        'hash_lt3',       'administrador'),
+            ('p_ulisses_arch',          'hash_pu4',       'operador'),
+            ('j_fernandes_wire',        'hash_jf5',       'administrador'),
+            ('test_pilot_11',           'hash_pt11',      'operador'),
+            ('control_tower_12',        'hash_tc12',      'operador'),
+            ('runway_inspector_13',     'hash_fp13',      'operador'),
+            ('mesa_coordinator_14',     'hash_cm14',      'coordenador'),
+            ('anac_auditor_15',         'hash_aa15',      'coordenador'),
+            ('ita_intern_16',           'hash_ei16',      'operador'),
+            ('geo_consultant_17',       'hash_cg17',      'operador'),
+            ('sac_secretary_18',        'hash_ss18',      'operador'),
+            ('infrastructure_director_19', 'hash_di19',   'coordenador'),
+            ('mesa_analyst_20',         'hash_am20',      'operador'),
+            ('backend_dev_21',          'hash_db21',      'administrador'),
+            ('frontend_dev_22',         'hash_df22',      'administrador'),
+            ('postgis_expert_23',       'hash_ep23',      'administrador'),
+            ('test_user_24',            'hash_ut24',      'operador'),
+            ('test_user_25',            'hash_ut25',      'operador'),
+            ('test_user_26',            'hash_ut26',      'operador'),
+            ('test_user_27',            'hash_ut27',      'operador'),
+            ('test_user_28',            'hash_ut28',      'operador'),
+            ('test_user_29',            'hash_ut29',      'operador'),
+            ('general_admin_30',        'hash_ag30',      'coordenador')
+        ON CONFLICT (username) DO NOTHING;
+    """))
+
+
+def downgrade() -> None:
+    placeholders = ", ".join(f"'{u}'" for u in _SEED_USERNAMES)
+    op.execute(text(f"DELETE FROM users WHERE username IN ({placeholders});"))

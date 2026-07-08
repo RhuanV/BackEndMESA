@@ -220,6 +220,69 @@ uvicorn geoavia_backend.main:app --reload
 - **Better IDE support:** Tools like VSCode/Pylance can resolve modules more reliably.
 - **No reinstall needed:** Code changes are immediately reflected without reinstalling the package.
 
+## Database Migrations
+
+The project uses [Alembic](https://alembic.sqlalchemy.org/) for incremental database migrations. Every time the backend container starts, it runs `alembic upgrade head` automatically — applying any pending migrations before uvicorn accepts connections.
+
+Migration history is tracked in the `alembic_version` table inside the database. Alembic never re-runs a migration that has already been applied.
+
+### Checking the current state
+
+```bash
+# Show the revision currently applied to the database
+docker compose exec backend alembic current
+
+# Show the full migration history
+docker compose exec backend alembic history
+```
+
+### Creating a new migration
+
+1. **Generate the revision file** inside the running container:
+
+   ```bash
+   docker compose exec backend alembic revision -m "describe what this migration does"
+   ```
+
+   This creates a file like `backend/alembic/versions/0014_describe_what_this_migration_does.py`.
+
+2. **Edit the file** and fill in `upgrade()` and `downgrade()` using `op.execute(text(...))` with raw SQL:
+
+   ```python
+   from alembic import op
+   from sqlalchemy import text
+
+   def upgrade() -> None:
+       op.execute(text("""
+           ALTER TABLE assessments ADD COLUMN reviewed_at TIMESTAMPTZ;
+       """))
+
+   def downgrade() -> None:
+       op.execute(text("""
+           ALTER TABLE assessments DROP COLUMN IF EXISTS reviewed_at;
+       """))
+   ```
+
+3. **Apply immediately** (without restarting the container):
+
+   ```bash
+   docker compose exec backend alembic upgrade head
+   ```
+
+   Or simply restart the backend — it runs `upgrade head` on every start.
+
+4. **Commit the file** to version control. Everyone on the team gets the migration applied automatically on their next `docker compose up`.
+
+### Rolling back one revision
+
+```bash
+docker compose exec backend alembic downgrade -1
+```
+
+### Migration files location
+
+All revision files live in `backend/alembic/versions/`. The numbering convention is `NNNN_slug.py` (e.g. `0006_create_assessments.py`). The original SQL files in `backend/migrations/` are kept as historical reference and are no longer executed automatically.
+
 ## Current Endpoints
 
 Authentication:

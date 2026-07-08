@@ -28,3 +28,8 @@ DEV_USER = os.getenv("DEV_USER", "admin")
 
 # Builds the connection string (example for psycopg2)
 DATABASE_URL = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
+
+# SQLAlchemy-format URL used by Alembic; the rest of the codebase keeps using DATABASE_URL via psycopg2
+SQLALCHEMY_DATABASE_URL = (
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
