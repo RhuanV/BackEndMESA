@@ -77,7 +77,7 @@ fi
 # the endpoint. Idempotent: checks for existence before creating.
 DEMO_USER="admin"
 DEMO_PASS="admin123"
-DEMO_ROLE="coordenador"
+DEMO_ROLE="administrador"
 
 BOOTSTRAP_RESULT=$(docker exec -i geoavia_backend python - <<PY 2>/dev/null || echo "error"
 from geoavia_backend.repository import UserRepository

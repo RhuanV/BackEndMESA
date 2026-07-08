@@ -49,7 +49,7 @@ def get_users(current_user: dict = Depends(obtain_current_user)):
     return service.list_users()
 
 
-USER_CREATION_ROLES = {"coordenador", "supervisor"}
+USER_CREATION_ROLES = {"coordenador", "administrador"}
 
 
 @app.post("/users/signup")
@@ -142,7 +142,7 @@ def get_layer(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-SCREENING_ROLES = {"coordenador", "gestor", "operador"}
+SCREENING_ROLES = {"coordenador", "operador", "administrador"}
 
 
 class ScreeningRequest(BaseModel):
@@ -185,8 +185,6 @@ def screen_site(
 
 DAG_TRIGGER_ROLES = {
     "coordenador",
-    "gestor",
-    "supervisor",
     "operador",
     "administrador",
 }
@@ -238,8 +236,6 @@ def list_airflow_triggers(
 
 SHAPEFILE_UPLOAD_ROLES = {
     "coordenador",
-    "gestor",
-    "supervisor",
     "operador",
     "administrador",
 }
