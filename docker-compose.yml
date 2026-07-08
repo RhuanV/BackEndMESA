@@ -16,7 +16,7 @@ services:
       - "${DB_EXT_PORT:-5433}:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d
+      - ./backend/migrations/init:/docker-entrypoint-initdb.d
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -32,7 +32,9 @@ services:
     container_name: geoavia_backend
     volumes:
       - ./backend/src:/app/src
-    command: python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 --reload
+    command: >
+      bash -c "alembic upgrade head &&
+               python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "${API_PORT:-8000}:8000" # HOST:CONTAINER
     env_file:

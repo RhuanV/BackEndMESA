@@ -30,6 +30,10 @@ python-dotenv
 # geopandas bundles fiona/shapely/pyproj transitively.
 geopandas
 
+# Incremental database migration management (replaces docker-entrypoint-initdb.d)
+alembic
+sqlalchemy
+
 # Development tools (code quality and commit standardization)
 pre-commit
 commitizen

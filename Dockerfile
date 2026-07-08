@@ -18,6 +18,10 @@ RUN apt-get update && apt-get install -y \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copies Alembic config and migrations (separate layer — changes less often than src)
+COPY backend/alembic.ini .
+COPY backend/alembic ./alembic
+
 # Copies the backend source code
 COPY backend/src ./src
 
