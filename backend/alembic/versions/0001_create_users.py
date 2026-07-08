@@ -23,7 +23,7 @@ def upgrade() -> None:
             hash TEXT NOT NULL,
             role VARCHAR(20) NOT NULL DEFAULT 'operador',
             CONSTRAINT check_role CHECK (
-                role IN ('coordenador', 'gestor', 'supervisor', 'operador', 'administrador')
+                role IN ('coordenador', 'gestor', 'supervisor', 'operador', 'administrador', 'desenvolvedor')
             )
         );
     """))

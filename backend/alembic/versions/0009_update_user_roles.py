@@ -33,7 +33,7 @@ def upgrade() -> None:
     op.execute(text("""
         ALTER TABLE users
         ADD CONSTRAINT check_role
-        CHECK (role IN ('coordenador', 'gestor', 'supervisor', 'operador', 'administrador'));
+        CHECK (role IN ('coordenador', 'gestor', 'supervisor', 'operador', 'administrador', 'desenvolvedor'));
     """))
 
 
