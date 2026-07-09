@@ -1,9 +1,9 @@
 /**
- * UserManagementPage — System user management (Sprint 3).
+ * UserManagementPage — System user management.
  *
- * Access (Router): coordenador, gestor, supervisor.
- * Creation form: visible only for roles with the `admin:users:create`
- * permission (coordenador and supervisor).
+ * Access (Router): administrador, desenvolvedor.
+ * Creation form and recovery-code issuance are visible only for roles with the
+ * `admin:users:create` permission (administrador and desenvolvedor).
  *
  * Defense in depth: the UI gate is cosmetic; the real security boundary
  * is at POST /users/signup, which validates the JWT role on the backend.
@@ -27,18 +27,12 @@ interface UserRecord {
 }
 
 const roleBadgeColors: Record<UserRole, string> = {
-  coordenador: 'bg-purple-100 text-purple-700',
-  gestor: 'bg-amber-100 text-amber-700',
-  supervisor: 'bg-blue-100 text-blue-700',
   operador: 'bg-emerald-100 text-emerald-700',
   administrador: 'bg-teal-100 text-teal-700',
   desenvolvedor: 'bg-indigo-100 text-indigo-700',
 };
 
 const roleOptions: ReadonlyArray<{ value: UserRole; label: string }> = [
-  { value: 'coordenador', label: 'Coordenador' },
-  { value: 'gestor', label: 'Gestor' },
-  { value: 'supervisor', label: 'Supervisor' },
   { value: 'operador', label: 'Operador' },
   { value: 'administrador', label: 'Administrador' },
   { value: 'desenvolvedor', label: 'Desenvolvedor' },
@@ -73,6 +67,15 @@ export function UserManagementPage() {
   const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
   const [isResetPasswordSubmitting, setIsResetPasswordSubmitting] = useState(false);
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState<string | null>(null);
+
+  // Recovery-code state (admin issues a single-use code to relay to the user)
+  const [recoveryUserId, setRecoveryUserId] = useState<number | null>(null);
+  const [recoveryUsername, setRecoveryUsername] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+  const [recoveryExpiresAt, setRecoveryExpiresAt] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -163,6 +166,34 @@ export function UserManagementPage() {
       setResetPasswordError(detail ?? 'Não foi possível alterar a senha.');
     } finally {
       setIsResetPasswordSubmitting(false);
+    }
+  };
+
+  const handleGenerateRecoveryCode = async (userId: number, username: string) => {
+    setRecoveryUserId(userId);
+    setRecoveryUsername(username);
+    setRecoveryCode(null);
+    setRecoveryExpiresAt(null);
+    setRecoveryError(null);
+    setRecoveryCopied(false);
+    setIsRecoverySubmitting(true);
+    try {
+      const res = await apiClient.post<{ code: string; expires_at: string }>(
+        `/users/${userId}/recovery-code`
+      );
+      setRecoveryCode(res.data.code);
+      setRecoveryExpiresAt(res.data.expires_at);
+    } catch (err) {
+      setRecoveryError(extractErrorDetail(err) ?? 'Não foi possível gerar o código.');
+    } finally {
+      setIsRecoverySubmitting(false);
+    }
+  };
+
+  const handleCopyRecoveryCode = () => {
+    if (recoveryCode) {
+      void navigator.clipboard?.writeText(recoveryCode);
+      setRecoveryCopied(true);
     }
   };
 
@@ -341,6 +372,15 @@ export function UserManagementPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
+                                onClick={() => void handleGenerateRecoveryCode(u.id, u.username)}
+                                disabled={deletingUserId !== null || u.is_protected}
+                              >
+                                Código
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="text-danger-600 hover:text-danger-700 hover:bg-danger-50"
                                 onClick={() => void handleDelete(u.id, u.username)}
                                 isLoading={deletingUserId === u.id}
@@ -446,6 +486,64 @@ export function UserManagementPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {recoveryUserId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl animate-scale-in">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-neutral-900">
+                Código de recuperação — {sanitize(recoveryUsername)}
+              </h3>
+              <button
+                type="button"
+                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                onClick={() => setRecoveryUserId(null)}
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+
+            {isRecoverySubmitting && (
+              <p className="text-sm text-neutral-500">Gerando código...</p>
+            )}
+
+            {recoveryError && (
+              <div role="alert" className="text-sm text-danger-600 animate-fade-in">
+                {recoveryError}
+              </div>
+            )}
+
+            {recoveryCode && (
+              <div className="space-y-4">
+                <p className="text-sm text-neutral-600">
+                  Repasse este código de uso único ao usuário. Ele expira em ~30
+                  minutos e permite redefinir a senha na tela de login.
+                </p>
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-3">
+                  <code className="select-all text-lg font-semibold tracking-widest text-neutral-900">
+                    {recoveryCode}
+                  </code>
+                  <Button variant="ghost" size="sm" type="button" onClick={handleCopyRecoveryCode}>
+                    {recoveryCopied ? 'Copiado!' : 'Copiar'}
+                  </Button>
+                </div>
+                {recoveryExpiresAt && (
+                  <p className="text-xs text-neutral-400">
+                    Expira em: {new Date(recoveryExpiresAt).toLocaleString('pt-BR')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4">
+              <Button variant="ghost" type="button" onClick={() => setRecoveryUserId(null)}>
+                Fechar
+              </Button>
+            </div>
           </div>
         </div>
       )}

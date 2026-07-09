@@ -1,18 +1,18 @@
 /**
  * Router — Application routing with RBAC-protected routes.
  *
- * Route structure (Sprint 3 — 5 perfis MESA-A):
+ * Route structure (3-role model):
  * - /login                    → Public
  * - /dashboard/*              → Protected (authenticated)
- *   - /dashboard/map          → todos
- *   - /dashboard/analysis     → coordenador, supervisor, operador
- *   - /dashboard/assessment   → coordenador, gestor, operador
- *   - /dashboard/results      → coordenador, gestor, supervisor, operador
- *   - /dashboard/export       → coordenador, gestor, supervisor, operador
- *   - /dashboard/admin/users  → coordenador, gestor, supervisor
- *   - /dashboard/admin/layers → coordenador, administrador
- *   - /dashboard/admin/audit  → coordenador, administrador
- *   - /dashboard/dev/*        → administrador
+ *   - /dashboard/map          → all roles
+ *   - /dashboard/analysis     → operador, administrador, desenvolvedor
+ *   - /dashboard/assessment   → operador, administrador, desenvolvedor
+ *   - /dashboard/results      → operador, administrador, desenvolvedor
+ *   - /dashboard/export       → operador, administrador, desenvolvedor
+ *   - /dashboard/screening    → operador, administrador, desenvolvedor
+ *   - /dashboard/data/*       → operador, administrador, desenvolvedor
+ *   - /dashboard/admin/*      → administrador, desenvolvedor
+ *   - /dashboard/dev/*        → desenvolvedor
  */
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import type { UserRole } from '@/types';
@@ -33,14 +33,18 @@ import { ApiHealthPage } from '@/features/dev/pages/ApiHealthPage';
 import { ProcessingLogsPage } from '@/features/dev/pages/ProcessingLogsPage';
 import { DebugPage } from '@/features/dev/pages/DebugPage';
 
-const ANALYSIS_ROLES: UserRole[] = ['coordenador', 'supervisor', 'operador', 'desenvolvedor'];
-const ASSESSMENT_ROLES: UserRole[] = ['coordenador', 'gestor', 'operador', 'desenvolvedor'];
-const RESULTS_ROLES: UserRole[] = ['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor'];
-const SCREENING_ROLES: UserRole[] = ['coordenador', 'gestor', 'operador'];
-const DATA_IMPORT_ROLES: UserRole[] = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador'];
-const USER_ADMIN_ROLES: UserRole[] = ['coordenador', 'gestor', 'supervisor', 'desenvolvedor'];
-const LAYER_ADMIN_ROLES: UserRole[] = ['coordenador', 'administrador', 'desenvolvedor'];
-const DEV_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
+// Operational pages: any operational role.
+const OPERATIONAL_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
+const ANALYSIS_ROLES = OPERATIONAL_ROLES;
+const ASSESSMENT_ROLES = OPERATIONAL_ROLES;
+const RESULTS_ROLES = OPERATIONAL_ROLES;
+const SCREENING_ROLES = OPERATIONAL_ROLES;
+const DATA_IMPORT_ROLES = OPERATIONAL_ROLES;
+// Admin pages: administrator and developer.
+const USER_ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
+const LAYER_ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
+// Developer tools: developer only.
+const DEV_ROLES: UserRole[] = ['desenvolvedor'];
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },

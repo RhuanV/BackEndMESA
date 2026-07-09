@@ -23,7 +23,7 @@ Stack:
 Current capabilities:
 
 - Authentication with JWT and password hashing (bcrypt)
-- Role-Based Access Control (RBAC) with 6 profiles, enforced on backend and frontend
+- Role-Based Access Control (RBAC) with 3 roles, enforced on backend and frontend
 - Spatial screening of candidate sites (viável / intermediário / restrito)
 - Map layer delivery as GeoJSON (with zoom/bbox filtering) and layer source configuration
 - User shapefile upload and ingestion (HU-31)
@@ -125,6 +125,8 @@ this single file.
 | `FRONTEND_PORT` | React/Vite dev server port | `5173` |
 | `SECRET_KEY` | JWT signing key (unique per environment, do not version) | `change_for_a_strong_password` |
 | `ALGORITHM` | JWT signing algorithm | `HS256` |
+| `APP_ENV` | `sandbox` = developer role has full write access; otherwise (`production`) the `desenvolvedor` role is read-only and audited | `sandbox` |
+| `CORS_ORIGINS` | Comma-separated allowed CORS origins; empty = local frontend only | *(empty)* |
 | `AIRFLOW_USER` | Airflow Web UI admin username | `admin` |
 | `AIRFLOW_PASS` | Airflow Web UI admin password | `admin` |
 | `SHAPEFILE_MAX_UPLOAD_MB` | Max shapefile upload size (MB) | `500` |
@@ -254,8 +256,8 @@ PostgreSQL/PostGIS instance (set `DB_HOST=localhost`):
 ```bash
 python -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
-pip install -r backend/requirements.txt
-PYTHONPATH=backend/src uvicorn geoavia_backend.main:app --reload
+pip install -e ./backend             # editable install (reads backend/requirements.txt)
+uvicorn geoavia_backend.main:app --reload
 ```
 
 ## Database Migrations
@@ -316,19 +318,21 @@ full client-facing paths. "Auth" = requires a Bearer token; "Roles" = additional
 | GET | `/health` | — | — |
 | POST | `/login` | — | — |
 | GET | `/users` | ✓ | — |
-| POST | `/users/signup` | ✓ | coordenador, supervisor, desenvolvedor |
-| PUT | `/users/{user_id}/username` | ✓ | coordenador, supervisor, desenvolvedor |
+| POST | `/users/signup` | ✓ | administrador, desenvolvedor |
+| PUT | `/users/{user_id}/username` | ✓ | administrador, desenvolvedor |
 | PUT | `/users/{user_id}/password` | ✓ | DEV_USER only |
-| DELETE | `/users/{user_id}` | ✓ | coordenador, supervisor, desenvolvedor |
+| DELETE | `/users/{user_id}` | ✓ | administrador, desenvolvedor |
+| POST | `/users/{user_id}/recovery-code` | ✓ | administrador, desenvolvedor |
+| POST | `/password-reset` | — | public (uses an admin-issued recovery code) |
 | GET | `/layers/{layer_name}` | ✓ | — |
 | GET | `/layers/{layer_name}/source` | ✓ | — |
-| PUT | `/layers/{layer_name}/source` | ✓ | coordenador, administrador |
-| POST | `/screening` | ✓ | coordenador, gestor, operador, administrador, desenvolvedor |
-| POST | `/airflow/trigger/{dag_id}` | ✓ | coordenador, operador, administrador, desenvolvedor |
-| GET | `/airflow/triggers` | ✓ | coordenador, operador, administrador, desenvolvedor |
-| POST | `/shapefiles/upload` | ✓ | coordenador, operador, administrador |
-| GET | `/shapefiles` | ✓ | coordenador, operador, administrador |
-| GET | `/shapefiles/{upload_id}/features` | ✓ | coordenador, operador, administrador |
+| PUT | `/layers/{layer_name}/source` | ✓ | administrador, desenvolvedor |
+| POST | `/screening` | ✓ | operador, administrador, desenvolvedor |
+| POST | `/airflow/trigger/{dag_id}` | ✓ | operador, administrador, desenvolvedor |
+| GET | `/airflow/triggers` | ✓ | operador, administrador, desenvolvedor |
+| POST | `/shapefiles/upload` | ✓ | operador, administrador, desenvolvedor |
+| GET | `/shapefiles` | ✓ | operador, administrador, desenvolvedor |
+| GET | `/shapefiles/{upload_id}/features` | ✓ | operador, administrador, desenvolvedor |
 | POST | `/assessments` | ✓ | — |
 | GET | `/assessments` | ✓ | — |
 | GET | `/ranking` | ✓ | — |
@@ -350,42 +354,47 @@ Interactive documentation is available at http://localhost:8000/docs (Swagger).
 Token validation and role checks live in `core/auth.py` (`obtain_current_user`,
 `require_roles`); tokens are signed with `SECRET_KEY` using `ALGORITHM` (HS256).
 
+### Password recovery
+
+There is no email/SMTP integration. An **administrador** generates a single-use
+recovery code for a user via `POST /users/{user_id}/recovery-code` and relays it
+out-of-band (the code is returned once; only its hash is stored and it expires in
+~30 minutes). The user then opens the login page's **"Esqueci minha senha"** and
+enters their username + the code + a new password (`POST /password-reset`).
+
 ## Access Control (RBAC)
 
-The system enforces RBAC with 6 non-hierarchical profiles (each role is an explicit set
-of permissions). The canonical role strings are defined in
+The system enforces RBAC with **3 roles**, defined once in
 `backend/src/geoavia_backend/core/roles.py` and constrained in the database
-(`alembic/versions/0009_update_user_roles.py`).
+(`alembic/versions/0016_migrate_roles_to_three.py`). See
+[ADR 0004](docs/adr/0004-rbac-three-roles-and-sandbox.md).
 
-### 1. Profiles
+### 1. Roles
 
-| Profile | Description |
+| Role | Description |
 | :--- | :--- |
-| **Desenvolvedor** | Developer/root profile. Bound to `DEV_USER` in `.env`; protected (cannot be renamed or deleted). Full access including dev tools. |
-| **Coordenador** | Full administrative and operational access. |
-| **Supervisor** | User management and analysis setup. |
-| **Gestor** | Evaluation and decision-making (assessments, results, exports). |
-| **Operador** | Core technical user (analysis, assessment, results, exports). |
-| **Administrador** | Infrastructure/dev actions (layer config, audit, dev tools). |
+| **operador** | Operates the program: view maps/layers, run analyses, create assessments, view results, export, screening, upload shapefiles. No user management, no admin config, no developer tools. |
+| **administrador** | Everything an operador does, **plus** user management (create/update/delete users, issue password-recovery codes), layer/source configuration and audit. No developer tools. |
+| **desenvolvedor** | Everything, including developer tools — but **sandboxed** by `APP_ENV`: in `production` the role is read-only and its write attempts are audited/blocked; in `sandbox` it has full write access. Bound to `DEV_USER`; protected (cannot be renamed or deleted). |
 
-> The signup endpoint can only assign `{ coordenador, operador, administrador }`. The
-> `desenvolvedor` role is normally created only for the bootstrapped `DEV_USER`.
+> The signup endpoint can assign `{ operador, administrador }`. Granting the
+> privileged `desenvolvedor` role is restricted to another `desenvolvedor`.
 
 ### 2. Frontend page gating (`frontend/src/app/Router.tsx`)
 
-- `/dashboard/map` — all profiles
-- `/dashboard/analysis` — coordenador, supervisor, operador, desenvolvedor
-- `/dashboard/assessment` — coordenador, gestor, operador, desenvolvedor
-- `/dashboard/results` — coordenador, gestor, supervisor, operador, desenvolvedor
-- `/dashboard/export` — coordenador, gestor, supervisor, operador, desenvolvedor
-- `/dashboard/screening` — coordenador, gestor, operador
-- `/dashboard/data/shapefiles` — coordenador, gestor, supervisor, operador, administrador
-- `/dashboard/admin/users` — coordenador, gestor, supervisor, desenvolvedor
-- `/dashboard/admin/layers` — coordenador, administrador, desenvolvedor
-- `/dashboard/admin/audit` — coordenador, administrador, desenvolvedor
-- `/dashboard/dev/health` — administrador, desenvolvedor
-- `/dashboard/dev/logs` — administrador, desenvolvedor
-- `/dashboard/dev/debug` — administrador, desenvolvedor
+- `/dashboard/map` — all roles
+- `/dashboard/analysis` — operador, administrador, desenvolvedor
+- `/dashboard/assessment` — operador, administrador, desenvolvedor
+- `/dashboard/results` — operador, administrador, desenvolvedor
+- `/dashboard/export` — operador, administrador, desenvolvedor
+- `/dashboard/screening` — operador, administrador, desenvolvedor
+- `/dashboard/data/shapefiles` — operador, administrador, desenvolvedor
+- `/dashboard/admin/users` — administrador, desenvolvedor
+- `/dashboard/admin/layers` — administrador, desenvolvedor
+- `/dashboard/admin/audit` — administrador, desenvolvedor
+- `/dashboard/dev/health` — desenvolvedor
+- `/dashboard/dev/logs` — desenvolvedor
+- `/dashboard/dev/debug` — desenvolvedor
 
 ## Common Errors / Troubleshooting
 
@@ -403,6 +412,7 @@ of permissions). The canonical role strings are defined in
 | Frontend: blank page / cannot reach the API | Backend not up or wrong `API_PORT` | Ensure the backend is healthy; the Vite proxy (`frontend/vite.config.ts`) targets the API port. Check the browser console |
 | `npm install` not run / `node_modules` missing | Fresh checkout | `start.sh` installs automatically; otherwise run `npm install` in `frontend/` |
 | DBeaver/external client cannot connect | Wrong host/port | Use `localhost:5433` (`DB_EXT_PORT`), db `geoavia_main_db`, user `postgres`, password from `DB_PASS` |
+| A `desenvolvedor` user gets 403 on every write (POST/PUT/DELETE) | `APP_ENV=production` makes the developer role read-only (sandbox mode) | Use an `administrador` account for writes, or set `APP_ENV=sandbox` in a non-production environment |
 
 ## Testing
 

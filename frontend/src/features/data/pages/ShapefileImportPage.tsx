@@ -1,7 +1,7 @@
 /**
  * ShapefileImportPage — Upload de shapefiles (Sprint 5 HU-31).
  *
- * Acesso: operador, supervisor, gestor, coordenador, administrador (gate no router).
+ * Acesso: operador, administrador, desenvolvedor (gate no router).
  * Backend reprojeta automaticamente pra SIRGAS 2000 (EPSG:4674).
  */
 import { useState, useEffect, useCallback } from 'react';
