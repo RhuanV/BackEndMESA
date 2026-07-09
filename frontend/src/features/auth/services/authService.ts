@@ -46,6 +46,23 @@ export async function loginUser(
 }
 
 /**
+ * Resets a password using an admin-issued recovery code (public endpoint).
+ * The user provides their username, the code relayed by an administrator, and a
+ * new password. Errors from the backend are intentionally generic.
+ */
+export async function resetPasswordByCode(
+  username: string,
+  code: string,
+  newPassword: string
+): Promise<void> {
+  await apiClient.post('/password-reset', {
+    username,
+    code,
+    new_password: newPassword,
+  });
+}
+
+/**
  * Validates the current session by calling a protected endpoint.
  * Used on app mount to check if the user is still authenticated.
  */
@@ -89,7 +106,7 @@ function parseJwtPayload(token: string): { sub: string; username: string; role: 
       'role' in payload
     ) {
       const p = payload as { sub: string; username: string; role: string };
-      const validRoles = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador', 'desenvolvedor'] as const;
+      const validRoles = ['operador', 'administrador', 'desenvolvedor'] as const;
       const role = validRoles.includes(p.role as AuthUser['role'])
         ? (p.role as AuthUser['role'])
         : 'operador';

@@ -4,14 +4,17 @@
  * Professional governmental design with GeoAvia branding.
  * Redirects to dashboard if already authenticated.
  */
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { LoginForm } from '@/features/auth/components/LoginForm';
+import { PasswordResetForm } from '@/features/auth/components/PasswordResetForm';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { LoadingSpinner } from '@/components/ui';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [showReset, setShowReset] = useState(false);
 
   if (isLoading) {
     return (
@@ -97,14 +100,20 @@ export function LoginPage() {
 
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-neutral-900">
-              Acesso ao Sistema
+              {showReset ? 'Recuperar Senha' : 'Acesso ao Sistema'}
             </h2>
             <p className="mt-2 text-sm text-neutral-500">
-              Entre com suas credenciais para acessar o painel.
+              {showReset
+                ? 'Redefina sua senha com o código fornecido por um administrador.'
+                : 'Entre com suas credenciais para acessar o painel.'}
             </p>
           </div>
 
-          <LoginForm />
+          {showReset ? (
+            <PasswordResetForm onBackToLogin={() => setShowReset(false)} />
+          ) : (
+            <LoginForm onForgotPassword={() => setShowReset(true)} />
+          )}
 
           <p className="mt-8 text-center text-xs text-neutral-400">
             Sistema restrito a usuários autorizados.

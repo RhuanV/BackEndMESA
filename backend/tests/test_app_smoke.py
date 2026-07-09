@@ -16,6 +16,8 @@ EXPECTED_PATHS = {
     "/users/{user_id}/username",
     "/users/{user_id}",
     "/users/{user_id}/password",
+    "/users/{user_id}/recovery-code",
+    "/password-reset",
     "/layers/{layer_name}",
     "/layers/{layer_name}/source",
     "/screening",
