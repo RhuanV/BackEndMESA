@@ -18,7 +18,7 @@ import {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthContextType, AuthUser } from '@/types/auth';
+import type { AuthContextType, AuthUser } from '@/types';
 import { loginUser, validateSession } from '@/features/auth/services/authService';
 import apiClient from '@/lib/api/axiosInstance';
 
@@ -92,10 +92,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-/**
- * Hook to access authentication context.
- * Throws if used outside AuthProvider — fail-fast for developer safety.
- */
+// Accesses the auth context; throws an error if used outside the AuthProvider.
+// eslint-disable-next-line react-refresh/only-export-components -- hook exposed alongside the provider
 export function useAuthContext(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {

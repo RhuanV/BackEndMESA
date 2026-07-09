@@ -7,7 +7,7 @@
 import { Navigate } from 'react-router-dom';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { LoadingSpinner } from '@/components/ui';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 
 export function LoginPage() {

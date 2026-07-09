@@ -6,8 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button, Input } from '@/components/ui';
 import {
   listShapefiles,
   uploadShapefile,
@@ -40,6 +39,7 @@ export function ShapefileImportPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial list load on mount
     void refreshList();
   }, [refreshList]);
 
@@ -74,8 +74,8 @@ export function ShapefileImportPage() {
       setFile(null);
       setLayerName('');
       setDescription('');
-      (document.getElementById('shapefile-input') as HTMLInputElement | null)?.value &&
-        ((document.getElementById('shapefile-input') as HTMLInputElement).value = '');
+      const fileInput = document.getElementById('shapefile-input') as HTMLInputElement | null;
+      if (fileInput) fileInput.value = '';
       await refreshList();
     } catch (err) {
       const detail =

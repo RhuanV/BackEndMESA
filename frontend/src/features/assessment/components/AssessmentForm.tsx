@@ -1,23 +1,11 @@
-/**
- * AssessmentForm — MESA site assessment form.
- *
- * Integrates React Hook Form with Zod validation for the MESA classificatory
- * criteria from the Manual de Apoio 2021.
- *
- * Security:
- * - All fields validated by strict Zod schema (type, bounds, regex)
- * - Prevents XSS payloads, negative values, and payload overload
- * - Error messages are user-friendly (Portuguese)
- * - No sensitive data exposed in the DOM
- */
+/** MESA site assessment form (React Hook Form + Zod validation). */
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { assessmentSchema } from '@/features/assessment/schemas/assessmentSchema';
 import type { AssessmentFormData } from '@/features/assessment/schemas/assessmentSchema';
 import { useAssessment } from '@/features/assessment/hooks/useAssessment';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button, Input } from '@/components/ui';
 
 export function AssessmentForm() {
   const { submit, isSubmitting, submitSuccess, error, reset } = useAssessment();
@@ -46,9 +34,9 @@ export function AssessmentForm() {
     mode: 'onBlur',
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() is not memoizable by the React Compiler
   const hasObstacles = watch('hasObstacles');
 
-  // Reset form after successful submission
   useEffect(() => {
     if (submitSuccess) {
       resetForm();
@@ -68,7 +56,6 @@ export function AssessmentForm() {
       noValidate
       aria-label="Formulário de avaliação MESA"
     >
-      {/* Success message */}
       {submitSuccess && (
         <div
           role="alert"
@@ -78,7 +65,6 @@ export function AssessmentForm() {
         </div>
       )}
 
-      {/* Server error */}
       {error && (
         <div
           role="alert"
@@ -88,7 +74,6 @@ export function AssessmentForm() {
         </div>
       )}
 
-      {/* Site Name */}
       <Input
         label="Nome do Sítio"
         placeholder="Ex: Sítio Aeroportuário Norte"
@@ -98,13 +83,11 @@ export function AssessmentForm() {
         {...register('siteName')}
       />
 
-      {/* Classificatory Criteria Section */}
       <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
         <legend className="px-2 text-sm font-semibold text-primary-700">
           Critérios Classificatórios MESA
         </legend>
 
-        {/* Average Slope */}
         <Input
           label="Declividade Média (%)"
           type="number"
@@ -118,7 +101,6 @@ export function AssessmentForm() {
           {...register('averageSlope', { valueAsNumber: true })}
         />
 
-        {/* Urban Center Distance */}
         <Input
           label="Distância de Centros Urbanos (km)"
           type="number"
@@ -132,7 +114,6 @@ export function AssessmentForm() {
           {...register('urbanCenterDistance', { valueAsNumber: true })}
         />
 
-        {/* Obstacles */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <input
@@ -161,7 +142,6 @@ export function AssessmentForm() {
           )}
         </div>
 
-        {/* Estimated Cost */}
         <Input
           label="Custo Estimado (R$)"
           type="number"
@@ -175,7 +155,6 @@ export function AssessmentForm() {
         />
       </fieldset>
 
-      {/* Geographic Coordinates */}
       <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
         <legend className="px-2 text-sm font-semibold text-primary-700">
           Coordenadas Geográficas
@@ -208,7 +187,6 @@ export function AssessmentForm() {
         </div>
       </fieldset>
 
-      {/* Site Geometry */}
       <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
         <legend className="px-2 text-sm font-semibold text-primary-700">
           Geometria do Sítio
@@ -259,7 +237,6 @@ export function AssessmentForm() {
         />
       </fieldset>
 
-      {/* Submit */}
       <Button
         type="submit"
         isLoading={isSubmitting}

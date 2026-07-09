@@ -1,8 +1,8 @@
 /**
  * Authentication and RBAC type definitions for GeoAvia.
  *
- * RBAC Model: 5 perfis MESA-A (Sprint 3). Cada perfil tem permissões explícitas;
- * não há herança entre eles.
+ * RBAC Model: 5 MESA-A roles (Sprint 3). Each role has explicit permissions;
+ * there is no inheritance between them.
  *
  * Security note: No sensitive data (tokens, passwords) is stored in these types.
  * Tokens are managed exclusively via HttpOnly cookies by the backend.
@@ -36,7 +36,7 @@ export type Permission =
 
 /**
  * Per-role permission sets — Sprint 3.
- * Baseado nas responsabilidades de cada perfil no documento da PO.
+ * Based on each role's responsibilities in the PO document.
  */
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   coordenador: [

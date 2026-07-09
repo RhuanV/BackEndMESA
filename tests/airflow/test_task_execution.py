@@ -1,14 +1,4 @@
-"""
-Test Suite: Task Execution Isolation
-
-User Story: As a developer, I want to execute tasks individually, 
-to validate their logic without the need to execute the entire DAG.
-
-This suite dynamically discovers all DAGs and Tasks, categorizing them into
-different execution strategies (Check, Extract, Transform, Load). 
-It uses Mocks to isolate tasks from external dependencies (network, database, 
-heavy file I/O) ensuring fast and reliable unit testing.
-"""
+"""Verify the isolated execution of tasks (Check, Extract, Transform, Load) using mocks for external dependencies."""
 import pytest
 import subprocess
 from unittest import mock
@@ -17,7 +7,7 @@ from airflow.utils import timezone
 from airflow.utils.state import State
 from airflow.utils.session import create_session
 
-# Load DAGs dynamically at pytest collection time
+# Load the DAGs dynamically at pytest collection time
 dag_bag_instance = DagBag(include_examples=False)
 
 @pytest.fixture(scope="module")
@@ -44,9 +34,7 @@ for dag_id, dag in dag_bag_instance.dags.items():
             LOAD_TASKS.append((dag_id, task_id))
 
 def _run_isolated_task(dag_id, task_id, dag_bag):
-    """
-    Helper function to abstract the creation and isolated execution of a TaskInstance.
-    """
+    """Abstract the creation and isolated execution of a TaskInstance."""
     dag = dag_bag.get_dag(dag_id)
     assert dag is not None, f"DAG '{dag_id}' not found."
     
@@ -81,7 +69,7 @@ def _run_isolated_task(dag_id, task_id, dag_bag):
 
 
 # =====================================================================
-# Test Cases
+# Test cases
 # =====================================================================
 
 @pytest.mark.parametrize("dag_id, task_id", CHECK_TASKS)
@@ -173,7 +161,7 @@ def test_gov_transform_tasks(mock_xcom, mock_open, mock_walk, mock_read_file, da
 @mock.patch('builtins.open', new_callable=mock.mock_open, read_data='[]')
 @mock.patch.object(TaskInstance, 'xcom_pull', return_value='/tmp/dummy.json')
 def test_load_tasks(mock_xcom, mock_open, mock_get_conn, dag_id, task_id, dag_bag):
-    # Mocking PostgresHook.get_conn totally shields the actual database
+    # Mocking PostgresHook.get_conn fully isolates the real database
     mock_conn = mock.Mock()
     mock_cursor = mock.Mock()
     mock_conn.cursor.return_value = mock_cursor
@@ -185,14 +173,16 @@ def test_load_tasks(mock_xcom, mock_open, mock_get_conn, dag_id, task_id, dag_ba
     
 @mock.patch('os.path.exists', return_value=True)
 @mock.patch('subprocess.run')
-def test_update_osm_diffs_task(mock_subproc, mock_exists, dag_bag):
-    # Mock the return values of the pyosmium terminal output to trick Airflow into a success path
+@mock.patch('shutil.copy2')
+@mock.patch('os.remove')
+def test_update_osm_diffs_task(mock_remove, mock_copy2, mock_subproc, mock_exists, dag_bag):
+    # Mock the pyosmium terminal output to drive Airflow down the success path
     mock_subproc.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout='ok', stderr='')
     state = _run_isolated_task('update_osm_diffs', 'update_osm_diffs', dag_bag)
     assert state == State.SUCCESS, "Update OSM diffs task failed"
 
 
-# Dynamic fallback to test the download DAG if it exists in your directory
+# Test the download DAG if it exists in the directory
 def test_download_geofabrik_data_task(dag_bag):
     dag_id = 'download_geofabrik_data'
     if dag_id in dag_bag.dags:

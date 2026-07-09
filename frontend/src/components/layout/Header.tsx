@@ -8,7 +8,7 @@
  * - Sidebar toggle for mobile
  */
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui';
 import { APP_NAME } from '@/lib/constants';
 
 interface HeaderProps {

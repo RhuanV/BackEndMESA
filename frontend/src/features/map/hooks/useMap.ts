@@ -120,11 +120,9 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
       const m = mapRef.current;
       if (!m) return;
 
-      console.log('[Map] onLoad starting. isStyleLoaded:', m.isStyleLoaded(), 'loaded:', m.loaded());
       try {
         // 1) Add OSM source and layer if not present
         if (!m.getSource('osm')) {
-          console.log('[Map] Adding OSM source...');
           m.addSource('osm', {
             type: 'raster',
             tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
@@ -134,7 +132,6 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
           });
         }
         if (!m.getLayer('osm')) {
-          console.log('[Map] Adding OSM layer...');
           m.addLayer({
             id: 'osm',
             type: 'raster',
@@ -147,7 +144,6 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
 
         // 2) Add Google Hybrid source and layer if not present
         if (!m.getSource('google-hybrid')) {
-          console.log('[Map] Adding Google Hybrid source...');
           m.addSource('google-hybrid', {
             type: 'raster',
             tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
@@ -157,7 +153,6 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
           });
         }
         if (!m.getLayer('google-hybrid')) {
-          console.log('[Map] Adding Google Hybrid layer...');
           m.addLayer({
             id: 'google-hybrid',
             type: 'raster',
@@ -167,7 +162,6 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
             },
           });
         }
-        console.log('[Map] onLoad completed successfully.');
       } catch (err) {
         console.error('[Map] Error in onLoad style/layers injection:', err);
       } finally {

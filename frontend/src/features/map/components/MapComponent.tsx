@@ -1,18 +1,4 @@
-/**
- * MapComponent — Interactive geospatial map with MESA layer support.
- *
- * Sprint 2 enhancements:
- * - Brazil maxBounds (SIRGAS 2000 labeled)
- * - Layer panel with tree structure
- * - Metadata modal for layer info
- * - Region selector with flyTo
- * - Base map switching (BDG/Satellite/OSM)
- * - CRS indicator overlay
- * - Debug coordinate display (dev role only)
- *
- * Sprint 5 addendum:
- * - User-uploaded shapefile layers rendered via fetchShapefileFeatures()
- */
+/** Interactive geospatial map: MESA vector layers + user-uploaded shapefiles. */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useMap } from '@/features/map/hooks/useMap';

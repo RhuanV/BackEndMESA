@@ -5,7 +5,7 @@
  * All data is validated by Zod before reaching this service.
  */
 import apiClient from '@/lib/api/axiosInstance';
-import type { MesaAssessment } from '@/types/mesa';
+import type { MesaAssessment } from '@/types';
 import type { AssessmentFormData } from '@/features/assessment/schemas/assessmentSchema';
 
 /**

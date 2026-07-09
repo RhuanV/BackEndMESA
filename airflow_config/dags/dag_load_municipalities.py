@@ -1,7 +1,5 @@
 """
-DAG to automate the download, extraction, and database insertion of Municipality Boundaries.
-Downloads a Shapefile from the IBGE FTP, processes it using GeoPandas, 
-and loads it into the mesa_a.vetor_limites_municipais PostGIS table.
+Loads IBGE municipality boundaries into the mesa_a.vetor_limites_municipais table.
 """
 import os
 import zipfile
@@ -17,24 +15,18 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 import geopandas as gpd
 from psycopg2.extras import execute_batch
 
-# Dataset emitted when municipality_boundaries is loaded. Consumed by
+# Dataset emitted when the municipality boundaries are loaded; consumed by
 # dag_refresh_resolution_views to keep the simplified views in sync.
-municipalities_dataset = Dataset("postgres://geoavia_main_db/municipality_boundaries")
+municipalities_dataset = Dataset("postgres://db/geoavia_main_db/public/municipality_boundaries")
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
-# Import URLs from the centralized configuration module (now located in plugins/)
 from config_urls import IBGE_MUNICIPALITIES_URL
 
 def extract_municipalities(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads the shapefile ZIP, extracts it, and returns the path to the extracted directory.
-    """
-    # Create a unique temporary directory based on the DAG run ID
+    """Extract: downloads and unpacks the shapefile ZIP and returns the extracted directory path."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_municipalities_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -57,10 +49,7 @@ def extract_municipalities(**kwargs) -> str:
     return extract_path
 
 def transform_municipalities(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads the shapefile with GeoPandas, extracts fields, and saves to a temporary JSON.
-    """
+    """Transform: reads the shapefile, extracts the fields and saves them to a temporary JSON."""
     ti = kwargs['ti']
     extract_path = ti.xcom_pull(task_ids='extract_municipalities')
     
@@ -95,10 +84,7 @@ def transform_municipalities(**kwargs) -> str:
     return transformed_file
 
 def load_municipalities(**kwargs) -> None:
-    """
-    Task 3: Load
-    Reads the JSON file, inserts data into PostGIS, and cleans up the temporary directory.
-    """
+    """Load: reads the JSON, inserts the data into PostGIS and cleans up the temporary directory."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_municipalities')
     
@@ -129,7 +115,6 @@ def load_municipalities(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded municipality boundaries into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -137,7 +122,7 @@ def load_municipalities(**kwargs) -> None:
 with DAG(
     dag_id="load_municipality_boundaries",
     start_date=datetime(2024, 1, 1),
-    schedule=None, # Runs manually
+    schedule=None,  # Runs manually
     catchup=False,
     tags=["geodata", "ibge", "municipalities"]
 ) as dag:

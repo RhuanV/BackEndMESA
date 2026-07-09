@@ -1,9 +1,5 @@
-/**
- * useAnalysis — Hook for MESA analysis lifecycle.
- *
- * Manages: submission, progress polling with exponential backoff,
- * result storage, and error handling.
- */
+// Hook for the MESA analysis lifecycle: submission, progress polling with
+// exponential backoff, result storage and error handling.
 import { useState, useCallback, useRef } from 'react';
 import {
   submitAnalysis,
@@ -46,6 +42,7 @@ export function useAnalysis() {
         // Exponential backoff: 1s → 2s → 4s → 8s, max 8s
         const nextInterval = Math.min(interval * 2, 8000);
         pollingRef.current = setTimeout(() => {
+          // eslint-disable-next-line react-hooks/immutability -- intentional polling recursion; pollStatus already exists when the timeout fires
           void pollStatus(id, nextInterval);
         }, nextInterval);
       } catch {

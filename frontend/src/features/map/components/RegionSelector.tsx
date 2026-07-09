@@ -5,7 +5,7 @@
  * State data comes from a static JSON file (no network dependency).
  */
 import { useState, useCallback } from 'react';
-import { Select } from '@/components/ui/Select';
+import { Select } from '@/components/ui';
 import { STATE_CENTERS } from '@/features/map/constants/bounds';
 import estadosData from '@/features/map/data/estados.json';
 

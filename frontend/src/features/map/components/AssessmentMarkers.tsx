@@ -1,15 +1,9 @@
 /**
- * AssessmentMarkers — renders MESA assessments as colored rectangles on the map.
+ * Renders MESA assessment sites as score-coloured polygons (MapLibre
+ * GeoJSON source + fill/line/symbol layers).
  *
- * Sprint 5 rework: each site is now stored as a POLYGON (centroid + width + height
- * + angle). We use a MapLibre GeoJSON source + fill/line/symbol layers instead of
- * individual Marker pins so the geometry is rendered faithfully at all zoom levels.
- *
- * Score colour bands:
- *   ≥ 80 → green-600   (#16a34a)
- *   ≥ 60 → yellow-500  (#eab308)
- *   ≥ 40 → orange-500  (#f97316)
- *   <  40 → red-600    (#dc2626)
+ * Score colour bands: ≥80 green (#16a34a), ≥60 yellow (#eab308),
+ * ≥40 orange (#f97316), <40 red (#dc2626).
  */
 import { useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
@@ -41,7 +35,6 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
       .then((results) => {
         if (cancelled) return;
 
-        // Build a GeoJSON FeatureCollection from ranking results
         const features: Feature[] = results
           .filter((r) => r.geometry)
           .map((r) => {
@@ -70,14 +63,12 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
 
         const geojson: FeatureCollection = { type: 'FeatureCollection', features };
 
-        // Upsert source
         const existing = m.getSource(SOURCE_ID);
         if (existing) {
           (existing as maplibregl.GeoJSONSource).setData(geojson);
         } else {
           m.addSource(SOURCE_ID, { type: 'geojson', data: geojson });
 
-          // Semi-transparent fill coloured by score
           m.addLayer({
             id: FILL_LAYER,
             type: 'fill',
@@ -88,7 +79,6 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
             },
           });
 
-          // Solid border
           m.addLayer({
             id: LINE_LAYER,
             type: 'line',
@@ -99,7 +89,6 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
             },
           });
 
-          // Score label in centre of polygon
           m.addLayer({
             id: LABEL_LAYER,
             type: 'symbol',
@@ -119,7 +108,6 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
           });
         }
 
-        // Popup on click
         m.on('click', FILL_LAYER, (e) => {
           const props = e.features?.[0]?.properties;
           if (!props) return;
@@ -128,13 +116,13 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
             .setHTML(`
               <div style="font-family:Inter,system-ui,sans-serif;padding:4px 2px;min-width:200px">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${String(props.scoreColor)};"></span>
-                  <strong style="font-size:13px;color:#111827">#${String(props.rank)} — ${String(props.siteName)}</strong>
+                  <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${String(props['scoreColor'])};"></span>
+                  <strong style="font-size:13px;color:#111827">#${String(props['rank'])} — ${String(props['siteName'])}</strong>
                 </div>
                 <div style="font-size:12px;color:#4b5563;line-height:1.6">
-                  <div><b>Score total:</b> ${Number(props.totalScore).toFixed(1)}</div>
-                  <div><b>Declividade:</b> ${Number(props.slopeScore).toFixed(0)} &nbsp; <b>Distância:</b> ${Number(props.distanceScore).toFixed(0)}</div>
-                  <div><b>Obstáculos:</b> ${Number(props.obstacleScore).toFixed(0)} &nbsp; <b>Custo:</b> ${Number(props.costScore).toFixed(0)}</div>
+                  <div><b>Score total:</b> ${Number(props['totalScore']).toFixed(1)}</div>
+                  <div><b>Declividade:</b> ${Number(props['slopeScore']).toFixed(0)} &nbsp; <b>Distância:</b> ${Number(props['distanceScore']).toFixed(0)}</div>
+                  <div><b>Obstáculos:</b> ${Number(props['obstacleScore']).toFixed(0)} &nbsp; <b>Custo:</b> ${Number(props['costScore']).toFixed(0)}</div>
                 </div>
               </div>`)
             .addTo(m);
@@ -151,14 +139,16 @@ export function AssessmentMarkers({ map, isMapReady, refreshKey = 0 }: Assessmen
 
     return () => {
       cancelled = true;
-      // Layers and source persist intentionally across re-renders; they are
-      // refreshed via setData() on the next run. Full cleanup on unmount:
-      if (!map.current) return;
-      const mm = map.current;
+      // Layers and source intentionally persist across re-renders; they are updated
+      // via setData() on the next run. We re-read map.current (not the captured `m`):
+      // when the map is destroyed the ref becomes null and we must not touch a removed map.
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional re-read: null signals a removed map
+      const live = map.current;
+      if (!live) return;
       [LABEL_LAYER, LINE_LAYER, FILL_LAYER].forEach((id) => {
-        if (mm.getLayer(id)) mm.removeLayer(id);
+        if (live.getLayer(id)) live.removeLayer(id);
       });
-      if (mm.getSource(SOURCE_ID)) mm.removeSource(SOURCE_ID);
+      if (live.getSource(SOURCE_ID)) live.removeSource(SOURCE_ID);
     };
   }, [map, isMapReady, refreshKey]);
 

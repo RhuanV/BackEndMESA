@@ -1,7 +1,5 @@
 """
-DAG to automate the download, extraction, and database insertion of Brazil's CAR Property Areas (SICAR).
-Downloads Shapefiles for all 27 Brazilian states from the geoserver.car.gov.br WFS service,
-processes them using GeoPandas, and loads them into the mesa_a.vetor_gov_sicar_imoveis PostGIS table.
+Loads CAR (SICAR) properties from geoserver.car.gov.br into the mesa_a.vetor_gov_sicar_imoveis table.
 """
 import os
 import zipfile
@@ -30,14 +28,12 @@ class CustomSSLAdapter(HTTPAdapter):
         kwargs["ssl_context"] = ssl_context
         return super().init_poolmanager(*args, **kwargs)
 
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
-# Import URL template from the centralized configuration module
 from config_urls import SICAR_STATE_URL_TEMPLATE
 
-# List of all 27 Brazilian States / Federative Units
+# The 27 federative units
 ESTADOS = [
     'ac', 'al', 'ap', 'am', 'ba', 'ce', 'df', 'es', 'go', 'ma', 
     'mt', 'ms', 'mg', 'pa', 'pb', 'pr', 'pe', 'pi', 'rj', 'rn', 
@@ -45,10 +41,7 @@ ESTADOS = [
 ]
 
 def extract_sicar(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads the shapefile ZIP for each of the 27 states and extracts them to subdirectories.
-    """
+    """Extract: downloads and unpacks the shapefile ZIP for each of the 27 states."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_gov_sicar_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -69,7 +62,7 @@ def extract_sicar(**kwargs) -> str:
         
         logging.info(f"Downloading SICAR data for {state_upper} from {url}...")
         try:
-            # verify=False is used because government geoservers often have certificate authority issues
+            # verify=False: government geoservers often have certificate authority issues
             response = session.get(url, stream=True, verify=False, headers=headers, timeout=180)
             response.raise_for_status()
             
@@ -81,7 +74,6 @@ def extract_sicar(**kwargs) -> str:
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(extract_path)
                 
-            # Remove zip file to save space
             os.remove(zip_path)
             
         except Exception as e:
@@ -91,11 +83,7 @@ def extract_sicar(**kwargs) -> str:
     return work_dir
 
 def transform_sicar(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads each state's shapefile with GeoPandas, normalizes columns to Portuguese, 
-    and saves a combined JSON representation.
-    """
+    """Transform: reads each state's shapefile, normalizes the columns and saves a combined JSON."""
     ti = kwargs['ti']
     work_dir = ti.xcom_pull(task_ids='extract_sicar')
     
@@ -136,13 +124,12 @@ def transform_sicar(**kwargs) -> str:
             if isinstance(codigo_imovel, str):
                 codigo_imovel = codigo_imovel.strip()
             else:
-                continue # Skip if unique key is missing
+                continue  # skip if the unique key is missing
                 
             status_imovel = row.get('status_imo')
             if isinstance(status_imovel, str):
                 status_imovel = status_imovel.strip()
                 
-            # Parse dates
             data_criacao = row.get('dat_criaca')
             if pd.isnull(data_criacao):
                 data_criacao = None
@@ -234,10 +221,7 @@ def transform_sicar(**kwargs) -> str:
     return transformed_file
 
 def load_sicar(**kwargs) -> None:
-    """
-    Task 3: Load
-    Truncates the target table and inserts all combined records into PostGIS using ST_Multi.
-    """
+    """Load: truncates the destination table and inserts all records into PostGIS with ST_Multi."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_sicar')
     
@@ -292,7 +276,6 @@ def load_sicar(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded SICAR data into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -300,7 +283,7 @@ def load_sicar(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_sicar",
     start_date=datetime(2024, 1, 1),
-    schedule=None, # Runs manually
+    schedule=None,  # Runs manually
     catchup=False,
     tags=["geodata", "sicar", "imoveis"]
 ) as dag:

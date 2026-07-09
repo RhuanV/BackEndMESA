@@ -1,6 +1,5 @@
 """
-DAG to automate the download, extraction, and database insertion of Airport locations from OpenStreetMap.
-Uses the local Geofabrik PBF, filters with Osmium Tool, and loads it into a PostGIS table.
+Extracts airports from the OSM PBF (Geofabrik) and loads them into mesa_a.vetor_osm_aeroportos.
 """
 import os
 import json
@@ -15,27 +14,20 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from psycopg2.extras import execute_batch
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
 osm_dataset = Dataset("file:///opt/airflow/data/brazil-latest.osm.pbf")
 
 def check_pbf_exists() -> None:
-    """
-    Task 0: Check Dependency
-    Verifies if the Geofabrik DAG has already been executed by checking the PBF file.
-    """
+    """Checks whether the Brazil PBF has already been downloaded by the Geofabrik DAG."""
     pbf_path = "/opt/airflow/data/brazil-latest.osm.pbf"
     if not os.path.exists(pbf_path):
         raise FileNotFoundError(f"Brazil PBF dependency missing at {pbf_path}. Run 'download_geofabrik_data' DAG first.")
     logging.info(f"Dependency met: PBF file found at {pbf_path}.")
 
 def extract_and_transform_airports(**kwargs) -> str:
-    """
-    Task 1: Extract & Transform
-    Reads the local Brazil PBF, filters airport ways/relations, and exports to a processed JSON.
-    """
+    """Filters aerodromes (aeroway=aerodrome) from the PBF and produces the processed JSON."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_osm_airports_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -58,7 +50,6 @@ def extract_and_transform_airports(**kwargs) -> str:
     
     logging.info("Exporting filtered data to GeoJSON...")
     
-    # Create an osmium export config to force output of OSM IDs as '@id' in properties
     config_path = os.path.join(work_dir, "osmium_export_config.json")
     export_config = {
         "attributes": {
@@ -96,7 +87,6 @@ def extract_and_transform_airports(**kwargs) -> str:
         props = feature.get('properties', {})
         geom = feature.get('geometry')
         
-        # Robust ID extraction: look at root id, then properties
         feature_id = feature.get('id')
         if feature_id is None:
             feature_id = props.get('@id')
@@ -105,8 +95,7 @@ def extract_and_transform_airports(**kwargs) -> str:
             
         feature_id_str = str(feature_id) if feature_id is not None else ''
         
-        # By default osmium export outputs raw numeric IDs. 
-        # We still support "way/123" in case other parsers are used.
+        # osmium export emits numeric IDs; we still accept "way/123" for other parsers
         osm_id = None
         if feature_id_str.startswith("way/"):
             osm_id = int(feature_id_str.replace("way/", ""))
@@ -157,10 +146,7 @@ def extract_and_transform_airports(**kwargs) -> str:
     return transformed_file
 
 def load_osm_airports(**kwargs) -> None:
-    """
-    Task 3: Load
-    Reads the transformed JSON, creates table if not exists, and inserts data into PostGIS.
-    """
+    """Reads the transformed JSON and upserts the data into PostGIS."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='extract_and_transform_airports')
     
@@ -217,7 +203,6 @@ def load_osm_airports(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded OSM airports into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -225,7 +210,7 @@ def load_osm_airports(**kwargs) -> None:
 with DAG(
     dag_id="load_osm_airports",
     start_date=datetime(2024, 1, 1),
-    schedule=[osm_dataset], # Runs automatically when the PBF file is updated
+    schedule=[osm_dataset],  # Runs automatically when the PBF is updated
     catchup=False,
     tags=["geodata", "osm", "airports"]
 ) as dag:

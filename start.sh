@@ -53,40 +53,86 @@ else
   echo -e "  ${GREEN}✓${NC} .env found (unified: backend + frontend)"
 fi
 
+# Detect the Compose command once (V2 plugin preferred, fallback to legacy).
+if docker compose version >/dev/null 2>&1; then
+  DC="docker compose"
+else
+  DC="docker-compose"
+fi
+
+MAX_RETRIES=30
+
+# Captures the last `compose up` output for post-mortem diagnostics (port binds, etc.).
+COMPOSE_UP_LOG="$(mktemp)"
+
+# Bring the stack up. Idempotent; --remove-orphans clears leftovers from prior runs.
+# Tolerant to a non-zero exit (e.g. airflow-init failing) so the health check below can
+# diagnose and self-heal instead of aborting the whole script under `set -e`.
+start_stack() {
+  $DC up $FORCE_BUILD -d --remove-orphans > "$COMPOSE_UP_LOG" 2>&1 || true
+  tail -5 "$COMPOSE_UP_LOG"
+}
+
+# Poll the backend /health endpoint.
+# Returns: 0 = healthy | 1 = generic timeout | 2 = stale-network (name resolution) failure
+wait_for_backend() {
+  local retry=0
+  until curl -sf "http://localhost:${API_PORT}/health" > /dev/null 2>&1; do
+    # Fast-fail: containers can't resolve the 'db' service name — the Docker network is
+    # in a corrupted state (common on WSL2 after the daemon restarts with containers up).
+    if $DC logs backend airflow-init 2>/dev/null | grep -q "Temporary failure in name resolution"; then
+      return 2
+    fi
+    retry=$((retry + 1))
+    if [ "$retry" -ge "$MAX_RETRIES" ]; then
+      return 1
+    fi
+    sleep 1
+    printf "  Retry %d/%d...\r" "$retry" "$MAX_RETRIES"
+  done
+  return 0
+}
+
 # --- Step 2: Start Docker ---
 echo ""
 echo -e "${YELLOW}[2/4]${NC} Starting Docker services..."
 cd "$ROOT_DIR"
-if docker compose version >/dev/null 2>&1; then
-  docker compose up $FORCE_BUILD -d 2>&1 | tail -5
-else
-  docker-compose up $FORCE_BUILD -d 2>&1 | tail -5
-fi
-echo -e "  ${GREEN}✓${NC} Docker services started"
 
-# --- Step 3: Wait for Backend ---
-echo ""
-echo -e "${YELLOW}[3/4]${NC} Waiting for backend health..."
+# Read ports from .env (needed by the health check below).
 API_PORT=$(grep -E '^API_PORT=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "8000")
 API_PORT="${API_PORT:-8000}"
 FRONTEND_PORT=$(grep -E '^FRONTEND_PORT=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "5173")
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
-MAX_RETRIES=30
-RETRY=0
-until curl -sf "http://localhost:${API_PORT}/health" > /dev/null 2>&1; do
-  RETRY=$((RETRY + 1))
-  if [ "$RETRY" -ge "$MAX_RETRIES" ]; then
-    echo -e "  ${RED}✗ Backend did not respond after ${MAX_RETRIES}s${NC}"
-    echo -e "  ${YELLOW}Tip: Check logs with 'docker compose logs backend'${NC}"
-    break
-  fi
-  sleep 1
-  printf "  Retry %d/%d...\r" "$RETRY" "$MAX_RETRIES"
-done
+start_stack
+echo -e "  ${GREEN}✓${NC} Docker services started"
 
-if [ "$RETRY" -lt "$MAX_RETRIES" ]; then
+# --- Step 3: Wait for Backend (self-heals a stale Docker network once) ---
+echo ""
+echo -e "${YELLOW}[3/4]${NC} Waiting for backend health..."
+HEALTH_RC=0
+wait_for_backend || HEALTH_RC=$?
+
+if [ "$HEALTH_RC" -eq 2 ]; then
+  echo -e "  ${YELLOW}⚠ Stale Docker network detected (service 'db' not resolvable).${NC}"
+  echo -e "  ${YELLOW}Recreating the network and retrying once...${NC}"
+  $DC down --remove-orphans || true   # never -v: preserves the data volumes
+  start_stack
+  HEALTH_RC=0
+  wait_for_backend || HEALTH_RC=$?
+fi
+
+if [ "$HEALTH_RC" -eq 0 ]; then
   echo -e "  ${GREEN}✓${NC} Backend is healthy (port ${API_PORT})"
+else
+  echo -e "  ${RED}✗ Backend did not become healthy${NC}"
+  if grep -q "address already in use" "$COMPOSE_UP_LOG" 2>/dev/null; then
+    echo -e "  ${YELLOW}A host port is already in use (see the message above).${NC}"
+    echo -e "  ${YELLOW}Free the port or change the matching *_PORT in .env. If a previous run${NC}"
+    echo -e "  ${YELLOW}left orphaned docker-proxy processes, restart the Docker daemon:${NC}"
+    echo -e "  ${YELLOW}  sudo snap restart docker      # or, on Windows: wsl --shutdown${NC}"
+  fi
+  echo -e "  ${YELLOW}Tip: Check logs with '${DC} logs backend'${NC}"
 fi
 
 # --- Step 3.5: Alembic stamp guard (existing installations) ---
@@ -100,9 +146,9 @@ STAMP_RESULT=$(docker compose exec -T backend bash -c "
   echo 'ok'
 " 2>/dev/null || echo "skipped")
 case "$STAMP_RESULT" in
-  already_at_head) echo -e "  ${GREEN}✓${NC} Alembic já está no head" ;;
-  stamped)         echo -e "  ${GREEN}✓${NC} Alembic: banco existente marcado como head" ;;
-  *)               echo -e "  ${GREEN}✓${NC} Alembic gerenciado pelo backend" ;;
+  already_at_head) echo -e "  ${GREEN}✓${NC} Alembic already at head" ;;
+  stamped)         echo -e "  ${GREEN}✓${NC} Alembic: existing database stamped as head" ;;
+  *)               echo -e "  ${GREEN}✓${NC} Alembic managed by the backend" ;;
 esac
 
 # --- Step 3.6: Bootstrap admin user ---
@@ -118,8 +164,8 @@ DEV_ROLE=$(grep -E '^DEV_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "desenvol
 DEV_ROLE="${DEV_ROLE:-desenvolvedor}"
 
 BOOTSTRAP_RESULT=$(docker exec -i geoavia_backend python - <<PY 2>/dev/null || echo "error"
-from geoavia_backend.repository import UserRepository
-from geoavia_backend.service import UserService
+from geoavia_backend.repositories.user import UserRepository
+from geoavia_backend.services.user import UserService
 
 if UserRepository().obtain_user_from_username("${DEV_USER}") is None:
     UserService().register_user("${DEV_USER}", "${DEV_PASS}", "${DEV_ROLE}")

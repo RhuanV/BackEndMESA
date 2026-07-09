@@ -1,15 +1,15 @@
 /**
- * MunicipalitySelector — Dropdowns dependentes estado → município (RF02).
+ * MunicipalitySelector — Dependent state → municipality dropdowns (RF02).
  *
- * Controlado: pai recebe o `codigo_ibge` (7 dígitos) do município escolhido
- * via onChange. Município = '' quando o usuário ainda não selecionou.
+ * Controlled: the parent receives the `codigo_ibge` (7 digits) of the chosen
+ * municipality via onChange. Municipality = '' when the user has not selected yet.
  *
- * Carrega a lista de estados na montagem e a lista de municípios sempre que
- * o estado muda. Limpa o município selecionado quando o estado troca.
+ * Loads the list of states on mount and the list of municipalities whenever
+ * the state changes. Clears the selected municipality when the state changes.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { isAxiosError } from 'axios';
-import { Select } from '@/components/ui/Select';
+import { Select } from '@/components/ui';
 import {
   listMunicipalitiesByState,
   listStates,
@@ -58,17 +58,19 @@ export function MunicipalitySelector({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads states on mount
     void loadStates();
   }, [loadStates]);
 
   useEffect(() => {
     if (!selectedUf) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reloads municipalities when the UF changes
     void loadMunicipalities(selectedUf);
   }, [selectedUf, loadMunicipalities]);
 
   const handleStateChange = (uf: string) => {
     setSelectedUf(uf);
-    // Reset município + lista quando troca de estado (sem effect síncrono).
+    // Reset municipality + list when the state changes (no synchronous effect).
     setMunicipalities([]);
     onChange('');
   };

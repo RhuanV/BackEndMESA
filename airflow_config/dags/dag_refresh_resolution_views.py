@@ -1,14 +1,9 @@
-"""
-DAGs to refresh PostGIS materialized views after each source table is loaded.
+"""DAGs that refresh the PostGIS materialized views after each source table is
+loaded — each base table triggers a refresh of only its own views.
 
-Sprint 4 HU-25: cada base table dispara o refresh somente das suas próprias
-resolution views.
-
-Two DAGs in this file because Airflow Dataset schedules are AND semantics —
-a single DAG with `schedule=[ds_a, ds_b]` would wait for BOTH datasets to
-update before running. Splitting them gives OR semantics naturally.
-
-Notification on success/failure goes to the task log via DAG-level callbacks.
+There are two DAGs in this file because Airflow Dataset schedules have AND
+semantics (a DAG with `schedule=[ds_a, ds_b]` would wait for BOTH datasets);
+splitting them gives OR semantics naturally.
 """
 import logging
 from datetime import datetime
@@ -20,8 +15,8 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 # Same URIs as in dag_load_states.py / dag_load_municipalities.py.
 # Datasets are matched by URI string; importing isn't required.
-states_dataset = Dataset("postgres://geoavia_main_db/state_boundaries")
-municipalities_dataset = Dataset("postgres://geoavia_main_db/municipality_boundaries")
+states_dataset = Dataset("postgres://db/geoavia_main_db/public/state_boundaries")
+municipalities_dataset = Dataset("postgres://db/geoavia_main_db/public/municipality_boundaries")
 
 STATE_VIEWS = [
     "state_boundaries_z1",
@@ -78,9 +73,7 @@ def notify_failure(context: dict) -> None:
     )
 
 
-# ============================================================================
-# DAG 1 — refresh das views de estado quando state_boundaries é atualizada
-# ============================================================================
+# DAG 1 — refresh the state views when state_boundaries is updated
 
 with DAG(
     dag_id="refresh_state_resolution_views",
@@ -98,9 +91,7 @@ with DAG(
     )
 
 
-# ============================================================================
-# DAG 2 — refresh das views de município quando municipality_boundaries é atualizada
-# ============================================================================
+# DAG 2 — refresh the municipality views when municipality_boundaries is updated
 
 with DAG(
     dag_id="refresh_municipality_resolution_views",

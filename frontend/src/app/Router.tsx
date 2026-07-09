@@ -15,8 +15,9 @@
  *   - /dashboard/dev/*        → administrador
  */
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import type { UserRole } from '@/types';
 import { ProtectedRoute } from './ProtectedRoute';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { DashboardLayout } from '@/components/layout';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { MapPage } from '@/features/map/pages/MapPage';
 import { AssessmentPage } from '@/features/assessment/pages/AssessmentPage';
@@ -32,6 +33,15 @@ import { ApiHealthPage } from '@/features/dev/pages/ApiHealthPage';
 import { ProcessingLogsPage } from '@/features/dev/pages/ProcessingLogsPage';
 import { DebugPage } from '@/features/dev/pages/DebugPage';
 
+const ANALYSIS_ROLES: UserRole[] = ['coordenador', 'supervisor', 'operador', 'desenvolvedor'];
+const ASSESSMENT_ROLES: UserRole[] = ['coordenador', 'gestor', 'operador', 'desenvolvedor'];
+const RESULTS_ROLES: UserRole[] = ['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor'];
+const SCREENING_ROLES: UserRole[] = ['coordenador', 'gestor', 'operador'];
+const DATA_IMPORT_ROLES: UserRole[] = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador'];
+const USER_ADMIN_ROLES: UserRole[] = ['coordenador', 'gestor', 'supervisor', 'desenvolvedor'];
+const LAYER_ADMIN_ROLES: UserRole[] = ['coordenador', 'administrador', 'desenvolvedor'];
+const DEV_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   {
@@ -45,60 +55,60 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard/map" replace /> },
       { path: 'map', element: <MapPage /> },
 
-      // Fluxo MESA — análise/avaliação/resultados/exportação
+      // MESA flow — analysis/assessment/results/export
       {
         path: 'analysis',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'supervisor', 'operador', 'desenvolvedor']}><AnalysisPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ANALYSIS_ROLES}><AnalysisPage /></ProtectedRoute>,
       },
       {
         path: 'assessment',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'operador', 'desenvolvedor']}><AssessmentPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ASSESSMENT_ROLES}><AssessmentPage /></ProtectedRoute>,
       },
       {
         path: 'results',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor']}><ResultsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={RESULTS_ROLES}><ResultsPage /></ProtectedRoute>,
       },
       {
         path: 'export',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'desenvolvedor']}><ExportPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={RESULTS_ROLES}><ExportPage /></ProtectedRoute>,
       },
       {
         path: 'screening',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'operador']}><ScreeningPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={SCREENING_ROLES}><ScreeningPage /></ProtectedRoute>,
       },
 
-      // Dados — ingestão/importação (HU-31)
+      // Data — ingestion/import (HU-31)
       {
         path: 'data/shapefiles',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'operador', 'administrador']}><ShapefileImportPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DATA_IMPORT_ROLES}><ShapefileImportPage /></ProtectedRoute>,
       },
 
-      // Administração
+      // Administration
       {
         path: 'admin/users',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'gestor', 'supervisor', 'desenvolvedor']}><UserManagementPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={USER_ADMIN_ROLES}><UserManagementPage /></ProtectedRoute>,
       },
       {
         path: 'admin/layers',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador', 'desenvolvedor']}><LayerConfigPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={LAYER_ADMIN_ROLES}><LayerConfigPage /></ProtectedRoute>,
       },
       {
         path: 'admin/audit',
-        element: <ProtectedRoute allowedRoles={['coordenador', 'administrador', 'desenvolvedor']}><AuditLogPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={LAYER_ADMIN_ROLES}><AuditLogPage /></ProtectedRoute>,
       },
 
-      // Operação técnica do sistema
+      // System technical operations
       {
         path: 'dev/health',
-        element: <ProtectedRoute allowedRoles={['administrador', 'desenvolvedor']}><ApiHealthPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}><ApiHealthPage /></ProtectedRoute>,
       },
       {
         path: 'dev/logs',
-        element: <ProtectedRoute allowedRoles={['administrador', 'desenvolvedor']}><ProcessingLogsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}><ProcessingLogsPage /></ProtectedRoute>,
       },
       {
         path: 'dev/debug',
-        element: <ProtectedRoute allowedRoles={['administrador', 'desenvolvedor']}><DebugPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}><DebugPage /></ProtectedRoute>,
       },
     ],
   },
