@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements.txt -r requirements-dev.txt
 
 # Git hooks for code quality
-pre-commit==4.16.4
+pre-commit==4.6.0
 
 # Standardized, semantic commit messages
 commitizen==4.16.4

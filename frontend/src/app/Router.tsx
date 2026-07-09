@@ -34,12 +34,11 @@ import { ProcessingLogsPage } from '@/features/dev/pages/ProcessingLogsPage';
 import { DebugPage } from '@/features/dev/pages/DebugPage';
 
 // Operational pages: any operational role.
-const OPERATIONAL_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
-const ANALYSIS_ROLES = OPERATIONAL_ROLES;
-const ASSESSMENT_ROLES = OPERATIONAL_ROLES;
-const RESULTS_ROLES = OPERATIONAL_ROLES;
-const SCREENING_ROLES = OPERATIONAL_ROLES;
-const DATA_IMPORT_ROLES = OPERATIONAL_ROLES;
+const ANALYSIS_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
+const ASSESSMENT_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
+const RESULTS_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
+const SCREENING_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
+const DATA_IMPORT_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
 // Admin pages: administrator and developer.
 const USER_ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
 const LAYER_ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
