@@ -1,7 +1,7 @@
 """Alembic environment configuration for GeoAvia.
 
 Uses raw SQL migrations (no ORM) via op.execute(text(...)). Credentials are
-loaded from .env through geoavia_backend.database — they never appear in
+loaded from .env through geoavia_backend.core.database — they never appear in
 alembic.ini or in version control.
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, pool
 # Make geoavia_backend importable regardless of working directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from geoavia_backend.database import SQLALCHEMY_DATABASE_URL  # noqa: E402
+from geoavia_backend.core.database import SQLALCHEMY_DATABASE_URL  # noqa: E402
 
 config = context.config
 

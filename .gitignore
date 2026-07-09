@@ -50,3 +50,7 @@ frontend/dist/
 
 README.md
 
+# --- AI assistant artifacts (to be removed from the remote repo manually) ---
+.github/copilot-instructions.md
+.claude/
+

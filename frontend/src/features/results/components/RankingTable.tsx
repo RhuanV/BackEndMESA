@@ -1,18 +1,9 @@
 /**
- * RankingTable — Accessible table displaying MESA site rankings.
- *
- * Features:
- * - Sortable columns with ARIA attributes
- * - Score visualization with colored progress bars
- * - All data values sanitized before rendering (Defense in Depth)
- * - Responsive design
- *
- * Security: Even though React escapes JSX values by default,
- * we use the sanitize() utility as an extra defense layer for
- * any data that comes from an API.
+ * Accessible MESA ranking table. API string values pass through sanitize()
+ * as a defense layer on top of React's JSX escaping.
  */
 import { sanitize } from '@/lib/security/sanitize';
-import type { MesaRankingResult } from '@/types/mesa';
+import type { MesaRankingResult } from '@/types';
 
 interface RankingTableProps {
   readonly data: MesaRankingResult[];
@@ -82,7 +73,6 @@ export function RankingTable({ data }: RankingTableProps) {
                 {getRankBadge(result.rank)}
               </td>
               <td className="px-4 py-3 font-medium text-neutral-900">
-                {/* Security: sanitize API data before rendering */}
                 {sanitize(result.siteName)}
               </td>
               <td className="px-4 py-3 text-center text-neutral-600">

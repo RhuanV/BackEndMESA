@@ -1,7 +1,5 @@
 """
-DAG to automate the download, extraction, and database insertion of Brazil's Waterways.
-Downloads a Shapefile from the Ministério dos Transportes, processes it using GeoPandas, 
-and loads it into the mesa_a.vetor_gov_hidrovias PostGIS table.
+Loads waterways (Ministry of Transport) into the mesa_a.vetor_gov_hidrovias table.
 """
 import os
 import zipfile
@@ -17,18 +15,13 @@ import geopandas as gpd
 from psycopg2.extras import execute_batch
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
-# Import URL from the centralized configuration module
 from config_urls import WATERWAYS_BRAZIL_URL
 
 def extract_waterways(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads the shapefile ZIP, extracts it, and returns the path to the extracted directory.
-    """
+    """Extract: downloads and unpacks the ZIP, returning the extracted directory."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_gov_waterways_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -52,11 +45,7 @@ def extract_waterways(**kwargs) -> str:
     return extract_path
 
 def transform_waterways(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads the shapefile with GeoPandas, extracts fields into a standard relational
-    structure, and saves to a temporary JSON.
-    """
+    """Transform: reads the shapefile and writes the fields to a temporary JSON."""
     ti = kwargs['ti']
     extract_path = ti.xcom_pull(task_ids='extract_waterways')
     
@@ -84,7 +73,7 @@ def transform_waterways(**kwargs) -> str:
             continue
             
         props_raw = row.drop('geometry').to_dict()
-        # Convert all keys to lowercase to avoid issues if the shapefile changes case
+        # Lowercase keys to stay robust if the shapefile changes column casing
         props = {str(k).lower(): (None if (isinstance(v, float) and v != v) else v) for k, v in props_raw.items()}
         
         data_to_insert.append({
@@ -109,10 +98,7 @@ def transform_waterways(**kwargs) -> str:
     return transformed_file
 
 def load_waterways(**kwargs) -> None:
-    """
-    Task 3: Load
-    Creates the target table, inserts data into PostGIS, and cleans up.
-    """
+    """Load: inserts the data into PostGIS and cleans up temporary files."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_waterways')
     
@@ -156,7 +142,6 @@ def load_waterways(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded government waterways into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -164,7 +149,7 @@ def load_waterways(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_waterways",
     start_date=datetime(2024, 1, 1),
-    schedule=None, # Runs manually
+    schedule=None,  # Runs manually
     catchup=False,
     tags=["geodata", "mt", "waterways"]
 ) as dag:

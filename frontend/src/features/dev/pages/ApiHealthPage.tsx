@@ -41,6 +41,7 @@ export function ApiHealthPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- checagem inicial; depois roda em polling
     void checkHealth();
     const interval = setInterval(() => void checkHealth(), 30000);
     return () => clearInterval(interval);

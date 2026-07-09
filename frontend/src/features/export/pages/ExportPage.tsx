@@ -4,8 +4,7 @@
  * Security: Downloads via proxied Axios (never direct external URLs).
  */
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { Button, ProgressBar } from '@/components/ui';
 import { downloadExport } from '@/features/analysis/services/analysisService';
 
 export function ExportPage() {

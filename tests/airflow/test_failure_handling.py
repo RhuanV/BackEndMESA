@@ -1,13 +1,4 @@
-"""
-Test Suite: Failure Handling & Recovery
-
-User Story: As a system, I want task execution failures to be handled in a controlled 
-and predictable manner, ensuring state consistency and enabling automatic recovery.
-
-Test Strategy: Create a test DAG with controlled failure scenarios (persistent failure, 
-eventual success, upstream failure) and validate state transitions, retries, 
-and manual reprocessing.
-"""
+"""Verify failure handling and recovery: state transitions, retries, and reprocessing."""
 import pytest
 from datetime import timedelta
 from airflow.models import DAG, DagRun, TaskInstance
@@ -17,7 +8,7 @@ from airflow.utils.session import create_session
 from airflow.utils import timezone
 
 # =====================================================================
-# Dummy Callables to Simulate Failure Scenarios
+# Callables to simulate failure scenarios
 # =====================================================================
 def _fail_always():
     raise ValueError("Simulated persistent failure.")
@@ -37,9 +28,7 @@ def _downstream_task():
 # =====================================================================
 @pytest.fixture(scope="module")
 def failure_dag():
-    """
-    Creates an in-memory DAG tailored specifically for failure testing.
-    """
+    """Create an in-memory DAG specifically for failure tests."""
     with DAG(
         "test_failure_handling_dag",
         start_date=timezone.utcnow() - timedelta(days=1),
@@ -69,16 +58,10 @@ def failure_dag():
     return dag
 
 # =====================================================================
-# Test Cases
+# Test cases
 # =====================================================================
 def test_task_failure_and_upstream_propagation(failure_dag):
-    """
-    Acceptance Criteria:
-    - Tasks that fail are marked as 'failed' or 'up_for_retry'.
-    - Exhausting retries marks the task as 'failed'.
-    - Dependent tasks reflect upstream failures ('upstream_failed').
-    - Final DAG run state is consistent (FAILED).
-    """
+    """Verify failure marking, retry exhaustion, and propagation to dependent tasks."""
     execution_date = timezone.utcnow()
     with create_session() as session:
         data_interval = failure_dag.timetable.infer_manual_data_interval(run_after=execution_date)
@@ -90,27 +73,27 @@ def test_task_failure_and_upstream_propagation(failure_dag):
             data_interval=data_interval
         )
         
-        # Always pull the instance tracked by the database, do not create a detached one
+        # Always use the instance tracked by the database, never a detached one
         ti1 = dag_run.get_task_instance("always_fails", session=session)
         t1 = failure_dag.get_task("always_fails")
         ti1.task = t1
-        
-        # 1. First Execution -> Should fail and go to UP_FOR_RETRY
+
+        # 1. First execution -> should fail and move to UP_FOR_RETRY
         try:
             ti1.run(ignore_all_deps=True, session=session)
         except Exception:
-            pass # Expected to raise, but Airflow handles the state transition internally
-        
+            pass  # Expected to raise; Airflow handles the state transition internally
+
         ti1.refresh_from_db(session=session)
         assert ti1.state == State.UP_FOR_RETRY, "Task should be marked for retry on first failure"
         assert ti1.try_number == 2, "Try number should increment"
 
-        # 2. Simulate scheduler picking it up after the retry_delay
+        # 2. Simulate the scheduler resuming the task after retry_delay
         ti1.state = State.SCHEDULED
         session.commit()
 
-        # 3. Second Execution -> Should fail and go to FAILED (retries exhausted)
-        ti1.task = t1 # Must re-attach task after refresh/commit!
+        # 3. Second execution -> should fail and move to FAILED (retries exhausted)
+        ti1.task = t1  # Task must be reattached after refresh/commit
         try:
             ti1.run(ignore_all_deps=True, session=session)
         except Exception:
@@ -119,50 +102,46 @@ def test_task_failure_and_upstream_propagation(failure_dag):
         ti1.refresh_from_db(session=session)
         assert ti1.state == State.FAILED, "Task should be marked as failed after exhausting retries"
         
-        # 4. Run the other branch of the DAG to ensure all paths are complete
+        # 4. Run the other branch of the DAG to cover all paths
         ti3 = dag_run.get_task_instance("eventually_succeeds", session=session)
         t3 = failure_dag.get_task("eventually_succeeds")
         ti3.task = t3
-        
-        # Attempt 1 -> Fails and goes to UP_FOR_RETRY
+
+        # Attempt 1 -> fails and moves to UP_FOR_RETRY
         try:
             ti3.run(ignore_all_deps=True, session=session)
         except Exception:
             pass
-            
-        # Attempt 2 -> Schedule and run again. It should succeed now.
+
+        # Attempt 2 -> reschedule and run again; should succeed
         ti3.refresh_from_db(session=session)
         ti3.state = State.SCHEDULED
         session.commit()
-        
-        ti3.task = t3 # Re-attach task!
+
+        ti3.task = t3  # Reattach the task
         ti3.run(ignore_all_deps=True, session=session)
         
         ti3.refresh_from_db(session=session)
         assert ti3.state == State.SUCCESS, "Task should succeed on its second attempt"
 
-        # 5. Check upstream failure propagation and final DagRun state
-        dag_run.dag = failure_dag # Explicitly attach DAG before updating state
-        dag_run.update_state(session=session) # This evaluates all TIs and updates dependent states
+        # 5. Verify upstream failure propagation and the final DagRun state
+        dag_run.dag = failure_dag  # Attach the DAG explicitly before updating state
+        dag_run.update_state(session=session)  # Evaluate all TIs and update dependent states
         session.commit()
-        
-        # Double-check evaluation: After cascading UPSTREAM_FAILED to downstream tasks,
-        # Airflow needs one last check to declare the entire DagRun as FAILED.
+
+        # After propagating UPSTREAM_FAILED to downstream tasks, Airflow needs
+        # one final evaluation to declare the whole DagRun as FAILED.
         dag_run.update_state(session=session)
         
         ti2 = dag_run.get_task_instance("downstream", session=session)
         assert ti2.state == State.UPSTREAM_FAILED, "Downstream task should be marked as upstream_failed"
         assert str(dag_run.state) == "failed", f"DagRun state is {dag_run.state}, expected failed."
-        
-        # Teardown
+
+        # Cleanup
         session.query(DagRun).filter(DagRun.run_id == dag_run.run_id).delete()
 
 def test_task_eventual_success_and_reprocessing(failure_dag):
-    """
-    Acceptance Criteria:
-    - Task with retries eventually succeeds.
-    - Execution with failure can be manually reprocessed safely (Clear/Rerun).
-    """
+    """Verify success after retries and safe manual reprocessing (Clear/Rerun)."""
     execution_date = timezone.utcnow()
     with create_session() as session:
         data_interval = failure_dag.timetable.infer_manual_data_interval(run_after=execution_date)
@@ -174,8 +153,7 @@ def test_task_eventual_success_and_reprocessing(failure_dag):
             data_interval=data_interval
         )
         
-        # Acceptance Criteria: Manual reprocessing (Clear state)
-        # Simulating a user clicking "Clear Task" in the Airflow UI to reprocess
+        # Manual reprocessing (clear state): simulates clicking "Clear Task" in the Airflow UI
         failure_dag.clear(start_date=execution_date, end_date=execution_date, task_ids=["eventually_succeeds"], session=session)
         
         ti3 = dag_run.get_task_instance("eventually_succeeds", session=session)

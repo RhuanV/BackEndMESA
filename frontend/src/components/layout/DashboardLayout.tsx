@@ -1,9 +1,4 @@
-/**
- * DashboardLayout — Main application layout for authenticated users.
- *
- * Structure: Header + Sidebar + Content area (Outlet for nested routes).
- * Responsive design with collapsible sidebar on mobile.
- */
+/** Authenticated app layout: Header + Sidebar + routed content. */
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';

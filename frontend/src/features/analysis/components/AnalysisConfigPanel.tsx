@@ -10,10 +10,7 @@
  * - Progress bar during analysis execution
  */
 import { useState, useCallback } from 'react';
-import { Slider } from '@/components/ui/Slider';
-import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Input } from '@/components/ui/Input';
+import { Button, Input, ProgressBar, Slider } from '@/components/ui';
 import { useAnalysis } from '@/features/analysis/hooks/useAnalysis';
 import { DEFAULT_ANALYSIS_CONFIG } from '@/features/analysis/schemas/analysisSchema';
 import type { AnalysisConfig } from '@/features/analysis/schemas/analysisSchema';

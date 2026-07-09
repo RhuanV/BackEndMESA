@@ -15,8 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '@/features/auth/schemas/loginSchema';
 import type { LoginFormData } from '@/features/auth/schemas/loginSchema';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button, Input } from '@/components/ui';
 import { LOGIN_COOLDOWN_BASE_MS, LOGIN_MAX_ATTEMPTS } from '@/lib/constants';
 
 export function LoginForm() {

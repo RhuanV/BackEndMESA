@@ -1,7 +1,6 @@
-"""
-DAG to automate the download, extraction, and database insertion of Brazil's Power Transmission Lines
-(Linhas de Transmissão). Downloads data from ANEEL/SIGEL via ArcGIS REST API, processes it using GeoPandas,
-and loads it into the mesa_a.vetor_gov_linhas_transmissao PostGIS table.
+"""Transmission lines DAG (ANEEL/SIGEL, ArcGIS REST API).
+
+Downloads, processes with GeoPandas and loads into mesa_a.vetor_gov_linhas_transmissao.
 """
 import os
 import logging
@@ -14,22 +13,15 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 import geopandas as gpd
 from psycopg2.extras import execute_batch
-from shapely.geometry import shape
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
-
-# SIGEL ArcGIS REST API - Transmissão MapServer, layer 1 (Linha de Transmissão / ONS)
-SIGEL_LT_QUERY_URL = "https://sigel.aneel.gov.br/arcgis/rest/services/PORTAL/Transmiss%C3%A3o/MapServer/1/query"
+from config_urls import LINHAS_TRANSMISSAO_GOV_URL
 
 def extract_linhas_transmissao(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads transmission line data from ANEEL SIGEL ArcGIS REST API in GeoJSON format.
-    Uses pagination to handle large datasets (maxRecordCount=1000).
-    """
+    """Extract: downloads transmission lines from the SIGEL API as GeoJSON,
+    paginating (maxRecordCount=1000)."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_gov_linhas_transmissao_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -49,7 +41,7 @@ def extract_linhas_transmissao(**kwargs) -> str:
             "resultRecordCount": batch_size,
         }
         logging.info(f"Querying SIGEL API, offset={offset}...")
-        response = requests.get(SIGEL_LT_QUERY_URL, params=params, verify=False, headers=headers, timeout=120)
+        response = requests.get(LINHAS_TRANSMISSAO_GOV_URL, params=params, verify=False, headers=headers, timeout=120)
         response.raise_for_status()
         data = response.json()
 
@@ -60,7 +52,6 @@ def extract_linhas_transmissao(**kwargs) -> str:
         all_features.extend(features)
         logging.info(f"  Retrieved {len(features)} features (total: {len(all_features)})")
 
-        # Check if there are more records
         if len(features) < batch_size:
             break
         offset += batch_size
@@ -78,10 +69,7 @@ def extract_linhas_transmissao(**kwargs) -> str:
     return extract_path
 
 def transform_linhas_transmissao(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads the GeoJSON, extracts fields, and saves to a temporary JSON.
-    """
+    """Transform: reads the GeoJSON, extracts the fields and saves them to a temporary JSON."""
     ti = kwargs['ti']
     extract_path = ti.xcom_pull(task_ids='extract_linhas_transmissao')
 
@@ -99,7 +87,6 @@ def transform_linhas_transmissao(**kwargs) -> str:
             continue
 
         props_raw = row.drop('geometry').to_dict()
-        # Convert all keys to lowercase
         props = {str(k).lower(): (None if (isinstance(v, float) and v != v) else v) for k, v in props_raw.items()}
 
         data_to_insert.append({
@@ -119,10 +106,7 @@ def transform_linhas_transmissao(**kwargs) -> str:
     return transformed_file
 
 def load_linhas_transmissao(**kwargs) -> None:
-    """
-    Task 3: Load
-    Inserts data into PostGIS and cleans up.
-    """
+    """Load: inserts the data into PostGIS and cleans up temporary files."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_linhas_transmissao')
 
@@ -161,7 +145,6 @@ def load_linhas_transmissao(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded government transmission lines into the database!")
 
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -169,7 +152,7 @@ def load_linhas_transmissao(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_linhas_transmissao",
     start_date=datetime(2024, 1, 1),
-    schedule=None, # Runs manually
+    schedule=None,  # Runs manually
     catchup=False,
     tags=["geodata", "aneel", "linhas_transmissao"]
 ) as dag:

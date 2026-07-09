@@ -4,9 +4,9 @@ Revision ID: 0010
 Revises: 0009
 Create Date: 2026-07-08
 
-z1 (0.05 deg ≈ 5.5 km) — Brasil
-z2 (0.01 deg ≈ 1.1 km) — estado
-z3 (0.002 deg ≈ 220 m) — município
+z1 (0.05 deg ≈ 5.5 km) — country
+z2 (0.01 deg ≈ 1.1 km) — state
+z3 (0.002 deg ≈ 220 m) — municipality
 """
 from __future__ import annotations
 

@@ -6,7 +6,7 @@
  * (mesa_service._score) — the real MCDA/AHP arrives with EP-13.
  */
 import apiClient from '@/lib/api/axiosInstance';
-import type { MesaRankingResult } from '@/types/mesa';
+import type { MesaRankingResult } from '@/types';
 
 export async function getRanking(): Promise<MesaRankingResult[]> {
   const response = await apiClient.get<MesaRankingResult[]>('/ranking');

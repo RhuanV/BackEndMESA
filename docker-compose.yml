@@ -16,7 +16,7 @@ services:
       - "${DB_EXT_PORT:-5433}:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations/init:/docker-entrypoint-initdb.d
+      - ./init/db:/docker-entrypoint-initdb.d
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -71,7 +71,7 @@ services:
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
-      - ./airflow_config/init_airflow.sh:/opt/airflow/init_airflow.sh:ro
+      - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
     command: webserver
@@ -103,7 +103,7 @@ services:
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
-      - ./airflow_config/init_airflow.sh:/opt/airflow/init_airflow.sh:ro
+      - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     command: scheduler
 
 # ========================
@@ -123,7 +123,7 @@ services:
       AIRFLOW_UID: 50000
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
     volumes:
-      - ./airflow_config/init_airflow.sh:/init_airflow.sh
+      - ./init/airflow.sh:/init_airflow.sh
       - ./airflow_config/dags:/opt/airflow/dags
       - ./airflow_config/plugins:/opt/airflow/plugins
     command: bash /init_airflow.sh

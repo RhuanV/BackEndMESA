@@ -10,8 +10,8 @@
 import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import type { UserRole } from '@/types/auth';
+import { LoadingSpinner } from '@/components/ui';
+import type { UserRole } from '@/types';
 
 interface ProtectedRouteProps {
   readonly children: ReactNode;

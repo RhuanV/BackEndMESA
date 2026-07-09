@@ -1,90 +1,156 @@
-# GeoAvia - Backend MESA-Auto
+# GeoAvia — MESA-Auto
 
-Backend for the GeoAvia project (SAC/ANAC/ITA partnership) for automating the MESA methodology in airport site prospecting.
+GeoAvia is the platform of the SAC/ANAC/ITA partnership that automates the **MESA**
+methodology for airport site prospecting. It is a **monorepo** with three services
+orchestrated by Docker Compose:
+
+- **Backend** — FastAPI REST API (Python 3.12)
+- **Frontend** — React + TypeScript + Vite (MapLibre GL)
+- **Airflow** — ETL/data-ingestion pipelines (Apache Airflow 2.9.3)
+- **Database** — PostgreSQL 15 + PostGIS 3.4
 
 ## Overview
 
-Current stack:
+Stack:
 
-- Python 3.12
-- FastAPI
-- PostgreSQL with PostGIS
-- Apache Airflow (for ETL and data pipelines)
-- Docker and Docker Compose
-- Raw SQL with psycopg2 (no ORM)
+- Python 3.12 · FastAPI · Uvicorn
+- PostgreSQL + PostGIS
+- Apache Airflow (ETL and spatial data pipelines)
+- React 19 · TypeScript · Vite · MapLibre GL
+- Docker & Docker Compose V2
+- Raw SQL with psycopg2 (no ORM); Alembic for schema migrations
 
-Current API state:
+Current capabilities:
 
-- User registration with password hashing
-- Login with JWT
-- Route protection using Bearer token on GET /usuarios
-- User management by ID (update username and delete)
+- Authentication with JWT and password hashing (bcrypt)
+- Role-Based Access Control (RBAC) with 6 profiles, enforced on backend and frontend
+- Spatial screening of candidate sites (viável / intermediário / restrito)
+- Map layer delivery as GeoJSON (with zoom/bbox filtering) and layer source configuration
+- User shapefile upload and ingestion (HU-31)
+- MESA assessments, weighted analysis, ranking and export
+- State/municipality region lookup
+- Airflow DAG triggering and audit logging
 
 ## Architecture
 
-Layered architecture:
+Layered backend, with absolute imports inside `backend/src/geoavia_backend/`:
 
-- API Layer: backend/src/geoavia_backend/main.py
-- Service Layer: backend/src/geoavia_backend/service.py
-- Repository Layer: backend/src/geoavia_backend/repository.py
-- Environment configuration: backend/src/geoavia_backend/database.py
-- Data Pipelines (ETL): airflow_config/dags/
+- **API layer** — `api/` : one router per domain (assembled in `main.py`)
+- **Service layer** — `services/` : business rules
+- **Repository layer** — `repositories/` : data access with explicit SQL (psycopg2)
+- **Core** — `core/` : cross-cutting concerns (`auth`, `db`, `database`, `roles`, `geo_params`)
+- **Schemas** — `schemas/` : Pydantic request/response models
+- **Data pipelines (ETL)** — `airflow_config/dags/`
 
 Principles:
 
-- Business rules in the service layer
-- Data access in the repository using explicit SQL
-- Automated spatial data ingestion via Airflow DAGs
-- Sensitive variables managed through .env
+- Business rules live in the service layer; data access uses parameterized SQL.
+- There is **no ORM**: `core/db.py` opens psycopg2 connections directly. SQLAlchemy is
+  only a dependency of the Alembic migration tooling.
+- **Alembic is the single source of truth** for the schema (`backend/alembic/versions/`).
+- Automated spatial data ingestion runs through Airflow DAGs.
+- Sensitive variables are managed through `.env`.
 
 ## Repository Structure
 
 ```text
-BackEndMESA/
-|-- airflow_config/
+Geoavia/
+|-- airflow_config/                 # Airflow DAGs, plugins, image
 |   |-- dags/
-|   |   |-- dag_load_municipalities.py
-|   |   `-- dag_load_states.py
 |   |-- plugins/
-|   |   `-- config_urls.py
 |   |-- Dockerfile
 |   `-- requirements.txt
 |-- backend/
-|   |-- migrations/
-|   |   |-- 01_create_tables.sql
-|   |   `-- 02_insert_data.sql
+|   |-- alembic/                     # schema migrations — the single source of truth
+|   |   `-- versions/
+|   |-- alembic.ini
 |   |-- src/
-|   |   `-- geoavia_backend/
-|   |       |-- main.py
-|   |       |-- service.py
-|   |       |-- repository.py
-|   |       `-- database.py
+|   |   `-- geoavia_backend/         # layered package (absolute imports)
+|   |       |-- main.py              # app assembly only: CORS + include_router
+|   |       |-- api/                 # one router per domain (health, users, layers,
+|   |       |                        #   screening, airflow, shapefiles, mesa, regions)
+|   |       |-- services/            # business logic (user, layers, screening, ...)
+|   |       |-- repositories/        # DB access via explicit SQL (user, layers, ...)
+|   |       |-- schemas/             # Pydantic request/response models
+|   |       `-- core/                # config & cross-cutting (auth, db, database,
+|   |                                #   roles, geo_params)
+|   |-- tests/                       # backend pytest suite (app smoke tests)
 |   `-- requirements.txt
-|-- .github/
-|   `-- copilot-instructions.md
+|-- frontend/
+|   `-- src/
+|       |-- app/                     # bootstrap, router, guards
+|       |-- components/              # shared: ui/, layout/, feedback/ (index.ts barrels)
+|       |-- features/                # feature slices (map, auth, assessment, ...)
+|       |-- lib/                     # api client, constants, security
+|       `-- types/                   # global types (barrel: @/types)
+|-- docs/
+|   `-- database/                    # DB reference material
+|       |-- modelagem/               # conceptual model, reference SQL dumps
+|       `-- legacy-migrations/       # pre-Alembic .sql, archived (superseded)
+|-- init/                            # container init scripts (centralized)
+|   |-- airflow.sh                   # Airflow DB migrate + admin user + DAG unpause
+|   `-- db/                          # one-off Postgres init (creates the Airflow DB)
+|-- tests/                           # Airflow test suite (mounted into airflow containers)
+|   `-- pytest.ini                   # pytest config for the Airflow suite
 |-- .pre-commit-config.yaml
 |-- docker-compose.yml
-|-- Dockerfile
+|-- Dockerfile                       # backend image
+|-- install.sh                       # from-scratch setup (build images + frontend deps)
+|-- start.sh                         # bring the stack up
+|-- run_airflow_tests.sh             # run the Airflow test suite
 `-- README.md
 ```
 
-## Configurations
+The backend package is organized in layers — `api` (routers) → `services` (business
+logic) → `repositories` (DB). See [docs/database/README.md](docs/database/README.md) for
+the database/migrations layout. The top-level `tests/` folder holds the **Airflow** test
+suite; backend unit tests live in `backend/tests/`.
 
-There is a .env_example file in the root directory, based on which one may create
-one's own .env file.
+## Configuration (`.env`)
 
+Copy [.env_example](.env_example) to `.env` and adjust as needed. All services read from
+this single file.
+
+| Variable | Purpose | Default |
+| :--- | :--- | :--- |
+| `DB_HOST` | Database host (`db` inside Docker, `localhost` for external scripts) | `db` |
+| `DB_NAME` | Main application database (FastAPI + PostGIS data) | `geoavia_main_db` |
+| `AIRFLOW_DB` | Airflow metadata database name | `geoavia_airflow_db` |
+| `DB_USER` | Database username | `postgres` |
+| `DB_PASS` | Database password (keep secret in production) | `123` |
+| `DB_PORT` | Internal database port (container) | `5432` |
+| `DB_EXT_PORT` | External database port exposed to the host | `5433` |
+| `API_PORT` | FastAPI backend port | `8000` |
+| `AIRFLOW_PORT` | Airflow Web UI port | `8080` |
+| `FRONTEND_PORT` | React/Vite dev server port | `5173` |
+| `SECRET_KEY` | JWT signing key (unique per environment, do not version) | `change_for_a_strong_password` |
+| `ALGORITHM` | JWT signing algorithm | `HS256` |
+| `AIRFLOW_USER` | Airflow Web UI admin username | `admin` |
+| `AIRFLOW_PASS` | Airflow Web UI admin password | `admin` |
+| `SHAPEFILE_MAX_UPLOAD_MB` | Max shapefile upload size (MB) | `500` |
+| `DEV_USER` | Bootstrap application user (protected, see RBAC) | `admin` |
+| `DEV_PASS` | Bootstrap application password | `admin123` |
+| `DEV_ROLE` | Bootstrap application role | `desenvolvedor` |
+| `VITE_API_BASE_URL` | Frontend API base (proxied by Vite) | `/api` |
+| `VITE_MAPLIBRE_STYLE_URL` | Base map style | demotiles |
+| `VITE_SATELLITE_STYLE_URL` | Satellite map style | demotiles |
+| `VITE_OSM_STYLE_URL` | OpenStreetMap style | demotiles |
+| `VITE_IBGE_WMS_URL` | IBGE WMS endpoint | IBGE geoserver |
+| `VITE_MAPBIOMAS_WMS_URL` | MapBiomas data source | MapBiomas public |
+| `VITE_CPRM_WMS_URL` | CPRM WMS endpoint | CPRM geoserver |
 
 Notes:
 
-- When running locally outside Docker, use DB_HOST=localhost.
-- SECRET_KEY must be unique per environment and should not be versioned.
+- When running the backend locally **outside** Docker, use `DB_HOST=localhost`.
+- `SECRET_KEY` must be unique per environment and must never be committed.
+- The **Airflow Web UI** login (`AIRFLOW_USER`/`AIRFLOW_PASS`, default `admin`/`admin`) is
+  distinct from the **application** login (`DEV_USER`/`DEV_PASS`, default `admin`/`admin123`).
 
 ## Prerequisites (Linux/WSL)
 
-To run the application, you need Docker (with Docker Compose V2) and Node.js installed in your environment.
+You need Docker (with Docker Compose V2) and Node.js.
 
 ### 1. Docker & Docker Compose V2
-Install the Docker engine and the modern Compose plugin (which provides the `docker compose` command instead of the deprecated, hyphenated `docker-compose` tool):
 
 ```bash
 # Update package lists
@@ -93,185 +159,141 @@ sudo apt update
 # Install Docker
 sudo apt install -y docker.io
 
-# Install Docker Compose V2 plugin
+# Install Docker Compose V2 plugin (provides `docker compose`)
 sudo apt install -y docker-compose-v2
 
-# Optional: Allow running Docker without sudo
+# Optional: run Docker without sudo (log out/in afterwards)
 sudo usermod -aG docker $USER
 ```
-*Note: Remember to restart your terminal or log out/in for the group changes to take effect.*
 
-### 2. Node.js & NPM (for Frontend)
-The frontend runs locally. You can install Node.js and NPM using one of these options:
+### 2. Node.js & NPM (for the frontend)
 
-#### Option A: Via Ubuntu APT (Quick & Simple)
 ```bash
+# Option A — Ubuntu APT (quick)
 sudo apt install -y nodejs npm
-```
 
-#### Option B: Via NVM (Recommended for Version Management)
-```bash
-# Install NVM (Node Version Manager)
+# Option B — NVM (recommended for version management)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-# Load NVM into your session (or restart terminal)
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-# Install and use LTS version of Node.js
-nvm install --lts
-nvm use --lts
+nvm install --lts && nvm use --lts
 ```
+
+## From-Scratch Installation
+
+On a clean machine, a single script installs everything (creates `.env`, builds the
+backend and Airflow images, installs the frontend dependencies):
+
+```bash
+bash install.sh
+```
+
+When it finishes, bring the stack up with `bash start.sh`.
 
 ## How to Run
 
-### Option A: Unified Monorepo Startup (Recommended)
+### Option A — Unified Monorepo Startup (recommended)
 
-Starts the entire application (Backend & Database inside Docker + Frontend locally in Vite dev mode) with a single command:
+Starts the whole application (Database + Backend + Airflow in Docker, Frontend locally in
+Vite dev mode) with one command:
 
-1. Copy the environment file template:
+1. Create the environment file (skip if `install.sh` already did it):
    ```bash
    cp .env_example .env
    ```
-2. Configure the `.env` file (e.g. set a strong `SECRET_KEY` and adjust DB variables if needed).
-3. Run the startup script:
+2. Review `.env` (set a strong `SECRET_KEY`, adjust ports if needed).
+3. Start:
    ```bash
    ./start.sh
    ```
 
 > [!TIP]
-> By default, `./start.sh` uses cached Docker images to start up quickly. If you have modified the backend dependencies (`requirements.txt`) or the `Dockerfile` and want to force a clean rebuild, pass the `--build` (or `-b`) flag:
+> `./start.sh` uses cached Docker images by default. To force a rebuild (e.g. after
+> changing `requirements.txt` or a `Dockerfile`), pass `--build` (or `-b`):
 > ```bash
 > ./start.sh --build
 > ```
 
-### Option B: Docker Only (Backend & Airflow)
-If you want to run only the backend services, database, and Airflow orchestrator (without starting the frontend):
-```bash
-# Start backend services using cached images
-docker compose up -d
+### Option B — Docker Only (Backend, Database & Airflow)
 
-# Start backend services forcing image rebuild
-docker compose up --build -d
+To run the backend services without the frontend:
+
+```bash
+docker compose up -d            # cached images
+docker compose up --build -d    # force rebuild
 ```
 
-Expected services:
-- **Frontend:** http://localhost:5173
-- **API:** http://localhost:8000
-- **Swagger Docs:** http://localhost:8000/docs
-- **Airflow Web UI:** http://localhost:8080 (User: admin / Pass: admin)
-- **Database:** Ports configured in `.env` (default external port is `5433`)
+### Services & URLs
 
-#### Accessing the Database via DBeaver
+| Service | URL / Port | Credentials |
+| :--- | :--- | :--- |
+| Frontend | http://localhost:5173 | app login (see below) |
+| API | http://localhost:8000 | Bearer token |
+| Swagger docs | http://localhost:8000/docs | — |
+| Airflow Web UI | http://localhost:8080 | `admin` / `admin` |
+| Database | `localhost:5433` (`DB_EXT_PORT`) | `DB_USER` / `DB_PASS` |
 
-To inspect the tables and run geographic queries, configure a new PostgreSQL connection in DBeaver (or your preferred DB client) with the following parameters (based on your `.env` defaults):
+Default **application** login (bootstrapped by `start.sh`): `admin` / `admin123`
+(`DEV_USER` / `DEV_PASS`).
+
+#### Accessing the database via DBeaver
+
+Configure a PostgreSQL connection (using your `.env` values):
+
 - **Host:** `localhost`
-- **Port:** `5433` (or the value of `DB_EXT_PORT`)
-- **Database:** `geoavia_main_db` (or the value of `DB_NAME`)
-- **Username:** `postgres` (or the value of `DB_USER`)
-- **Password:** `123` (or the value of `DB_PASS`)
+- **Port:** `5433` (or `DB_EXT_PORT`)
+- **Database:** `geoavia_main_db` (or `DB_NAME`)
+- **Username:** `postgres` (or `DB_USER`)
+- **Password:** `123` (or `DB_PASS`)
 
-### Option B: Local Package Installation (Editable Mode)
+### Option C — Local Backend (editable install, optional)
 
-For development, you may install the backend as a local Python package in **editable mode**.
-
-This allows Python to recognize the project as a proper package and automatically reflect code changes without reinstalling dependencies.
-
-Create and activate a virtual environment:
+For backend-only development outside Docker you can run the API against a reachable
+PostgreSQL/PostGIS instance (set `DB_HOST=localhost`):
 
 ```bash
 python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r backend/requirements.txt
+PYTHONPATH=backend/src uvicorn geoavia_backend.main:app --reload
 ```
-
-Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-Linux/macOS:
-
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Install the backend in editable mode:
-
-```bash
-pip install -e .
-```
-
-Run the API:
-
-```bash
-uvicorn geoavia_backend.main:app --reload
-```
-
-#### Advantages of Editable Installation
-
-- **Proper package resolution:** The module `geoavia_backend` becomes globally available inside the environment.
-- **Cleaner imports:** You avoid relative import issues when the project grows.
-- **Better IDE support:** Tools like VSCode/Pylance can resolve modules more reliably.
-- **No reinstall needed:** Code changes are immediately reflected without reinstalling the package.
 
 ## Database Migrations
 
-The project uses [Alembic](https://alembic.sqlalchemy.org/) for incremental database migrations. Every time the backend container starts, it runs `alembic upgrade head` automatically — applying any pending migrations before uvicorn accepts connections.
-
-Migration history is tracked in the `alembic_version` table inside the database. Alembic never re-runs a migration that has already been applied.
+The project uses [Alembic](https://alembic.sqlalchemy.org/) for incremental migrations.
+Every time the backend container starts, it runs `alembic upgrade head` automatically,
+applying pending migrations before Uvicorn accepts connections. Migration history is
+tracked in the `alembic_version` table; Alembic never re-runs an applied migration.
 
 ### Checking the current state
 
 ```bash
-# Show the revision currently applied to the database
-docker compose exec backend alembic current
-
-# Show the full migration history
-docker compose exec backend alembic history
+docker compose exec backend alembic current   # applied revision
+docker compose exec backend alembic history   # full history
 ```
 
 ### Creating a new migration
 
-1. **Generate the revision file** inside the running container:
-
+1. Generate the revision file inside the running container:
    ```bash
    docker compose exec backend alembic revision -m "describe what this migration does"
    ```
-
-   This creates a file like `backend/alembic/versions/0014_describe_what_this_migration_does.py`.
-
-2. **Edit the file** and fill in `upgrade()` and `downgrade()` using `op.execute(text(...))` with raw SQL:
-
+   This creates a file like `backend/alembic/versions/NNNN_describe_what_this_migration_does.py`.
+2. Edit it and fill in `upgrade()` / `downgrade()` using `op.execute(text(...))` with raw SQL:
    ```python
    from alembic import op
    from sqlalchemy import text
 
    def upgrade() -> None:
-       op.execute(text("""
-           ALTER TABLE assessments ADD COLUMN reviewed_at TIMESTAMPTZ;
-       """))
+       op.execute(text("ALTER TABLE assessments ADD COLUMN reviewed_at TIMESTAMPTZ;"))
 
    def downgrade() -> None:
-       op.execute(text("""
-           ALTER TABLE assessments DROP COLUMN IF EXISTS reviewed_at;
-       """))
+       op.execute(text("ALTER TABLE assessments DROP COLUMN IF EXISTS reviewed_at;"))
    ```
-
-3. **Apply immediately** (without restarting the container):
-
+3. Apply it (or just restart the backend, which runs `upgrade head` on start):
    ```bash
    docker compose exec backend alembic upgrade head
    ```
-
-   Or simply restart the backend — it runs `upgrade head` on every start.
-
-4. **Commit the file** to version control. Everyone on the team gets the migration applied automatically on their next `docker compose up`.
 
 ### Rolling back one revision
 
@@ -279,115 +301,161 @@ docker compose exec backend alembic history
 docker compose exec backend alembic downgrade -1
 ```
 
-### Migration files location
+Revision files live in `backend/alembic/versions/` and follow the `NNNN_slug.py`
+convention. The pre-Alembic SQL files are archived under
+`docs/database/legacy-migrations/` for historical reference and are no longer executed.
 
-All revision files live in `backend/alembic/versions/`. The numbering convention is `NNNN_slug.py` (e.g. `0006_create_assessments.py`). The original SQL files in `backend/migrations/` are kept as historical reference and are no longer executed automatically.
+## API Endpoints
 
-## Current Endpoints
+All routers are assembled in `backend/src/geoavia_backend/main.py`. Paths below are the
+full client-facing paths. "Auth" = requires a Bearer token; "Roles" = additional
+`require_roles` gate.
 
-Authentication:
+| Method | Path | Auth | Roles |
+| :--- | :--- | :--- | :--- |
+| GET | `/health` | — | — |
+| POST | `/login` | — | — |
+| GET | `/users` | ✓ | — |
+| POST | `/users/signup` | ✓ | coordenador, supervisor, desenvolvedor |
+| PUT | `/users/{user_id}/username` | ✓ | coordenador, supervisor, desenvolvedor |
+| PUT | `/users/{user_id}/password` | ✓ | DEV_USER only |
+| DELETE | `/users/{user_id}` | ✓ | coordenador, supervisor, desenvolvedor |
+| GET | `/layers/{layer_name}` | ✓ | — |
+| GET | `/layers/{layer_name}/source` | ✓ | — |
+| PUT | `/layers/{layer_name}/source` | ✓ | coordenador, administrador |
+| POST | `/screening` | ✓ | coordenador, gestor, operador, administrador, desenvolvedor |
+| POST | `/airflow/trigger/{dag_id}` | ✓ | coordenador, operador, administrador, desenvolvedor |
+| GET | `/airflow/triggers` | ✓ | coordenador, operador, administrador, desenvolvedor |
+| POST | `/shapefiles/upload` | ✓ | coordenador, operador, administrador |
+| GET | `/shapefiles` | ✓ | coordenador, operador, administrador |
+| GET | `/shapefiles/{upload_id}/features` | ✓ | coordenador, operador, administrador |
+| POST | `/assessments` | ✓ | — |
+| GET | `/assessments` | ✓ | — |
+| GET | `/ranking` | ✓ | — |
+| POST | `/analysis/run` | ✓ | — |
+| GET | `/analysis/status/{job_id}` | ✓ | — |
+| GET | `/export/{format}` | ✓ | — |
+| GET | `/regions/states` | ✓ | — |
+| GET | `/regions/states/{sigla}/municipalities` | ✓ | — |
 
-- POST /usuarios/signup
-- POST /login
-
-Users:
-
-- GET /usuarios (protected with token)
-- PUT /usuarios/{user_id}/username
-- DELETE /usuarios/{user_id}
+Interactive documentation is available at http://localhost:8000/docs (Swagger).
 
 ## Authentication Flow
 
-- Create a user with POST /usuarios/signup
-- Authenticate with POST /login
-- Receive access_token
-- Send Authorization: Bearer <token> when calling GET /usuarios
+1. Create a user with `POST /users/signup` (requires an authorized caller).
+2. Authenticate with `POST /login` (OAuth2 password form: `username` + `password`).
+3. Receive `{ "access_token": "<JWT>", "token_type": "bearer" }` (30-minute expiry).
+4. Send `Authorization: Bearer <token>` on protected routes.
+
+Token validation and role checks live in `core/auth.py` (`obtain_current_user`,
+`require_roles`); tokens are signed with `SECRET_KEY` using `ALGORITHM` (HS256).
 
 ## Access Control (RBAC)
 
-The system enforces Role-Based Access Control (RBAC) with 6 distinct user profiles. Feature flags and page accessibility are checked on both the frontend and backend:
+The system enforces RBAC with 6 non-hierarchical profiles (each role is an explicit set
+of permissions). The canonical role strings are defined in
+`backend/src/geoavia_backend/core/roles.py` and constrained in the database
+(`alembic/versions/0009_update_user_roles.py`).
 
-### 1. User Profiles & Permissions Matrix
+### 1. Profiles
 
-| Profile | Description | Core Permissions |
+| Profile | Description |
+| :--- | :--- |
+| **Desenvolvedor** | Developer/root profile. Bound to `DEV_USER` in `.env`; protected (cannot be renamed or deleted). Full access including dev tools. |
+| **Coordenador** | Full administrative and operational access. |
+| **Supervisor** | User management and analysis setup. |
+| **Gestor** | Evaluation and decision-making (assessments, results, exports). |
+| **Operador** | Core technical user (analysis, assessment, results, exports). |
+| **Administrador** | Infrastructure/dev actions (layer config, audit, dev tools). |
+
+> The signup endpoint can only assign `{ coordenador, operador, administrador }`. The
+> `desenvolvedor` role is normally created only for the bootstrapped `DEV_USER`.
+
+### 2. Frontend page gating (`frontend/src/app/Router.tsx`)
+
+- `/dashboard/map` — all profiles
+- `/dashboard/analysis` — coordenador, supervisor, operador, desenvolvedor
+- `/dashboard/assessment` — coordenador, gestor, operador, desenvolvedor
+- `/dashboard/results` — coordenador, gestor, supervisor, operador, desenvolvedor
+- `/dashboard/export` — coordenador, gestor, supervisor, operador, desenvolvedor
+- `/dashboard/screening` — coordenador, gestor, operador
+- `/dashboard/data/shapefiles` — coordenador, gestor, supervisor, operador, administrador
+- `/dashboard/admin/users` — coordenador, gestor, supervisor, desenvolvedor
+- `/dashboard/admin/layers` — coordenador, administrador, desenvolvedor
+- `/dashboard/admin/audit` — coordenador, administrador, desenvolvedor
+- `/dashboard/dev/health` — administrador, desenvolvedor
+- `/dashboard/dev/logs` — administrador, desenvolvedor
+- `/dashboard/dev/debug` — administrador, desenvolvedor
+
+## Common Errors / Troubleshooting
+
+| Symptom | Cause | Fix |
 | :--- | :--- | :--- |
-| **Desenvolvedor** | System developer root profile. Dynamically bound to `DEV_USER` in `.env`. Cannot be deleted or modified by anyone. | All permissions of Coordenador + Supervisor, plus developer tools (system health, logs, debug views). |
-| **Coordenador** | Full administrative and operational permissions. | View maps/layers, configure/run analyses, write evaluations, manage and create users, configure layers, view audit logs. |
-| **Supervisor** | Focuses on user management and analysis setup. | View maps/layers, configure analyses, view results, download exports, manage and create users. |
-| **Gestor** | High-level read-only access for evaluation and decision making. | View maps/layers, write evaluations, view results, download exports, view read-only user lists. |
-| **Operador** | Core technical user for spatial data processing. | View maps/layers, configure/run analyses, write evaluations, view results, download exports. |
-| **Administrador** | Infrastructure and developer actions. | View maps/layers, configure backend infrastructure layers, view audit logs, access dev health/logs/debug. |
-
-### 2. Frontend Page Accessibility Gating
-
-- **/dashboard/map** (Map View): All profiles
-- **/dashboard/analysis** (MESA Analysis): `coordenador`, `supervisor`, `operador`, `desenvolvedor`
-- **/dashboard/assessment** (MESA Evaluation): `coordenador`, `gestor`, `operador`, `desenvolvedor`
-- **/dashboard/results** (Results View): `coordenador`, `gestor`, `supervisor`, `operador`, `desenvolvedor`
-- **/dashboard/export** (Data Export): `coordenador`, `gestor`, `supervisor`, `operador`, `desenvolvedor`
-- **/dashboard/admin/users** (User Management): `coordenador`, `gestor` (read-only), `supervisor`, `desenvolvedor`
-- **/dashboard/admin/layers** (Layer Configuration): `coordenador`, `administrador`, `desenvolvedor`
-- **/dashboard/admin/audit** (Audit Logs): `coordenador`, `administrador`, `desenvolvedor`
-- **/dashboard/dev/health** (API Health): `administrador`, `desenvolvedor`
-- **/dashboard/dev/logs** (Processing Logs): `administrador`, `desenvolvedor`
-
-## Colaboration Guidelines
-
-Practical suggestions to evolve the repository as a team:
-
-1. Separate the security module
-    - Create backend/security.py to centralize hashing, token generation, and validation.
-    - Keep backend/service.py focused on business logic.
-2. Standardize request/response models
-    - Create backend/schemas.py with Pydantic classes for signup, login, and responses.
-    - Reduce loose parameters in route definitions.
-3. Separate runtime and development dependencies
-    - Keep runtime dependencies in requirements.txt.
-    - Create requirements-dev.txt for tools like pre-commit and commitizen.
-4. Add automated tests
-    - tests/unit for service layer tests.
-    - tests/integration for routes and authentication.
-5. Define collaboration conventions
-    - Branch pattern: feat/, fix/, chore/.
-    - Pull requests with a minimum checklist (local testing, API impact, database migration).
-    - Semantic commits using commitizen (already supported by .pre-commit-config.yaml).
-6. Version architectural decisions
-    - Create a docs/adr folder to document decisions about security, database, and API design.
-
-## Security
-
-- Passwords must never be stored in plain text.
-- Do not commit .env files containing real credentials.
-- In production, rotate SECRET_KEY and use secure environment variables.
-
-## Internal References
-
-- Implementation guidelines: .github/copilot-instructions.md
-- API entry point: backend/src/geoavia_backend/main.py
+| `start.sh` exits: "No .env or .env_example found" | Missing environment file | Run `cp .env_example .env` (or `bash install.sh`) in the repo root |
+| "permission denied while trying to connect to the Docker daemon" | User not in the `docker` group | `sudo usermod -aG docker $USER` then log out/in (or run with `sudo`) |
+| "address already in use" on 8000 / 8080 / 5173 / 5433 | Port already taken on the host | Change the matching port in `.env` (`API_PORT`, `AIRFLOW_PORT`, `FRONTEND_PORT`, `DB_EXT_PORT`), or free it: `lsof -i :<port>` → kill the PID |
+| `start.sh` hangs on "Waiting for backend health" then times out (30s) | Backend crashed or failed migrations | `docker compose logs backend` — usually an Alembic error or the DB not healthy yet |
+| Backend logs show `psycopg2.OperationalError` / "connection refused" | DB not healthy or credentials mismatch | Check `docker compose logs db`; ensure `DB_*` in `.env` match. Full reset: `docker compose down -v && docker compose up` |
+| Alembic: "no current revision" on an existing DB | Old schema not tracked by Alembic | `start.sh` auto-runs `alembic stamp head`; otherwise run it manually inside the backend container |
+| OSM DAGs fail: `FileNotFoundError: /opt/airflow/data/brazil-latest.osm.pbf` | Base OSM extract not downloaded | In the Airflow UI, unpause and trigger the `download_geofabrik_data` DAG first (downloads ~1–1.5 GB), then run the `load_osm_*` / `update_osm_diffs` DAGs |
+| Airflow tasks fail writing to `/opt/airflow/data` (permission denied) | Volume not owned by the Airflow UID (50000) | The `permission-fixer` service fixes this on startup; if needed: `docker exec geoavia_permission_fixer chown -R 50000:0 /opt/airflow/data` |
+| `run_airflow_tests.sh`: "The container 'geoavia_airflow' is not running" | Airflow container down | `docker compose up -d`, confirm with `docker ps \| grep geoavia_airflow`, then re-run |
+| Frontend: blank page / cannot reach the API | Backend not up or wrong `API_PORT` | Ensure the backend is healthy; the Vite proxy (`frontend/vite.config.ts`) targets the API port. Check the browser console |
+| `npm install` not run / `node_modules` missing | Fresh checkout | `start.sh` installs automatically; otherwise run `npm install` in `frontend/` |
+| DBeaver/external client cannot connect | Wrong host/port | Use `localhost:5433` (`DB_EXT_PORT`), db `geoavia_main_db`, user `postgres`, password from `DB_PASS` |
 
 ## Testing
 
-### Airflow Test Suite
+### Airflow test suite
 
-Our Airflow data pipelines are covered by a comprehensive, automated test suite built with `pytest`. These tests ensure that our orchestration logic, DAG integrity, and task execution are highly robust and resilient.
-
-To run the entire Airflow test suite at once, execute the following script from the root directory:
+The Airflow pipelines are covered by an automated `pytest` suite (DAG integrity, DB
+connection, scheduler, initialization, task execution, failure handling). Run it from the
+repo root (with the stack up):
 
 ```bash
 ./run_airflow_tests.sh
 ```
 
+The suite runs clean (**75 passed, 0 warnings**); its configuration lives in
+[tests/pytest.ini](tests/pytest.ini). Modules:
 
-The test suite is divided into the following key modules:
+- **DAG integrity** (`test_dags_integrity.py`) — loads every DAG to catch syntax errors,
+  missing imports and circular dependencies.
+- **Database connection** (`test_db_connection.py`) — verifies the Airflow environment can
+  reach the main GeoAvia database (`geoavia_main_conn`) via `PostgresHook`.
+- **Initialization** (`test_initialization.py`) — parses the init script and asserts the
+  bootstrap DAGs are unpaused/triggered on startup.
+- **Scheduler & triggers** (`test_scheduler.py`) — validates data-interval inference and
+  `DagRun` creation for CRON- and Dataset-triggered DAGs.
+- **Task execution isolation** (`test_task_execution.py`) — runs each task's Python logic
+  in isolation using mocks for network, subprocess (osmium), file I/O and DB.
+- **Failure handling & recovery** (`test_failure_handling.py`) — validates task-state
+  transitions (`up_for_retry`, `failed`, `upstream_failed`), retry delays, `DagRun`
+  consistency and safe reprocessing.
 
-- DAG Integrity (test_dags_integrity.py): Dynamically loads all DAGs in the dags/ folder to check for Python syntax errors, missing imports, and circular dependencies. It guarantees that no DAG silently fails during the parsing phase.
+### Backend tests
 
-- Database Connection (test_db_connection.py): Verifies that the Airflow environment can successfully establish a connection to the main GeoAvia PostgreSQL database (geoavia_main_conn), validating authentication and query execution via the PostgresHook.
+```bash
+docker compose exec backend pytest
+```
 
-- Environment Initialization (test_initialization.py): Parses the init_airflow.sh script and asserts against the Airflow metadata database to ensure that the required bootstrap DAGs are automatically unpaused and triggered when the environment starts.
+## Collaboration Guidelines
 
-- Scheduler & Triggers (test_scheduler.py): Simulates the passage of time to validate that Airflow's scheduling engine correctly infers data intervals and creates DagRun records for both CRON-scheduled and Dataset-triggered DAGs.
+- **Branches:** `feat/`, `fix/`, `chore/`.
+- **Commits:** semantic commits via commitizen (enforced by
+  [.pre-commit-config.yaml](.pre-commit-config.yaml)).
+- **Pull requests:** include a short checklist — local testing, API impact, and any
+  database migration added.
+- **Architecture decisions:** consider documenting significant choices (security,
+  database, API design) under `docs/`.
 
-- Task Execution Isolation (test_task_execution.py): Dynamically discovers all tasks across the project (Check, Extract, Transform, Load) and executes their Python logic in complete isolation. It uses extensive mocking (unittest.mock) to simulate network requests, subprocesses (like the osmium tool), file I/O, and database operations. This allows for fast and safe unit testing without modifying the real database or downloading large datasets.
+## Security
 
-- Failure Handling & Recovery (test_failure_handling.py): Uses an in-memory dummy DAG to simulate real-world operational failures. It validates that Airflow correctly updates task states (up_for_retry, failed, upstream_failed), respects retry 0delays, maintains DagRun consistency, and supports safe manual reprocessing (task clearing).
+- Passwords are never stored in plain text (bcrypt hashing).
+- Never commit `.env` files with real credentials.
+- Rotate `SECRET_KEY` in production and provide it via secure environment variables.
+
+## Internal References
+
+- API entry point: `backend/src/geoavia_backend/main.py`
+- Database & migrations: [docs/database/README.md](docs/database/README.md)

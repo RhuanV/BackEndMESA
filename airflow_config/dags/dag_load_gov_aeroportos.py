@@ -1,7 +1,5 @@
 """
-DAG to automate the download, extraction, and database insertion of Brazil's Airports (Aeroportos).
-Downloads the public airfields CSV from ANAC (Agência Nacional de Aviação Civil), processes it
-using Pandas, and loads it into the mesa_a.vetor_gov_aeroportos PostGIS table.
+Loads airports (ANAC CSV) into the mesa_a.vetor_gov_aeroportos table.
 """
 import os
 import logging
@@ -20,13 +18,11 @@ import sys
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
-# ==============================================================================
-# NOTA SOBRE A URL:
-# O portal gov.br usa Cloudflare com bot-detection que bloqueia requests Python.
-# A extração usa subprocess curl com headers de navegador, que contorna isso.
-# URL primária: cadastro de aeródromos civis públicos (página de regulados).
-# URL de fallback: dados abertos V1.
-# ==============================================================================
+# NOTE ON THE URLS:
+# The gov.br portal uses Cloudflare bot-detection that blocks Python requests.
+# Extraction shells out to curl with browser headers to work around this.
+# Primary URL: registry of public civil airfields (regulated-entities page).
+# Fallback URL: open data V1.
 ANAC_AEROPORTOS_URLS = [
     "https://www.gov.br/anac/pt-br/assuntos/regulados/aerodromos/cadastro-de-aerodromos/aerodromos-cadastrados/cadastro-de-aerodromos-civis-publicos.csv",
     "https://www.gov.br/anac/pt-br/acesso-a-informacao/dados-abertos/areas-de-atuacao/aerodromos/aerodromos-publicos/lista-de-aerodromos-publicos-1/aerodromospublicosv1.csv",
@@ -42,11 +38,7 @@ CURL_HEADERS = [
 
 
 def _download_with_curl(url: str, dest_path: str) -> bool:
-    """
-    Downloads a URL using system curl with browser-like headers.
-    Returns True on success, False on failure.
-    curl bypasses Cloudflare bot detection that blocks Python's requests library.
-    """
+    """Downloads the URL via curl with browser headers to work around Cloudflare bot-detection."""
     cmd = ["curl", "-L", "--silent", "--fail", "--compressed",
            "--max-time", "60", "-o", dest_path, "-w", "%{http_code}",
            ] + CURL_HEADERS + [url]
@@ -59,7 +51,7 @@ def _download_with_curl(url: str, dest_path: str) -> bool:
         logging.warning(f"curl failed (exit={result.returncode}, HTTP={http_code}): {result.stderr[:300]}")
         return False
 
-    # Sanity check: reject HTML error pages disguised as CSV
+    # Reject HTML error pages that come disguised as a CSV
     if os.path.exists(dest_path) and os.path.getsize(dest_path) > 0:
         with open(dest_path, "rb") as f:
             head = f.read(512).lower()
@@ -73,11 +65,7 @@ def _download_with_curl(url: str, dest_path: str) -> bool:
 
 
 def extract_aeroportos(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads the CSV from ANAC using curl with browser headers to bypass Cloudflare WAF.
-    Tries multiple candidate URLs in order.
-    """
+    """Extract: downloads the ANAC CSV, trying the candidate URLs in order."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_gov_aeroportos_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -98,14 +86,11 @@ def extract_aeroportos(**kwargs) -> str:
 
 
 def dms_to_decimal(dms_str: str) -> float | None:
-    """
-    Converts a DMS string like "25° 31' 54'' S" or "049°10'34''W" to decimal degrees.
-    Returns negative for S (South) and O/W (West). Returns None if unparseable.
-    """
+    """Converts a DMS coordinate (e.g. "25° 31' 54'' S") to decimal degrees; negative for S and O/W, None if unreadable."""
     if not dms_str or (isinstance(dms_str, float)):
         return None
     s = str(dms_str).strip().replace(",", ".")
-    # Already decimal?
+    # Already in decimal form?
     try:
         val = float(s)
         return val
@@ -126,11 +111,7 @@ def dms_to_decimal(dms_str: str) -> float | None:
 
 
 def transform_aeroportos(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads the CSV, extracts lat/lon and relevant fields, converts to WKT Point geometry.
-    Handles both DMS (graus/minutos/segundos) and decimal coordinate formats.
-    """
+    """Transform: reads the CSV, extracts lat/lon and relevant fields and builds the WKT Point geometry."""
     ti = kwargs['ti']
     csv_path = ti.xcom_pull(task_ids='extract_aeroportos')
 
@@ -144,7 +125,8 @@ def transform_aeroportos(**kwargs) -> str:
                     df = candidate
                     logging.info(f"Parsed with encoding={enc}, sep='{sep}'")
                     break
-            except Exception:
+            except Exception as exc:
+                logging.debug(f"Failed to read CSV with encoding={enc}, sep='{sep}': {exc}")
                 continue
         if df is not None:
             break
@@ -214,10 +196,7 @@ def transform_aeroportos(**kwargs) -> str:
 
 
 def load_aeroportos(**kwargs) -> None:
-    """
-    Task 3: Load
-    Inserts data into PostGIS and cleans up.
-    """
+    """Load: inserts the data into PostGIS and cleans up temporary files."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_aeroportos')
 

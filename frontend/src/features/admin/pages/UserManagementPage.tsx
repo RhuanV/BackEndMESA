@@ -1,23 +1,22 @@
 /**
- * UserManagementPage — Gestão de usuários do sistema (Sprint 3).
+ * UserManagementPage — System user management (Sprint 3).
  *
- * Acesso (Router): coordenador, gestor, supervisor.
- * Form de criação: visível apenas para perfis com permission
- * `admin:users:create` (coordenador e supervisor).
+ * Access (Router): coordenador, gestor, supervisor.
+ * Creation form: visible only for roles with the `admin:users:create`
+ * permission (coordenador and supervisor).
  *
- * Defense in depth: o gate na UI é cosmético; a fronteira de segurança real
- * fica em POST /users/signup, que valida o role do JWT no back.
+ * Defense in depth: the UI gate is cosmetic; the real security boundary
+ * is at POST /users/signup, which validates the JWT role on the backend.
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '@/lib/api/axiosInstance';
+import { extractErrorDetail } from '@/lib/api/errors';
 import { sanitize } from '@/lib/security/sanitize';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import { Button, Input, Select } from '@/components/ui';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPermission } from '@/types/auth';
-import type { UserRole } from '@/types/auth';
+import { hasPermission } from '@/types';
+import type { UserRole } from '@/types';
 
 interface UserRecord {
   readonly id: number;
@@ -88,6 +87,7 @@ export function UserManagementPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     void fetchUsers();
   }, [fetchUsers]);
 
@@ -110,10 +110,7 @@ export function UserManagementPage() {
       setNewRole('');
       await fetchUsers();
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
+      const detail = extractErrorDetail(err);
       setFormError(detail ?? 'Não foi possível criar o usuário.');
     } finally {
       setIsSubmitting(false);
@@ -135,10 +132,7 @@ export function UserManagementPage() {
       setEditingUserId(null);
       await fetchUsers();
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
+      const detail = extractErrorDetail(err);
       setEditError(detail ?? 'Não foi possível alterar o nome do usuário.');
     } finally {
       setIsEditingSubmitting(false);
@@ -165,10 +159,7 @@ export function UserManagementPage() {
         setResetPasswordSuccess(null);
       }, 1500);
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
+      const detail = extractErrorDetail(err);
       setResetPasswordError(detail ?? 'Não foi possível alterar a senha.');
     } finally {
       setIsResetPasswordSubmitting(false);
@@ -183,10 +174,7 @@ export function UserManagementPage() {
         await apiClient.delete(`/users/${userId}`);
         await fetchUsers();
       } catch (err) {
-        const detail =
-          err && typeof err === 'object' && 'response' in err
-            ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-            : undefined;
+        const detail = extractErrorDetail(err);
         setError(detail ?? 'Não foi possível excluir o usuário.');
       } finally {
         setDeletingUserId(null);

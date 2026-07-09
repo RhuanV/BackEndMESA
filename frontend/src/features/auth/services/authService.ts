@@ -9,7 +9,7 @@
  * - Error messages are generic to prevent user enumeration
  */
 import apiClient from '@/lib/api/axiosInstance';
-import type { AuthUser, LoginResponse } from '@/types/auth';
+import type { AuthUser, LoginResponse } from '@/types';
 
 /**
  * Authenticates a user with the backend.

@@ -1,6 +1,5 @@
 """
-DAG to automate the extraction and database insertion of State Highways from OpenStreetMap.
-Uses the local Geofabrik PBF, filters with Osmium Tool, and loads it into a PostGIS table.
+Extracts state highways from the OSM PBF (Geofabrik) and loads them into mesa_a.vetor_osm_rodovias_estaduais.
 """
 import os
 import json
@@ -16,27 +15,20 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from psycopg2.extras import execute_batch
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
 osm_dataset = Dataset("file:///opt/airflow/data/brazil-latest.osm.pbf")
 
 def check_pbf_exists() -> None:
-    """
-    Task 0: Check Dependency
-    Verifies if the Geofabrik DAG has already been executed by checking the PBF file.
-    """
+    """Checks whether the Brazil PBF has already been downloaded by the Geofabrik DAG."""
     pbf_path = "/opt/airflow/data/brazil-latest.osm.pbf"
     if not os.path.exists(pbf_path):
         raise FileNotFoundError(f"Brazil PBF dependency missing at {pbf_path}. Run 'download_geofabrik_data' DAG first.")
     logging.info(f"Dependency met: PBF file found at {pbf_path}.")
 
 def extract_and_transform_state_highways(**kwargs) -> str:
-    """
-    Task 1: Extract & Transform
-    Reads the local Brazil PBF, filters highway ways/relations, and exports to a processed JSON.
-    """
+    """Filters highways with a state ref (non-BR) from the PBF and produces the processed JSON."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_osm_state_highways_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -50,7 +42,7 @@ def extract_and_transform_state_highways(**kwargs) -> str:
         raise RuntimeError("Executable 'osmium' not found. Verify the installation of 'osmium-tool' in the Dockerfile and ensure the image was rebuilt (--build).")
 
     logging.info("Filtering features using osmium tags-filter...")
-    # We extract all ways and relations with a 'ref' tag
+    # Extract ways and relations with a 'ref' tag
     subprocess.run([
         osmium_bin, "tags-filter", pbf_path, 
         "w/ref", "r/ref",
@@ -59,7 +51,6 @@ def extract_and_transform_state_highways(**kwargs) -> str:
     
     logging.info("Exporting filtered data to GeoJSON...")
     
-    # Create an osmium export config
     config_path = os.path.join(work_dir, "osmium_export_config.json")
     export_config = {
         "attributes": {
@@ -102,11 +93,10 @@ def extract_and_transform_state_highways(**kwargs) -> str:
         ref = str(props.get('ref', '')).strip().upper()
         highway = props.get('highway')
         
-        # We only care about highways with a state-like ref that DO NOT start with BR
+        # Keep only highways with a state ref that do not start with BR
         if not highway or not state_pattern.search(ref) or ref.startswith("BR"):
             continue
         
-        # Robust ID extraction
         feature_id = feature.get('id')
         if feature_id is None:
             feature_id = props.get('@id')
@@ -153,10 +143,7 @@ def extract_and_transform_state_highways(**kwargs) -> str:
     return transformed_file
 
 def load_osm_state_highways(**kwargs) -> None:
-    """
-    Task 3: Load
-    Reads the transformed JSON, creates temporary table, and inserts/updates data into PostGIS.
-    """
+    """Reads the transformed JSON and upserts the data into PostGIS."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='extract_and_transform_state_highways')
     
@@ -213,7 +200,6 @@ def load_osm_state_highways(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded OSM state highways into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -221,7 +207,7 @@ def load_osm_state_highways(**kwargs) -> None:
 with DAG(
     dag_id="load_osm_state_highways",
     start_date=datetime(2024, 1, 1),
-    schedule=[osm_dataset], # Runs automatically when the PBF file is updated
+    schedule=[osm_dataset],  # Runs automatically when the PBF is updated
     catchup=False,
     tags=["geodata", "osm", "highways", "state"]
 ) as dag:

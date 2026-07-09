@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import type { UserRole } from '@/types/auth';
+import type { UserRole } from '@/types';
 
 interface SidebarProps {
   readonly isOpen: boolean;
@@ -92,7 +92,7 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
-  // === Dados ===
+  // === Data ===
   {
     to: '/dashboard/data/shapefiles',
     label: 'Importar Shapefile',
@@ -178,13 +178,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user } = useAuth();
   const userRole = user?.role;
 
-  // Filter items based on user's role
+  // Filters items by the user's role and marks the first item of each
+  // section, so the header can be rendered without mutating state during render.
   const visibleItems = userRole
     ? navItems.filter((item) => item.allowedRoles.includes(userRole))
     : [];
-
-  // Group items by section
-  let currentSection = '';
+  const itemsWithHeaders = visibleItems.map((item, index) => ({
+    item,
+    showSection: !!item.section && item.section !== visibleItems[index - 1]?.section,
+  }));
 
   return (
     <>
@@ -221,10 +223,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Nav links with section headers */}
         <nav className="mt-2 px-3 space-y-0.5 overflow-y-auto max-h-[calc(100vh-8rem)]">
-          {visibleItems.map((item) => {
-            const showSection = item.section && item.section !== currentSection;
-            if (item.section) currentSection = item.section;
-
+          {itemsWithHeaders.map(({ item, showSection }) => {
             return (
               <div key={item.to}>
                 {showSection && (

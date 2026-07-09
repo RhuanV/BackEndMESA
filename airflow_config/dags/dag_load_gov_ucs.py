@@ -1,7 +1,5 @@
 """
-DAG to automate the download, extraction, and database insertion of Brazil's Federal Conservation Units (UCs).
-Downloads a Shapefile from ICMBio, processes it using GeoPandas, 
-and loads it into the mesa_a.vetor_gov_uc PostGIS table.
+Loads federal Conservation Units (ICMBio) into the mesa_a.vetor_gov_uc table.
 """
 import os
 import zipfile
@@ -17,18 +15,13 @@ import geopandas as gpd
 from psycopg2.extras import execute_batch
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
-# Import URL from the centralized configuration module
 from config_urls import FEDERAL_UCS_BRAZIL_URL
 
 def extract_ucs(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads the shapefile ZIP, extracts it, and returns the path to the extracted directory.
-    """
+    """Extract: downloads and unpacks the ZIP, returning the extracted directory."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_gov_ucs_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -38,7 +31,7 @@ def extract_ucs(**kwargs) -> str:
     
     logging.info(f"Downloading from {FEDERAL_UCS_BRAZIL_URL}...")
     headers = {"User-Agent": "GeoAvia-MESA-Auto/1.0 (Airflow Data Pipeline)"}
-    # verify=False is used because gov.br sometimes has SSL certificate validation issues
+    # verify=False because gov.br sometimes has SSL certificate validation issues
     response = requests.get(FEDERAL_UCS_BRAZIL_URL, stream=True, verify=False, headers=headers)
     response.raise_for_status()
     
@@ -53,11 +46,7 @@ def extract_ucs(**kwargs) -> str:
     return extract_path
 
 def transform_ucs(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads the shapefile with GeoPandas, transforms values to match DB columns,
-    and saves to a temporary JSON for database insertion.
-    """
+    """Transform: reads the shapefile, maps the values to the database columns and writes a temporary JSON."""
     ti = kwargs['ti']
     extract_path = ti.xcom_pull(task_ids='extract_ucs')
     
@@ -96,7 +85,7 @@ def transform_ucs(**kwargs) -> str:
         if isinstance(esfera, str):
             esfera = esfera.strip()
             
-        # Parse year of creation
+        # Convert the creation year to an integer
         ano_criacao = row.get('criacaoano')
         if ano_criacao is not None:
             try:
@@ -123,10 +112,7 @@ def transform_ucs(**kwargs) -> str:
     return transformed_file
 
 def load_ucs(**kwargs) -> None:
-    """
-    Task 3: Load
-    Truncates the table and inserts data into PostGIS using ST_Multi to normalize geometries.
-    """
+    """Load: truncates the table and inserts the data into PostGIS, normalizing geometries with ST_Multi."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_ucs')
     
@@ -169,7 +155,6 @@ def load_ucs(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded government UCs into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -177,7 +162,7 @@ def load_ucs(**kwargs) -> None:
 with DAG(
     dag_id="load_gov_ucs",
     start_date=datetime(2024, 1, 1),
-    schedule=None, # Runs manually
+    schedule=None,  # Runs manually
     catchup=False,
     tags=["geodata", "icmbio", "ucs"]
 ) as dag:
