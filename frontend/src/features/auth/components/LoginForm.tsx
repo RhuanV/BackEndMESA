@@ -18,7 +18,11 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { Button, Input } from '@/components/ui';
 import { LOGIN_COOLDOWN_BASE_MS, LOGIN_MAX_ATTEMPTS } from '@/lib/constants';
 
-export function LoginForm() {
+interface LoginFormProps {
+  readonly onForgotPassword?: () => void;
+}
+
+export function LoginForm({ onForgotPassword }: LoginFormProps = {}) {
   const { login } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -114,6 +118,17 @@ export function LoginForm() {
         <p className="animate-fade-in text-center text-xs text-neutral-500">
           Muitas tentativas. Aguarde antes de tentar novamente.
         </p>
+      )}
+
+      {onForgotPassword && (
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          disabled={isDisabled}
+          className="w-full text-center text-sm text-primary-600 hover:underline disabled:opacity-50"
+        >
+          Esqueceu sua senha?
+        </button>
       )}
     </form>
   );

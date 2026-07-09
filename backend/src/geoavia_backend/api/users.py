@@ -6,12 +6,20 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from geoavia_backend.core.auth import obtain_current_user, require_roles
 from geoavia_backend.core.database import DEV_USER
-from geoavia_backend.core.roles import USER_CREATION_ROLES
-from geoavia_backend.schemas.user import PasswordResetRequest, UpdateUsernameRequest
+from geoavia_backend.core.roles import DESENVOLVEDOR, USER_CREATION_ROLES
+from geoavia_backend.schemas.user import (
+    PasswordResetRequest,
+    RecoveryPasswordResetRequest,
+    UpdateUsernameRequest,
+)
+from geoavia_backend.services.password_reset import PasswordRecoveryService
 from geoavia_backend.services.user import UserService
 
 router = APIRouter()
 service = UserService()
+recovery_service = PasswordRecoveryService()
+
+_MANAGE_USERS_DETAIL = "Only administrador or desenvolvedor can manage users"
 
 
 @router.get("/users")
@@ -26,10 +34,19 @@ def create_user(
     password: str,
     role: str = "operador",
     current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail="Only coordenador and supervisor can create users")
+        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
     ),
 ):
-    """Creates a user (coordenador/supervisor only)."""
+    """Creates a user (administrador/desenvolvedor only).
+
+    Only a desenvolvedor may grant the privileged 'desenvolvedor' role.
+    """
+    if role.strip().lower() == DESENVOLVEDOR and current_user["role"] != DESENVOLVEDOR:
+        raise HTTPException(
+            status_code=403,
+            detail="Only a desenvolvedor can grant the 'desenvolvedor' role.",
+        )
+
     try:
         new_id = service.register_user(username, password, role)
     except ValueError as exc:
@@ -64,7 +81,7 @@ def update_username(
     user_id: int,
     payload: UpdateUsernameRequest,
     current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail="Only coordenador and supervisor can change usernames")
+        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
     ),
 ):
     """Updates a user's username."""
@@ -83,7 +100,7 @@ def update_username(
 def delete_user(
     user_id: int,
     current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail="Only coordenador and supervisor can delete users")
+        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
     ),
 ):
     """Removes a user by ID."""
@@ -111,6 +128,48 @@ def change_password(
         updated = service.change_password(user_id, payload.new_password)
         if not updated:
             raise HTTPException(status_code=404, detail="User not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {"message": "Password was successfully changed"}
+
+
+@router.post("/users/{user_id}/recovery-code")
+def issue_recovery_code(
+    user_id: int,
+    current_user: dict = Depends(
+        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
+    ),
+):
+    """Issues a single-use, time-limited password-recovery code for a user.
+
+    Returns the code once so the administrator can relay it to the user; only
+    its hash is stored. The user redeems it via POST /password-reset.
+    """
+    issued_by = int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None
+    try:
+        result = recovery_service.issue_code(user_id, issued_by)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "code": result["code"],
+        "expires_at": result["expires_at"],
+        "message": "Recovery code generated. Relay it to the user; it can be used once.",
+    }
+
+
+@router.post("/password-reset")
+def reset_password_with_code(payload: RecoveryPasswordResetRequest):
+    """Public: resets a password using an admin-issued recovery code.
+
+    Errors are intentionally generic to avoid revealing whether a username or
+    code exists.
+    """
+    try:
+        recovery_service.reset_with_code(
+            payload.username, payload.code, payload.new_password
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -4,7 +4,7 @@ from jose import jwt
 from passlib.context import CryptContext
 
 from geoavia_backend.core.database import ALGORITHM, SECRET_KEY, DEV_USER
-from geoavia_backend.core.roles import ALLOWED_ROLES
+from geoavia_backend.core.roles import ROLES
 from geoavia_backend.repositories.user import UserRepository
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -62,10 +62,8 @@ class UserService:
             raise ValueError("Password must not be empty")
 
         clean_role = role.strip().lower()
-        if clean_role not in ALLOWED_ROLES:
-            raise ValueError(
-                "Invalid role. Use: coordenador, gestor, supervisor, operador or administrador"
-            )
+        if clean_role not in ROLES:
+            raise ValueError("Invalid role. Use: operador, administrador or desenvolvedor")
 
         password_hash = self.security.get_password_hash(clean_password)
         return self.repo.create(clean_username, password_hash, clean_role)

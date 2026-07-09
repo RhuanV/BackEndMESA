@@ -20,6 +20,10 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 FRONTEND_PORT = os.getenv("FRONTEND_PORT", "5173")
 DEV_USER = os.getenv("DEV_USER", "admin")
 
+# Extra allowed CORS origins (comma-separated). Empty falls back to the local
+# frontend only. Configure this for staging/production domains.
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
+
 # Connection string used by the repository layer via psycopg2.
 DATABASE_URL = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
 

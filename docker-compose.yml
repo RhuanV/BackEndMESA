@@ -39,6 +39,12 @@ services:
       - "${API_PORT:-8000}:8000" # HOST:CONTAINER
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       db:
         condition: service_healthy

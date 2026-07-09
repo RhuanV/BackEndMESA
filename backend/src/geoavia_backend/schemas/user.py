@@ -10,3 +10,11 @@ class UpdateUsernameRequest(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     new_password: str = Field(min_length=6)
+
+
+class RecoveryPasswordResetRequest(BaseModel):
+    """Public request to reset a password using an admin-issued recovery code."""
+
+    username: str
+    code: str
+    new_password: str = Field(min_length=8)

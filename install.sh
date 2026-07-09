@@ -68,7 +68,11 @@ if [ ! -f "$ROOT_DIR/.env" ]; then
   if [ -f "$ROOT_DIR/.env_example" ]; then
     cp "$ROOT_DIR/.env_example" "$ROOT_DIR/.env"
     echo -e "  ${GREEN}✓${NC} Created .env from .env_example"
-    echo -e "  ${RED}⚠ Review .env and set your secrets before production!${NC}"
+    # Generate a strong SECRET_KEY so a fresh install never ships the placeholder.
+    SECRET_KEY_VALUE="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+    sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY_VALUE}|" "$ROOT_DIR/.env"
+    echo -e "  ${GREEN}✓${NC} Generated a strong SECRET_KEY"
+    echo -e "  ${RED}⚠ Review .env and set the remaining secrets before production!${NC}"
   else
     echo -e "  ${RED}✗ No .env or .env_example found. Cannot continue.${NC}"
     exit 1

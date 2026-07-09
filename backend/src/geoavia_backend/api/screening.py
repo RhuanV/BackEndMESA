@@ -16,7 +16,7 @@ screening_service = ScreeningService()
 def screen_site(
     payload: ScreeningRequest,
     current_user: dict = Depends(
-        require_roles(SCREENING_ROLES, detail="Only coordenador, gestor and operador can run the screening")
+        require_roles(SCREENING_ROLES, detail="You do not have permission to run the screening")
     ),
 ):
     """Spatial screening — classifies a point as viavel / intermediario /
