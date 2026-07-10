@@ -4,9 +4,14 @@ This module only wires the app together: CORS, the sandbox guard and router
 registration. Endpoint logic lives in the per-domain routers under
 geoavia_backend.api.
 """
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from geoavia_backend.api import (
     airflow,
@@ -18,7 +23,8 @@ from geoavia_backend.api import (
     shapefiles,
     users,
 )
-from geoavia_backend.core.database import CORS_ORIGINS, FRONTEND_PORT
+from geoavia_backend.core.database import APP_ENV, CORS_ORIGINS, FRONTEND_PORT, SECRET_KEY
+from geoavia_backend.core.rate_limit import limiter
 from geoavia_backend.core.sandbox import (
     WRITE_METHODS,
     audit_logger,
@@ -27,7 +33,46 @@ from geoavia_backend.core.sandbox import (
     role_from_token,
 )
 
-app = FastAPI(title="GeoAvia - Initial Test")
+logger = logging.getLogger("geoavia.startup")
+
+# Placeholder shipped in .env_example — must never be used as a real signing key.
+_PLACEHOLDER_SECRET = "change_for_a_strong_password"
+
+
+def _validate_secret_key() -> None:
+    """Fails fast in production if the JWT signing key is missing or the default.
+
+    Runs at server startup (not import time), so tests and OpenAPI generation are
+    unaffected. In sandbox a weak key only warns, keeping local dev friction-free.
+    """
+    weak = (not SECRET_KEY) or SECRET_KEY == _PLACEHOLDER_SECRET
+    if not weak:
+        return
+    if APP_ENV == "production":
+        raise RuntimeError(
+            "SECRET_KEY is missing or still the placeholder. Set a strong, unique "
+            "SECRET_KEY in .env before running in production (e.g. "
+            "`python -c 'import secrets; print(secrets.token_urlsafe(48))'`)."
+        )
+    logger.warning(
+        "SECRET_KEY is weak/placeholder in APP_ENV=%s. This is fine for local "
+        "development, but set a strong SECRET_KEY before production.",
+        APP_ENV,
+    )
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _validate_secret_key()
+    yield
+
+
+app = FastAPI(title="GeoAvia - Initial Test", lifespan=lifespan)
+
+# Rate limiting (slowapi): the limiter is attached to the app and its 429
+# handler registered here; individual routes opt in with @limiter.limit(...).
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Allowed origins: explicit CORS_ORIGINS if configured, otherwise the local
 # frontend only (never a wildcard, since credentials are allowed).

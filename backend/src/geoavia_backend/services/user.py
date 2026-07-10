@@ -46,8 +46,8 @@ class UserService:
         self.repo = UserRepository()
         self.security = SecurityService()
 
-    def list_users(self) -> list[dict]:
-        users = self.repo.get_all()
+    def list_users(self, limit: int = 100, offset: int = 0) -> list[dict]:
+        users = self.repo.get_all(limit=limit, offset=offset)
         for u in users:
             u["is_protected"] = (u["username"] == BOOTSTRAP_USER)
         return users

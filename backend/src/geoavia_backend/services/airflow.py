@@ -1,8 +1,8 @@
 """Service that triggers Airflow DAGs and records the audit log.
 
 Uses the stable Airflow REST API (`POST /api/v1/dags/{dag_id}/dagRuns`) with
-basic auth `admin:admin` — same credentials as start.sh. Uses stdlib
-`urllib.request` to avoid adding `requests` to backend/requirements.txt.
+HTTP basic auth read from the environment (AIRFLOW_USER/AIRFLOW_PASS). Uses
+stdlib `urllib.request` to avoid adding `requests` to backend/requirements.txt.
 """
 from __future__ import annotations
 
@@ -38,8 +38,11 @@ ALLOWED_DAGS: frozenset[str] = frozenset(
 
 # Airflow service URL (inside docker network). Override via env if needed.
 AIRFLOW_BASE_URL = os.environ.get("AIRFLOW_BASE_URL", "http://airflow:8080")
-AIRFLOW_USERNAME = os.environ.get("AIRFLOW_USERNAME", "admin")
-AIRFLOW_PASSWORD = os.environ.get("AIRFLOW_PASSWORD", "admin")
+# Credentials for the Airflow REST API. No insecure hardcoded default: fall back
+# to the same vars that provision the Airflow web user (AIRFLOW_USER/PASS), and
+# require them to be set (checked at call time) instead of shipping admin/admin.
+AIRFLOW_USERNAME = os.environ.get("AIRFLOW_USERNAME") or os.environ.get("AIRFLOW_USER")
+AIRFLOW_PASSWORD = os.environ.get("AIRFLOW_PASSWORD") or os.environ.get("AIRFLOW_PASS")
 TRIGGER_TIMEOUT_SECONDS = 10
 
 
@@ -105,6 +108,11 @@ class AirflowTriggerService:
     @staticmethod
     def _call_airflow(dag_id: str) -> str:
         """POSTs to /api/v1/dags/{dag_id}/dagRuns and returns the dag_run_id."""
+        if not AIRFLOW_USERNAME or not AIRFLOW_PASSWORD:
+            raise AirflowTriggerError(
+                "Airflow credentials are not configured. Set AIRFLOW_USER/AIRFLOW_PASS "
+                "(or AIRFLOW_USERNAME/AIRFLOW_PASSWORD) in the environment."
+            )
         url = f"{AIRFLOW_BASE_URL}/api/v1/dags/{dag_id}/dagRuns"
         body = json.dumps({"conf": {}}).encode("utf-8")
         auth = base64.b64encode(
