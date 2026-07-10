@@ -14,8 +14,9 @@ import apiClient from '@/lib/api/axiosInstance';
 import { extractErrorDetail } from '@/lib/api/errors';
 import { sanitize } from '@/lib/security/sanitize';
 import { getPasswordStrengthErrors } from '@/lib/validation/password';
-import { PASSWORD_MAX_LENGTH } from '@/lib/constants';
 import { Button, Input, Select } from '@/components/ui';
+import { RecoveryCodeModal } from '@/features/admin/components/RecoveryCodeModal';
+import { ResetPasswordModal } from '@/features/admin/components/ResetPasswordModal';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { hasPermission } from '@/types';
 import type { UserRole } from '@/types';
@@ -335,146 +336,29 @@ export function UserManagementPage() {
       </div>
 
       {resetPasswordUserId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl animate-scale-in">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-neutral-900">
-                Alterar Senha de {sanitize(resetPasswordUsername)}
-              </h3>
-              <button
-                type="button"
-                className="text-neutral-400 hover:text-neutral-600 transition-colors"
-                onClick={() => setResetPasswordUserId(null)}
-                aria-label="Fechar"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-neutral-700 block mb-1.5">
-                  Senha Atual
-                </label>
-                <input
-                  type="password"
-                  value="••••••••"
-                  disabled
-                  className="w-full rounded-lg border border-neutral-300 bg-neutral-100 px-4 py-2 text-sm text-neutral-400 cursor-not-allowed select-none"
-                  aria-label="Senha atual oculta"
-                />
-                <span className="text-xs text-neutral-400 mt-1 block">A senha atual é protegida e não pode ser revelada.</span>
-              </div>
-
-              <div>
-                <label htmlFor="new-reset-password" className="text-sm font-medium text-neutral-700 block mb-1.5">
-                  Nova Senha
-                </label>
-                <input
-                  id="new-reset-password"
-                  type="password"
-                  value={newResetPassword}
-                  onChange={(e) => setNewResetPassword(e.target.value)}
-                  required
-                  maxLength={PASSWORD_MAX_LENGTH}
-                  autoComplete="new-password"
-                  placeholder="Mín. 8: maiúscula, minúscula, número e especial"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100 disabled:text-neutral-400"
-                  disabled={isResetPasswordSubmitting || resetPasswordSuccess !== null}
-                />
-              </div>
-
-              {resetPasswordError && (
-                <div role="alert" className="text-sm text-danger-600 animate-fade-in">
-                  {resetPasswordError}
-                </div>
-              )}
-
-              {resetPasswordSuccess && (
-                <div className="text-sm text-emerald-600 animate-fade-in">
-                  {resetPasswordSuccess}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => setResetPasswordUserId(null)}
-                  disabled={isResetPasswordSubmitting}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  isLoading={isResetPasswordSubmitting}
-                  disabled={resetPasswordSuccess !== null}
-                >
-                  Confirmar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ResetPasswordModal
+          username={resetPasswordUsername}
+          newPassword={newResetPassword}
+          onNewPasswordChange={setNewResetPassword}
+          error={resetPasswordError}
+          success={resetPasswordSuccess}
+          isSubmitting={isResetPasswordSubmitting}
+          onSubmit={handleResetPassword}
+          onClose={() => setResetPasswordUserId(null)}
+        />
       )}
 
       {recoveryUserId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl animate-scale-in">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-neutral-900">
-                Código de acesso — {sanitize(recoveryUsername)}
-              </h3>
-              <button
-                type="button"
-                className="text-neutral-400 hover:text-neutral-600 transition-colors"
-                onClick={() => setRecoveryUserId(null)}
-                aria-label="Fechar"
-              >
-                ✕
-              </button>
-            </div>
-
-            {isRecoverySubmitting && (
-              <p className="text-sm text-neutral-500">Gerando código...</p>
-            )}
-
-            {recoveryError && (
-              <div role="alert" className="text-sm text-danger-600 animate-fade-in">
-                {recoveryError}
-              </div>
-            )}
-
-            {recoveryCode && (
-              <div className="space-y-4">
-                <p className="text-sm text-neutral-600">
-                  Repasse este código de uso único ao usuário. Ele expira em ~30
-                  minutos e permite definir a senha na tela de login (primeiro
-                  acesso ou recuperação).
-                </p>
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-3">
-                  <code className="select-all text-lg font-semibold tracking-widest text-neutral-900">
-                    {recoveryCode}
-                  </code>
-                  <Button variant="ghost" size="sm" type="button" onClick={handleCopyRecoveryCode}>
-                    {recoveryCopied ? 'Copiado!' : 'Copiar'}
-                  </Button>
-                </div>
-                {recoveryExpiresAt && (
-                  <p className="text-xs text-neutral-400">
-                    Expira em: {new Date(recoveryExpiresAt).toLocaleString('pt-BR')}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-end pt-4">
-              <Button variant="ghost" type="button" onClick={() => setRecoveryUserId(null)}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </div>
+        <RecoveryCodeModal
+          username={recoveryUsername}
+          code={recoveryCode}
+          expiresAt={recoveryExpiresAt}
+          error={recoveryError}
+          isSubmitting={isRecoverySubmitting}
+          copied={recoveryCopied}
+          onCopy={handleCopyRecoveryCode}
+          onClose={() => setRecoveryUserId(null)}
+        />
       )}
     </div>
   );

@@ -21,10 +21,13 @@ export function LayerConfigPage() {
   // Map layer backendName → upload_id (null = no fallback configured)
   const [sources, setSources] = useState<Record<string, number | null>>({});
   const [savingSource, setSavingSource] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Load all uploads and current source mappings once on mount
   useEffect(() => {
-    void listShapefiles().then(setUploads).catch(() => {});
+    void listShapefiles()
+      .then(setUploads)
+      .catch(() => setError('Não foi possível carregar os shapefiles importados.'));
 
     const layersWithBackend = LAYER_REGISTRY.filter((l) => l.backendName);
     Promise.all(
@@ -50,11 +53,12 @@ export function LayerConfigPage() {
   const handleSourceChange = async (backendName: string, value: string) => {
     const uploadId = value === '' ? null : Number(value);
     setSavingSource(backendName);
+    setError(null);
     try {
       await setLayerSource(backendName, uploadId);
       setSources((prev) => ({ ...prev, [backendName]: uploadId }));
     } catch {
-      // Silently ignore — user can retry
+      setError('Não foi possível salvar a fonte da camada. Tente novamente.');
     } finally {
       setSavingSource(null);
     }
@@ -69,6 +73,12 @@ export function LayerConfigPage() {
           shapefile importado como fonte alternativa.
         </p>
       </div>
+
+      {error && (
+        <div role="alert" className="mb-4 rounded-lg border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-600">
+          {error}
+        </div>
+      )}
 
       <div className="space-y-3">
         {LAYER_REGISTRY.map((layer) => {

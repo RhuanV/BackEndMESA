@@ -13,6 +13,7 @@ import {
   type UploadedLayer,
 } from '@/features/data/services/shapefilesApi';
 import { sanitize } from '@/lib/security/sanitize';
+import { extractErrorDetail } from '@/lib/api/errors';
 
 export function ShapefileImportPage() {
   const [uploads, setUploads] = useState<UploadedLayer[]>([]);
@@ -78,11 +79,7 @@ export function ShapefileImportPage() {
       if (fileInput) fileInput.value = '';
       await refreshList();
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
-      setFormError(detail ?? 'Falha ao importar o shapefile.');
+      setFormError(extractErrorDetail(err) ?? 'Falha ao importar o shapefile.');
     } finally {
       setIsSubmitting(false);
     }

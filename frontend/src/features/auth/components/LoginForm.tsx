@@ -48,6 +48,9 @@ export function LoginForm({ onForgotPassword }: LoginFormProps = {}) {
   );
 
   const onSubmit = async (data: LoginFormData) => {
+    // Guard against a double-submit (e.g. Enter + click) while a request or the
+    // rate-limit cooldown is in flight.
+    if (isSubmitting || cooldownActive) return;
     setServerError(null);
 
     try {
