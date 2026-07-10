@@ -139,6 +139,7 @@ fi
 
 # Portas e credenciais do banco (para health check e criação do banco sandbox).
 API_PORT="$(env_get API_PORT)"; API_PORT="${API_PORT:-8000}"
+AIRFLOW_PORT="$(env_get AIRFLOW_PORT)"; AIRFLOW_PORT="${AIRFLOW_PORT:-8080}"
 FRONTEND_PORT="$(env_get FRONTEND_PORT)"; FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 DB_USER="$(env_get DB_USER)"; DB_USER="${DB_USER:-postgres}"
 DB_NAME="$(env_get DB_NAME)"; DB_NAME="${DB_NAME:-geoavia_main_db}"
