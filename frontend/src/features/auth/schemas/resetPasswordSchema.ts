@@ -6,9 +6,8 @@
  * Depth; the backend validates independently.
  */
 import { z } from 'zod';
-import { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, PASSWORD_MAX_LENGTH } from '@/lib/constants';
-
-const RESET_PASSWORD_MIN_LENGTH = 8;
+import { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, RECOVERY_CODE_LENGTH } from '@/lib/constants';
+import { strongPasswordSchema } from '@/lib/validation/password';
 
 export const resetPasswordSchema = z.object({
   username: z
@@ -21,12 +20,8 @@ export const resetPasswordSchema = z.object({
     ),
   code: z
     .string()
-    .min(6, 'Informe o código de recuperação')
-    .max(32, 'Código inválido'),
-  newPassword: z
-    .string()
-    .min(RESET_PASSWORD_MIN_LENGTH, `Mínimo de ${RESET_PASSWORD_MIN_LENGTH} caracteres`)
-    .max(PASSWORD_MAX_LENGTH, `Máximo de ${PASSWORD_MAX_LENGTH} caracteres`),
+    .length(RECOVERY_CODE_LENGTH, 'Código de recuperação inválido'),
+  newPassword: strongPasswordSchema,
 });
 
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;

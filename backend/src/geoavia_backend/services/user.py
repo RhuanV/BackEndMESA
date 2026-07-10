@@ -4,6 +4,7 @@ from jose import jwt
 from passlib.context import CryptContext
 
 from geoavia_backend.core.database import ALGORITHM, SECRET_KEY, DEV_USER
+from geoavia_backend.core.passwords import validate_password_strength
 from geoavia_backend.core.roles import ROLES
 from geoavia_backend.repositories.user import UserRepository
 
@@ -60,6 +61,7 @@ class UserService:
         clean_password = password.strip()
         if not clean_password:
             raise ValueError("Password must not be empty")
+        validate_password_strength(clean_password)
 
         clean_role = role.strip().lower()
         if clean_role not in ROLES:
@@ -98,6 +100,7 @@ class UserService:
         clean_password = new_password.strip()
         if not clean_password:
             raise ValueError("Password must not be empty")
+        validate_password_strength(clean_password)
 
         # Verify that the user exists and is not the root DEV_USER
         user = self.repo.obtain_user_from_id(user_id)

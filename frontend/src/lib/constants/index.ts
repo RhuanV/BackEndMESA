@@ -16,8 +16,12 @@ export const LOGIN_MAX_ATTEMPTS = 5;
 /** Form validation limits */
 export const USERNAME_MIN_LENGTH = 3;
 export const USERNAME_MAX_LENGTH = 50;
-export const PASSWORD_MIN_LENGTH = 6;
+/** Minimum length for NEW passwords (creation/change/reset). Login is not
+ * revalidated against the policy, so legacy accounts keep working. */
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
+/** Length of admin-issued recovery codes (see backend CODE_LENGTH). */
+export const RECOVERY_CODE_LENGTH = 20;
 export const SITE_NAME_MAX_LENGTH = 100;
 export const DESCRIPTION_MAX_LENGTH = 500;
 

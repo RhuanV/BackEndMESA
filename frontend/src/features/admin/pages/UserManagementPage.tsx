@@ -13,6 +13,8 @@ import type { FormEvent } from 'react';
 import apiClient from '@/lib/api/axiosInstance';
 import { extractErrorDetail } from '@/lib/api/errors';
 import { sanitize } from '@/lib/security/sanitize';
+import { getPasswordStrengthErrors } from '@/lib/validation/password';
+import { PASSWORD_MAX_LENGTH } from '@/lib/constants';
 import { Button, Input, Select } from '@/components/ui';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { hasPermission } from '@/types';
@@ -102,6 +104,11 @@ export function UserManagementPage() {
       setFormError('Por favor, selecione um perfil.');
       return;
     }
+    const passwordErrors = getPasswordStrengthErrors(newPassword);
+    if (passwordErrors.length > 0) {
+      setFormError(`A senha precisa de: ${passwordErrors.join(', ')}.`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       await apiClient.post('/users/signup', null, {
@@ -144,8 +151,9 @@ export function UserManagementPage() {
 
   const handleResetPassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (newResetPassword.length < 6) {
-      setResetPasswordError('A nova senha deve ter pelo menos 6 caracteres.');
+    const passwordErrors = getPasswordStrengthErrors(newResetPassword);
+    if (passwordErrors.length > 0) {
+      setResetPasswordError(`A senha precisa de: ${passwordErrors.join(', ')}.`);
       return;
     }
     setResetPasswordError(null);
@@ -239,7 +247,8 @@ export function UserManagementPage() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
-              minLength={6}
+              maxLength={PASSWORD_MAX_LENGTH}
+              placeholder="Mín. 8: maiúscula, minúscula, número e especial"
               autoComplete="new-password"
             />
             <Select
@@ -448,9 +457,9 @@ export function UserManagementPage() {
                   value={newResetPassword}
                   onChange={(e) => setNewResetPassword(e.target.value)}
                   required
-                  minLength={6}
+                  maxLength={PASSWORD_MAX_LENGTH}
                   autoComplete="new-password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mín. 8: maiúscula, minúscula, número e especial"
                   className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100 disabled:text-neutral-400"
                   disabled={isResetPasswordSubmitting || resetPasswordSuccess !== null}
                 />
