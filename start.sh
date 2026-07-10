@@ -158,6 +158,7 @@ echo -e "${GREEN}╠════════════════════
 echo -e "${GREEN}║${NC}  Frontend:  ${CYAN}http://localhost:${FRONTEND_PORT}${NC}        ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Backend:   ${CYAN}http://localhost:${API_PORT}${NC}        ${GREEN}║${NC}"
 echo -e "${GREEN}║${NC}  Swagger:   ${CYAN}http://localhost:${API_PORT}/docs${NC}   ${GREEN}║${NC}"
+echo -e "${GREEN}║${NC}  Airflow:   ${CYAN}http://localhost:${AIRFLOW_PORT}${NC}   ${GREEN}║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
