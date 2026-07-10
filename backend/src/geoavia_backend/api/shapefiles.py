@@ -59,8 +59,13 @@ def list_shapefiles(
     limit: int = 100,
     current_user: dict = Depends(_require_upload_role),
 ):
-    """Lists all uploaded shapefiles (audit view)."""
-    return {"uploads": shapefiles_service.list_layers(limit=limit)}
+    """Lists uploaded shapefiles. Administrators get the full audit view;
+    other roles get a version without uploader identity fields."""
+    return {
+        "uploads": shapefiles_service.list_layers(
+            limit=limit, viewer_role=current_user["role"]
+        )
+    }
 
 
 @router.get("/shapefiles/{upload_id}/features")
