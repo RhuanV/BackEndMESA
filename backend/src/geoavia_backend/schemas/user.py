@@ -4,12 +4,9 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
-class UpdateUsernameRequest(BaseModel):
-    username: str
-
-
 class PasswordResetRequest(BaseModel):
-    new_password: str = Field(min_length=6)
+    # Fast length gate; the authoritative strength policy runs in the service layer.
+    new_password: str = Field(min_length=8)
 
 
 class RecoveryPasswordResetRequest(BaseModel):

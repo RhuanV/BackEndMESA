@@ -13,7 +13,6 @@ import { z } from 'zod';
 import {
   USERNAME_MIN_LENGTH,
   USERNAME_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
 } from '@/lib/constants';
 
@@ -26,9 +25,11 @@ export const loginSchema = z.object({
       /^[a-zA-Z0-9._-]+$/,
       'Apenas letras, números, pontos, hífens e underscores são permitidos'
     ),
+  // Login is not revalidated against the new-password policy — only bounded, so
+  // pre-existing accounts (any length) can still sign in.
   password: z
     .string()
-    .min(PASSWORD_MIN_LENGTH, `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres`)
+    .min(1, 'Informe a senha')
     .max(PASSWORD_MAX_LENGTH, `Máximo de ${PASSWORD_MAX_LENGTH} caracteres`),
 });
 

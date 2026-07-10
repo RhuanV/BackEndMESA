@@ -13,7 +13,7 @@ EXPECTED_PATHS = {
     "/users",
     "/users/signup",
     "/login",
-    "/users/{user_id}/username",
+    "/me",
     "/users/{user_id}",
     "/users/{user_id}/password",
     "/users/{user_id}/recovery-code",

@@ -151,24 +151,30 @@ case "$STAMP_RESULT" in
   *)               echo -e "  ${GREEN}✓${NC} Alembic managed by the backend" ;;
 esac
 
-# --- Step 3.6: Bootstrap admin user ---
-# Sprint 3: the POST /users/signup endpoint now requires a coordinator/supervisor JWT.
-# Since the DB starts without any real users (seeds have placeholder hashes and can't log in),
-# the bootstrap is done by calling UserService directly inside the container, bypassing
-# the endpoint. Idempotent: checks for existence before creating.
-DEV_USER=$(grep -E '^DEV_USER=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "admin")
-DEV_USER="${DEV_USER:-admin}"
-DEV_PASS=$(grep -E '^DEV_PASS=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "admin123")
-DEV_PASS="${DEV_PASS:-admin123}"
-DEV_ROLE=$(grep -E '^DEV_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "desenvolvedor")
-DEV_ROLE="${DEV_ROLE:-desenvolvedor}"
+# --- Step 3.6: Bootstrap the environment's single user ---
+# The database starts empty (no demo seeds). Production bootstraps one admin
+# (role administrador); sandbox bootstraps one dev (role desenvolvedor). The
+# bootstrap calls UserService directly inside the container (bypassing the
+# role-gated signup endpoint) and is idempotent.
+APP_ENV=$(grep -E '^APP_ENV=' "$ROOT_DIR/.env" | cut -d= -f2 || echo "production")
+APP_ENV="${APP_ENV:-production}"
+
+if [ "$(echo "$APP_ENV" | tr '[:upper:]' '[:lower:]')" = "sandbox" ]; then
+  BOOT_USER=$(grep -E '^DEV_USER=' "$ROOT_DIR/.env" | cut -d= -f2); BOOT_USER="${BOOT_USER:-dev}"
+  BOOT_PASS=$(grep -E '^DEV_PASS=' "$ROOT_DIR/.env" | cut -d= -f2); BOOT_PASS="${BOOT_PASS:-Dev@12345}"
+  BOOT_ROLE=$(grep -E '^DEV_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2); BOOT_ROLE="${BOOT_ROLE:-desenvolvedor}"
+else
+  BOOT_USER=$(grep -E '^ADMIN_USER=' "$ROOT_DIR/.env" | cut -d= -f2); BOOT_USER="${BOOT_USER:-admin}"
+  BOOT_PASS=$(grep -E '^ADMIN_PASS=' "$ROOT_DIR/.env" | cut -d= -f2); BOOT_PASS="${BOOT_PASS:-Admin@1234}"
+  BOOT_ROLE=$(grep -E '^ADMIN_ROLE=' "$ROOT_DIR/.env" | cut -d= -f2); BOOT_ROLE="${BOOT_ROLE:-administrador}"
+fi
 
 BOOTSTRAP_RESULT=$(docker exec -i geoavia_backend python - <<PY 2>/dev/null || echo "error"
 from geoavia_backend.repositories.user import UserRepository
 from geoavia_backend.services.user import UserService
 
-if UserRepository().obtain_user_from_username("${DEV_USER}") is None:
-    UserService().register_user("${DEV_USER}", "${DEV_PASS}", "${DEV_ROLE}")
+if UserRepository().obtain_user_from_username("${BOOT_USER}") is None:
+    UserService().register_user("${BOOT_USER}", "${BOOT_PASS}", "${BOOT_ROLE}")
     print("created")
 else:
     print("exists")
@@ -177,10 +183,10 @@ PY
 
 case "$BOOTSTRAP_RESULT" in
   created)
-    echo -e "  ${GREEN}✓${NC} Bootstrap user created (${DEV_USER}/${DEV_PASS}, role: ${DEV_ROLE})"
+    echo -e "  ${GREEN}✓${NC} Bootstrap user created (${BOOT_USER}/${BOOT_PASS}, role: ${BOOT_ROLE}, env: ${APP_ENV})"
     ;;
   exists)
-    echo -e "  ${GREEN}✓${NC} Bootstrap user already exists (${DEV_USER}/${DEV_PASS})"
+    echo -e "  ${GREEN}✓${NC} Bootstrap user already exists (${BOOT_USER}, env: ${APP_ENV})"
     ;;
   *)
     echo -e "  ${YELLOW}⚠${NC} Bootstrap failed (${BOOTSTRAP_RESULT}) — login may not work"

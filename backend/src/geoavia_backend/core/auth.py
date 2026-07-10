@@ -6,12 +6,21 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
 from geoavia_backend.core.database import ALGORITHM, SECRET_KEY
+from geoavia_backend.repositories.user import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
+_users = UserRepository()
+
 
 async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
-    """Validates the JWT token and returns the basic data of the authenticated user."""
+    """Validates the JWT and resolves the user's identity from the database.
+
+    The token carries only the subject id (`sub`); username and role are looked
+    up fresh on every request. This keeps sensitive data out of the token and
+    makes role changes / deletions take effect immediately (a stale token for a
+    removed user is rejected with 401).
+    """
     unauthorized_exception = HTTPException(
         status_code=401,
         detail="Invalid or expired token",
@@ -24,14 +33,16 @@ async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         sub = payload.get("sub")
-        username = payload.get("username")
-        role = payload.get("role")
-        if not sub or not username or not role:
+        if not sub or not str(sub).isdigit():
             raise unauthorized_exception
     except JWTError as exc:
         raise unauthorized_exception from exc
 
-    return {"sub": sub, "username": username, "role": role}
+    user = _users.obtain_user_from_id(int(sub))
+    if not user:
+        raise unauthorized_exception
+
+    return {"sub": str(user["id"]), "username": user["username"], "role": user["role"]}
 
 
 def require_roles(
