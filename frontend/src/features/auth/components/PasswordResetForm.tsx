@@ -12,6 +12,7 @@ import { resetPasswordSchema } from '@/features/auth/schemas/resetPasswordSchema
 import type { ResetPasswordFormData } from '@/features/auth/schemas/resetPasswordSchema';
 import { resetPasswordByCode } from '@/features/auth/services/authService';
 import { extractErrorDetail } from '@/lib/api/errors';
+import { RECOVERY_CODE_LENGTH, PASSWORD_MAX_LENGTH } from '@/lib/constants';
 import { Button, Input } from '@/components/ui';
 
 interface PasswordResetFormProps {
@@ -95,7 +96,7 @@ export function PasswordResetForm({ onBackToLogin }: PasswordResetFormProps) {
         label="Código de recuperação"
         placeholder="Código enviado pelo administrador"
         autoComplete="one-time-code"
-        maxLength={32}
+        maxLength={RECOVERY_CODE_LENGTH}
         error={errors.code?.message}
         disabled={isSubmitting}
         {...register('code')}
@@ -104,9 +105,9 @@ export function PasswordResetForm({ onBackToLogin }: PasswordResetFormProps) {
       <Input
         label="Nova senha"
         type="password"
-        placeholder="Mínimo de 8 caracteres"
+        placeholder="Mín. 8 caracteres, com maiúscula, minúscula, número e especial"
         autoComplete="new-password"
-        maxLength={128}
+        maxLength={PASSWORD_MAX_LENGTH}
         error={errors.newPassword?.message}
         disabled={isSubmitting}
         {...register('newPassword')}

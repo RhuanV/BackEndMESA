@@ -76,14 +76,14 @@ def make_service():
 def test_issue_then_reset_happy_path():
     svc = make_service()
     code = svc.issue_code(1, issued_by_id=2)["code"]
-    assert svc.reset_with_code("alice", code, "newpass12") is True
+    assert svc.reset_with_code("alice", code, "NewPass@12") is True
     assert 1 in svc.users.updated
 
 
 def test_issuing_a_code_returns_expiry_and_invalidates_previous():
     svc = make_service()
     first = svc.issue_code(1, 2)
-    assert "expires_at" in first and len(first["code"]) == 8
+    assert "expires_at" in first and len(first["code"]) == 20
     svc.issue_code(1, 2)  # second issue invalidates the first
     active = svc.codes.get_active_for_user(1)
     assert len(active) == 1
@@ -93,22 +93,22 @@ def test_wrong_code_is_generic_and_counts_attempt():
     svc = make_service()
     svc.issue_code(1, 2)
     with pytest.raises(ValueError):
-        svc.reset_with_code("alice", "WRONGCOD", "newpass12")
+        svc.reset_with_code("alice", "WRONGCOD", "NewPass@12")
     assert svc.codes.get_active_for_user(1)[0]["attempts"] == 1
 
 
 def test_code_is_single_use():
     svc = make_service()
     code = svc.issue_code(1, 2)["code"]
-    assert svc.reset_with_code("alice", code, "newpass12") is True
+    assert svc.reset_with_code("alice", code, "NewPass@12") is True
     with pytest.raises(ValueError):
-        svc.reset_with_code("alice", code, "another12")
+        svc.reset_with_code("alice", code, "Another@12")
 
 
 def test_unknown_username_is_generic():
     svc = make_service()
     with pytest.raises(ValueError):
-        svc.reset_with_code("ghost", "ABCDEFGH", "newpass12")
+        svc.reset_with_code("ghost", "ABCDEFGH", "NewPass@12")
 
 
 def test_short_password_is_rejected():
@@ -116,6 +116,14 @@ def test_short_password_is_rejected():
     code = svc.issue_code(1, 2)["code"]
     with pytest.raises(ValueError):
         svc.reset_with_code("alice", code, "short")
+
+
+def test_weak_password_is_rejected():
+    # Long enough, but missing uppercase and a special character.
+    svc = make_service()
+    code = svc.issue_code(1, 2)["code"]
+    with pytest.raises(ValueError):
+        svc.reset_with_code("alice", code, "lowercase123")
 
 
 def test_protected_dev_user_cannot_get_a_code():
@@ -130,5 +138,5 @@ def test_code_is_burned_after_max_attempts():
     # MAX_CODE_ATTEMPTS wrong tries reach the cap; one more burns the code.
     for _ in range(MAX_CODE_ATTEMPTS + 1):
         with pytest.raises(ValueError):
-            svc.reset_with_code("alice", "WRONGCOD", "newpass12")
+            svc.reset_with_code("alice", "WRONGCOD", "NewPass@12")
     assert svc.codes.get_active_for_user(1) == []
