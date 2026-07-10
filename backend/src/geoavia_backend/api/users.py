@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
 from geoavia_backend.core.auth import obtain_current_user, require_roles
-from geoavia_backend.core.database import DEV_USER
+from geoavia_backend.core.database import BOOTSTRAP_USER
 from geoavia_backend.core.roles import DESENVOLVEDOR, USER_CREATION_ROLES
 from geoavia_backend.schemas.user import (
     PasswordResetRequest,
@@ -124,11 +124,11 @@ def change_password(
     payload: PasswordResetRequest,
     current_user: dict = Depends(obtain_current_user),
 ):
-    """Resets the password for a user. Available only to DEV_USER."""
-    if current_user["username"] != DEV_USER:
+    """Resets the password for a user. Available only to the protected bootstrap user."""
+    if current_user["username"] != BOOTSTRAP_USER:
         raise HTTPException(
             status_code=403,
-            detail="Only the main developer can reset passwords through this route.",
+            detail="Only the protected bootstrap user can reset passwords through this route.",
         )
 
     try:
