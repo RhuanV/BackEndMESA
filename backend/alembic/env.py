@@ -4,14 +4,16 @@ Uses raw SQL migrations (no ORM) via op.execute(text(...)). Credentials are
 loaded from .env through geoavia_backend.core.database — they never appear in
 alembic.ini or in version control.
 """
+
 from __future__ import annotations
 
 import os
 import sys
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import create_engine, pool
+
+from alembic import context
 
 # Make geoavia_backend importable regardless of working directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -39,8 +41,8 @@ def run_migrations_online() -> None:
     with engine.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=None,   # no ORM models — pure raw SQL migrations
-            include_schemas=True,   # required: migrations touch the mesa_a schema
+            target_metadata=None,  # no ORM models — pure raw SQL migrations
+            include_schemas=True,  # required: migrations touch the mesa_a schema
             compare_type=True,
         )
 

@@ -4,6 +4,7 @@ Spatial filtering uses the GIST index (`geom && envelope`); the GeoJSON is
 assembled in SQL via repositories.geojson to avoid (de)serializing geometries
 in Python.
 """
+
 from __future__ import annotations
 
 from geoavia_backend.core.db import cursor

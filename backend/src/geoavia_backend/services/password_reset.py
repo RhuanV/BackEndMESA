@@ -14,10 +14,11 @@ Security properties:
   - Reset responses are generic (never reveal whether a username exists).
   - The protected bootstrap user cannot be targeted through this flow.
 """
+
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from geoavia_backend.core.database import BOOTSTRAP_USER
 from geoavia_backend.core.passwords import validate_password_strength
@@ -49,15 +50,11 @@ class PasswordRecoveryService:
         if not user:
             raise ValueError("User not found")
         if user["username"] == BOOTSTRAP_USER:
-            raise ValueError(
-                "A recovery code cannot be issued for the protected developer user."
-            )
+            raise ValueError("A recovery code cannot be issued for the protected developer user.")
 
         code = self._generate_code()
         code_hash = self.security.get_password_hash(code)
-        expires_at = datetime.now(timezone.utc) + timedelta(
-            minutes=RECOVERY_CODE_TTL_MINUTES
-        )
+        expires_at = datetime.now(UTC) + timedelta(minutes=RECOVERY_CODE_TTL_MINUTES)
 
         self.codes.invalidate_active_for_user(target_user_id)
         self.codes.create_code(target_user_id, code_hash, expires_at, issued_by_id)

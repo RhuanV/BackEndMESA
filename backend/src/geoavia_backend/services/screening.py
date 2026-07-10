@@ -9,6 +9,7 @@ The buffer distances reflect typical ICAO/ANAC protective zones (no other
 airport within ~10 km, transmission corridors clear of new construction for
 ~100 m, etc.) and are tunable here, not in the database.
 """
+
 from __future__ import annotations
 
 from geoavia_backend.repositories.screening import ScreeningRepository
@@ -65,8 +66,7 @@ class LayersNotReadyError(Exception):
     def __init__(self, missing_layers: list[str]) -> None:
         self.missing_layers = missing_layers
         super().__init__(
-            "Required layers are not yet populated by Airflow: "
-            + ", ".join(missing_layers)
+            "Required layers are not yet populated by Airflow: " + ", ".join(missing_layers)
         )
 
 
@@ -87,9 +87,7 @@ class ScreeningService:
 
         # 2. Validate target municipality exists.
         if not self.repo.municipality_exists(target_municipality_ibge_code):
-            raise ValueError(
-                f"Municipality ibge_code not found: {target_municipality_ibge_code}"
-            )
+            raise ValueError(f"Municipality ibge_code not found: {target_municipality_ibge_code}")
 
         # 3. Containment in the target municipality. Outside → hard restriction.
         within = self.repo.is_point_within_municipality(
@@ -113,9 +111,7 @@ class ScreeningService:
             if distance_m and self.repo.is_point_within_buffer(
                 latitude, longitude, table_name, distance_m
             ):
-                intermediate_reasons.append(
-                    {"layer": label, "buffer_meters": distance_m}
-                )
+                intermediate_reasons.append({"layer": label, "buffer_meters": distance_m})
 
         if restrictive_reasons:
             status = STATUS_RESTRITO

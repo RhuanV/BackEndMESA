@@ -4,10 +4,12 @@ Revision ID: 0008
 Revises: 0006
 Create Date: 2026-07-08
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0008"
 down_revision = "0006"
@@ -19,7 +21,8 @@ def upgrade() -> None:
     op.execute(text("CREATE SCHEMA IF NOT EXISTS mesa_a;"))
 
     # --- Unidades territoriais ---
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_limites_estaduais (
             gid SERIAL PRIMARY KEY,
             codigo_ibge VARCHAR(10),
@@ -27,13 +30,17 @@ def upgrade() -> None:
             sigla_estado VARCHAR(2),
             geom GEOMETRY(MULTIPOLYGON, 4674) NOT NULL
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_limites_estaduais_geom
         ON mesa_a.vetor_limites_estaduais USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_limites_municipais (
             gid SERIAL PRIMARY KEY,
             codigo_ibge VARCHAR(10),
@@ -41,14 +48,18 @@ def upgrade() -> None:
             sigla_estado VARCHAR(2),
             geom GEOMETRY(MULTIPOLYGON, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_limites_municipais_geom
         ON mesa_a.vetor_limites_municipais USING GIST (geom);
-    """))
+    """)
+    )
 
     # --- Infraestrutura ---
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_aeroportos (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -57,13 +68,17 @@ def upgrade() -> None:
             iata VARCHAR(10),
             geom GEOMETRY(GEOMETRY, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_aeroportos_geom
         ON mesa_a.vetor_osm_aeroportos USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_rodovias_federais (
             gid SERIAL PRIMARY KEY,
             uf VARCHAR(50),
@@ -74,13 +89,17 @@ def upgrade() -> None:
             jurisdicao VARCHAR(255),
             geom GEOMETRY(MultiLineString, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_rodovias_federais_geom
         ON mesa_a.vetor_gov_rodovias_federais USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_ferrovias (
             gid SERIAL PRIMARY KEY,
             uf VARCHAR(50),
@@ -91,13 +110,17 @@ def upgrade() -> None:
             municipio VARCHAR(255),
             geom GEOMETRY(MultiLineString, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_ferrovias_geom
         ON mesa_a.vetor_gov_ferrovias USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_hidrovias (
             gid SERIAL PRIMARY KEY,
             idhidrovia BIGINT,
@@ -111,13 +134,17 @@ def upgrade() -> None:
             est_destino VARCHAR(2),
             geom GEOMETRY(MultiLineString, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_hidrovias_geom
         ON mesa_a.vetor_gov_hidrovias USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_portos (
             gid SERIAL PRIMARY KEY,
             nome TEXT,
@@ -134,13 +161,17 @@ def upgrade() -> None:
             idcidade VARCHAR(50),
             geom GEOMETRY(Point, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_portos_geom
         ON mesa_a.vetor_gov_portos USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_portos (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -149,13 +180,17 @@ def upgrade() -> None:
             uf CHAR(2),
             geom GEOMETRY(Point, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_portos_geom
         ON mesa_a.vetor_osm_portos USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_rodovias_federais (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -164,13 +199,17 @@ def upgrade() -> None:
             tipo_rodovia VARCHAR(50),
             geom GEOMETRY(GEOMETRY, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_rodovias_federais_geom
         ON mesa_a.vetor_osm_rodovias_federais USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_rodovias_estaduais (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -179,13 +218,17 @@ def upgrade() -> None:
             tipo_rodovia VARCHAR(50),
             geom GEOMETRY(GEOMETRY, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_rodovias_estaduais_geom
         ON mesa_a.vetor_osm_rodovias_estaduais USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_ferrovias (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -193,13 +236,17 @@ def upgrade() -> None:
             tipo_ferrovia VARCHAR(50),
             geom GEOMETRY(GEOMETRY, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_ferrovias_geom
         ON mesa_a.vetor_osm_ferrovias USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_hidrovias (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -207,13 +254,17 @@ def upgrade() -> None:
             tipo_hidrovia VARCHAR(50),
             geom GEOMETRY(GEOMETRY, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_hidrovias_geom
         ON mesa_a.vetor_osm_hidrovias USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_linhas_transmissao (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -221,13 +272,17 @@ def upgrade() -> None:
             tipo_energia VARCHAR(50),
             geom GEOMETRY(GEOMETRY, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_osm_linhas_transmissao_geom
         ON mesa_a.vetor_osm_linhas_transmissao USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_osm_dutos (
             gid SERIAL PRIMARY KEY,
             osm_id BIGINT UNIQUE NOT NULL,
@@ -235,14 +290,18 @@ def upgrade() -> None:
             operador VARCHAR(150),
             geom GEOMETRY(MultiLineString, 4326)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_dutos_osm_geom
         ON mesa_a.vetor_osm_dutos USING GIST (geom);
-    """))
+    """)
+    )
 
     # --- Meio ambiente / unidades territoriais ---
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_uc (
             gid SERIAL PRIMARY KEY,
             nome_uc VARCHAR(255),
@@ -251,13 +310,17 @@ def upgrade() -> None:
             ano_criacao INTEGER,
             geom GEOMETRY(MultiPolygon, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_uc_gov_geom
         ON mesa_a.vetor_gov_uc USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_sicar_imoveis (
             gid SERIAL PRIMARY KEY,
             codigo_imovel VARCHAR(100) UNIQUE NOT NULL,
@@ -273,13 +336,17 @@ def upgrade() -> None:
             tipo_imovel VARCHAR(50),
             geom GEOMETRY(MultiPolygon, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_sicar_imoveis_geom
         ON mesa_a.vetor_gov_sicar_imoveis USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_terra_indigena (
             gid SERIAL PRIMARY KEY,
             nome_ti VARCHAR(255),
@@ -292,13 +359,17 @@ def upgrade() -> None:
             superficie_ha DOUBLE PRECISION,
             geom GEOMETRY(MultiPolygon, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_terra_indigena_geom
         ON mesa_a.vetor_gov_terra_indigena USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_cavernas (
             gid SERIAL PRIMARY KEY,
             nome_caverna VARCHAR(255),
@@ -308,13 +379,17 @@ def upgrade() -> None:
             grau_potencial VARCHAR(255),
             geom GEOMETRY(MultiPolygon, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_cavernas_geom
         ON mesa_a.vetor_gov_cavernas USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_rios_ana (
             gid SERIAL PRIMARY KEY,
             nome_rio VARCHAR(255),
@@ -324,13 +399,17 @@ def upgrade() -> None:
             nuareaam DOUBLE PRECISION,
             geom GEOMETRY(MultiLineString, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_rios_ana_geom
         ON mesa_a.vetor_gov_rios_ana USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_aeroportos (
             gid SERIAL PRIMARY KEY,
             nome VARCHAR(255),
@@ -341,13 +420,17 @@ def upgrade() -> None:
             tipo VARCHAR(255),
             geom GEOMETRY(Point, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_aeroportos_geom
         ON mesa_a.vetor_gov_aeroportos USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_aerodromos (
             gid SERIAL PRIMARY KEY,
             nome VARCHAR(255),
@@ -356,13 +439,17 @@ def upgrade() -> None:
             situacao VARCHAR(255),
             geom GEOMETRY(MultiPoint, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_aerodromos_geom
         ON mesa_a.vetor_gov_aerodromos USING GIST (geom);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.vetor_gov_linhas_transmissao (
             gid SERIAL PRIMARY KEY,
             nome_linha VARCHAR(255),
@@ -371,11 +458,14 @@ def upgrade() -> None:
             situacao VARCHAR(255),
             geom GEOMETRY(MultiLineString, 4674)
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_gov_linhas_transmissao_geom
         ON mesa_a.vetor_gov_linhas_transmissao USING GIST (geom);
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

@@ -1,7 +1,18 @@
 repos:
+  # Semantic commit messages (Conventional Commits).
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.2.0  # Use the most recent version
+    rev: v3.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
-        args: [] # Here, we can customize any type we want to
+        args: []
+
+  # Lint + format the Python backend (matches backend/pyproject.toml config).
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/

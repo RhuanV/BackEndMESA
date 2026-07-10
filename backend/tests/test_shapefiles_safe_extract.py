@@ -1,4 +1,5 @@
 """Safety of the shapefile ZIP extraction (path traversal + size cap)."""
+
 import io
 import os
 import zipfile
@@ -34,7 +35,7 @@ def test_neutralizes_path_traversal(tmp_path):
     zf = _zip_bytes({"../evil.shp": b"x", "layer.shp": b"y"})
     ShapefilesService._safe_extract(zf, str(tmp_path))
     assert (tmp_path / "evil.shp").exists()  # contained inside the work dir
-    assert not outside.exists()              # never escaped the work dir
+    assert not outside.exists()  # never escaped the work dir
 
 
 def test_enforces_uncompressed_size_cap(tmp_path, monkeypatch):

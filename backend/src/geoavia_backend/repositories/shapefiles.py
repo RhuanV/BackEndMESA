@@ -3,6 +3,7 @@
 Stores metadata (one row per upload) and features (one row per geometry)
 in the `mesa_a` schema, alongside the other vector layers.
 """
+
 from __future__ import annotations
 
 from psycopg2.extras import execute_batch

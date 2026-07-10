@@ -4,6 +4,7 @@ Uses the stable Airflow REST API (`POST /api/v1/dags/{dag_id}/dagRuns`) with
 HTTP basic auth read from the environment (AIRFLOW_USER/AIRFLOW_PASS). Uses
 stdlib `urllib.request` to avoid adding `requests` to backend/requirements.txt.
 """
+
 from __future__ import annotations
 
 import base64
@@ -115,9 +116,7 @@ class AirflowTriggerService:
             )
         url = f"{AIRFLOW_BASE_URL}/api/v1/dags/{dag_id}/dagRuns"
         body = json.dumps({"conf": {}}).encode("utf-8")
-        auth = base64.b64encode(
-            f"{AIRFLOW_USERNAME}:{AIRFLOW_PASSWORD}".encode("utf-8")
-        ).decode("ascii")
+        auth = base64.b64encode(f"{AIRFLOW_USERNAME}:{AIRFLOW_PASSWORD}".encode()).decode("ascii")
 
         req = urllib.request.Request(
             url,
@@ -135,15 +134,11 @@ class AirflowTriggerService:
                 payload = json.load(resp)
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise AirflowTriggerError(
-                f"Airflow returned HTTP {exc.code}: {detail[:300]}"
-            ) from exc
+            raise AirflowTriggerError(f"Airflow returned HTTP {exc.code}: {detail[:300]}") from exc
         except urllib.error.URLError as exc:
             raise AirflowTriggerError(f"Failed to reach Airflow: {exc}") from exc
 
         dag_run_id = payload.get("dag_run_id")
         if not dag_run_id:
-            raise AirflowTriggerError(
-                f"Airflow response missing dag_run_id: {payload}"
-            )
+            raise AirflowTriggerError(f"Airflow response missing dag_run_id: {payload}")
         return dag_run_id

@@ -4,16 +4,17 @@
 Accepts a single ZIP with `.shp` + `.dbf` + `.shx`. Without a `.prj` the source
 SRID is unknown and the input is assumed to already be in 4674.
 """
+
 from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import tempfile
 import zipfile
 
 import geopandas as gpd
-import math
 import psycopg2
 
 from geoavia_backend.core.geo_params import normalize_zoom, parse_bbox
@@ -29,9 +30,7 @@ TARGET_SRID = 4674  # SIRGAS 2000
 # many GB). Shapefiles are modest; 2 GB uncompressed is a generous ceiling.
 MAX_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024
 # Only these shapefile companion extensions are extracted from the archive.
-_ALLOWED_MEMBER_EXTS = frozenset(
-    {".shp", ".dbf", ".shx", ".prj", ".cpg", ".qpj", ".sbn", ".sbx"}
-)
+_ALLOWED_MEMBER_EXTS = frozenset({".shp", ".dbf", ".shx", ".prj", ".cpg", ".qpj", ".sbn", ".sbx"})
 MAX_FEATURES_PER_UPLOAD = 50_000
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,5 @@
 """RBAC role-set invariants (no database needed)."""
+
 from geoavia_backend.core import roles
 
 

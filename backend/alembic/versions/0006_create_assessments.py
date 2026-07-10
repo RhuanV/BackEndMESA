@@ -4,10 +4,12 @@ Revision ID: 0006
 Revises: 0005
 Create Date: 2026-07-08
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0006"
 down_revision = "0005"
@@ -16,7 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS assessments (
             id SERIAL PRIMARY KEY,
             site_name VARCHAR(100) NOT NULL,
@@ -35,15 +38,20 @@ def upgrade() -> None:
             geom GEOMETRY(POINT, 4674),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_assessments_geom
         ON assessments USING GIST (geom);
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_assessments_created_at
         ON assessments (created_at DESC);
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

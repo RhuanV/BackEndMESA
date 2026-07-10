@@ -7,10 +7,12 @@ Create Date: 2026-07-09
 Stores single-use, time-limited password recovery codes. Only the hash of each
 code is persisted; see services.password_reset for the flow.
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0017"
 down_revision = "0016"

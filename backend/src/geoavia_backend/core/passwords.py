@@ -4,6 +4,7 @@ Every place that sets a NEW password (user registration, admin password change,
 recovery-code reset) validates through here. Login is intentionally NOT revalidated
 against this policy so pre-existing accounts keep working.
 """
+
 from __future__ import annotations
 
 import re
@@ -23,9 +24,7 @@ def validate_password_strength(password: str) -> None:
     uppercase letter, one lowercase letter, one digit and one special character.
     """
     if len(password) < MIN_PASSWORD_LENGTH:
-        raise ValueError(
-            f"Password must be at least {MIN_PASSWORD_LENGTH} characters long"
-        )
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long")
     if not _UPPERCASE.search(password):
         raise ValueError("Password must contain at least one uppercase letter")
     if not _LOWERCASE.search(password):

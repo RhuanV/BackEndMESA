@@ -94,6 +94,18 @@ env_set() {
 CURRENT_ENV="$(echo "$(env_get APP_ENV)" | tr '[:upper:]' '[:lower:]')"
 [ -z "$CURRENT_ENV" ] && CURRENT_ENV="sandbox"
 
+# Ensure a strong JWT signing key: the backend refuses to boot in production
+# with the placeholder. Generate one if missing/placeholder so it "just works".
+CURRENT_SECRET="$(env_get SECRET_KEY)"
+if [ -z "$CURRENT_SECRET" ] || [ "$CURRENT_SECRET" = "change_for_a_strong_password" ]; then
+  if command -v python3 >/dev/null 2>&1; then
+    env_set SECRET_KEY "$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+    echo -e "  ${GREEN}✓${NC} SECRET_KEY forte gerada no .env"
+  else
+    echo -e "  ${YELLOW}⚠ Defina um SECRET_KEY forte no .env (python3 não encontrado para gerar).${NC}"
+  fi
+fi
+
 # --- Escolha do ambiente ---
 echo ""
 echo -e "${YELLOW}[2/5]${NC} Escolhendo o ambiente..."
@@ -134,6 +146,7 @@ SANDBOX_DB_NAME="$(env_get SANDBOX_DB_NAME)"; SANDBOX_DB_NAME="${SANDBOX_DB_NAME
 
 cd "$ROOT_DIR"
 COMPOSE_UP_LOG="$(mktemp)"
+trap 'rm -f "$COMPOSE_UP_LOG"' EXIT
 MAX_RETRIES=40
 
 wait_for_backend() {

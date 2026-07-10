@@ -6,6 +6,7 @@ All queries build the input point with
 `table_name` comes from a whitelist — it is interpolated as a SQL identifier
 (not as a parameter). The whitelist lives in screening_service.
 """
+
 from __future__ import annotations
 
 import psycopg2
@@ -72,9 +73,7 @@ class ScreeningRepository:
         """
         return self._exec_scalar(query, (ibge_code, longitude, latitude, self.SRID))
 
-    def does_point_intersect(
-        self, latitude: float, longitude: float, table_name: str
-    ) -> bool:
+    def does_point_intersect(self, latitude: float, longitude: float, table_name: str) -> bool:
         """True iff the input point intersects any feature in the given table."""
         query = sql.SQL(
             """
@@ -116,6 +115,4 @@ class ScreeningRepository:
             ) AS within_buffer
             """
         ).format(_table_identifier(table_name))
-        return self._exec_scalar(
-            query, (longitude, latitude, self.SRID, distance_meters)
-        )
+        return self._exec_scalar(query, (longitude, latitude, self.SRID, distance_meters))

@@ -1,4 +1,5 @@
 """Shared authentication dependencies for FastAPI routers."""
+
 from collections.abc import Callable, Iterable
 
 from fastapi import Depends, HTTPException

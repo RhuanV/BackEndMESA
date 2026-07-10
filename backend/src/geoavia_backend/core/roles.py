@@ -12,6 +12,7 @@ The system has three roles:
                      (see core.sandbox): in production it is read-only and its
                      write attempts are audited; in sandbox it has full access.
 """
+
 from __future__ import annotations
 
 OPERADOR = "operador"

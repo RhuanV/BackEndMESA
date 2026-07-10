@@ -1,4 +1,5 @@
 """Persistence for the manual DAG trigger audit log."""
+
 from __future__ import annotations
 
 from geoavia_backend.core.db import cursor

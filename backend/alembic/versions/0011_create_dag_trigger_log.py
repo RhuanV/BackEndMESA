@@ -4,10 +4,12 @@ Revision ID: 0011
 Revises: 0010
 Create Date: 2026-07-08
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0011"
 down_revision = "0010"
@@ -16,7 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS dag_trigger_log (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -29,15 +32,20 @@ def upgrade() -> None:
             error_message TEXT,
             triggered_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_dag_trigger_log_dag_id
         ON dag_trigger_log (dag_id);
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_dag_trigger_log_triggered_at
         ON dag_trigger_log (triggered_at DESC);
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

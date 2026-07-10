@@ -4,6 +4,7 @@ corresponding PostGIS materialized view.
 When the base view is empty (Airflow DAGs have not run yet), the service falls
 back to a user-uploaded shapefile configured via /layers/{name}/source.
 """
+
 from __future__ import annotations
 
 from geoavia_backend.core.geo_params import normalize_zoom, parse_bbox

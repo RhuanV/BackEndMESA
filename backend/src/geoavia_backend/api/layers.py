@@ -1,4 +1,5 @@
 """Map layer endpoints — GeoJSON delivery and fallback source configuration."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

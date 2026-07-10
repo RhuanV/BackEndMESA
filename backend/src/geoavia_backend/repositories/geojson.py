@@ -5,6 +5,7 @@ ST_AsGeoJSON) so geometries are never (de)serialized in Python. Callers pass the
 geometry/properties SQL expressions and the inner SELECT; %s placeholders bind
 positionally in text order (geometry expression first, then the inner SELECT).
 """
+
 from __future__ import annotations
 
 from geoavia_backend.core.db import cursor
