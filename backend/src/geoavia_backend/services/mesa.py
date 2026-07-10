@@ -210,7 +210,7 @@ class AnalysisJobService:
     Each /analysis/run call starts a fake job whose progress advances based
     on wall-clock time since submission, so the front's polling loop sees
     realistic 'pending → processing → completed' transitions without us
-    needing a real worker queue this sprint.
+    needing a real worker queue in Sprint 6.
     """
 
     _MOCK_DURATION_SEC = 4.0  # job 'finishes' after ~4s of polling
