@@ -1,5 +1,11 @@
+/* eslint-disable react-refresh/only-export-components -- routing config module,
+   not a Fast Refresh component file; it declares lazy pages and exports `router`. */
 /**
  * Router — Application routing with RBAC-protected routes.
+ *
+ * Dashboard pages are code-split with React.lazy so the initial bundle only
+ * carries the login screen; each feature loads on demand behind a Suspense
+ * fallback.
  *
  * Route structure (3-role model):
  * - /login                    → Public
@@ -14,34 +20,49 @@
  *   - /dashboard/admin/*      → administrador, desenvolvedor
  *   - /dashboard/dev/*        → desenvolvedor
  */
+import { lazy, Suspense } from 'react';
+import type { ReactNode } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import type { UserRole } from '@/types';
 import { ProtectedRoute } from './ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
+import { LoadingSpinner } from '@/components/ui';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
-import { MapPage } from '@/features/map/pages/MapPage';
-import { AssessmentPage } from '@/features/assessment/pages/AssessmentPage';
-import { ResultsPage } from '@/features/results/pages/ResultsPage';
-import { AnalysisPage } from '@/features/analysis/pages/AnalysisPage';
-import { ExportPage } from '@/features/export/pages/ExportPage';
-import { ShapefileImportPage } from '@/features/data/pages/ShapefileImportPage';
-import { ScreeningPage } from '@/features/screening/pages/ScreeningPage';
-import { UserManagementPage } from '@/features/admin/pages/UserManagementPage';
-import { LayerConfigPage } from '@/features/admin/pages/LayerConfigPage';
-import { AuditLogPage } from '@/features/admin/pages/AuditLogPage';
-import { ApiHealthPage } from '@/features/dev/pages/ApiHealthPage';
-import { ProcessingLogsPage } from '@/features/dev/pages/ProcessingLogsPage';
-import { DebugPage } from '@/features/dev/pages/DebugPage';
+
+// Lazy-loaded feature pages (each becomes its own chunk).
+const MapPage = lazy(() => import('@/features/map/pages/MapPage').then((m) => ({ default: m.MapPage })));
+const AssessmentPage = lazy(() => import('@/features/assessment/pages/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
+const ResultsPage = lazy(() => import('@/features/results/pages/ResultsPage').then((m) => ({ default: m.ResultsPage })));
+const AnalysisPage = lazy(() => import('@/features/analysis/pages/AnalysisPage').then((m) => ({ default: m.AnalysisPage })));
+const ExportPage = lazy(() => import('@/features/export/pages/ExportPage').then((m) => ({ default: m.ExportPage })));
+const ShapefileImportPage = lazy(() => import('@/features/data/pages/ShapefileImportPage').then((m) => ({ default: m.ShapefileImportPage })));
+const ScreeningPage = lazy(() => import('@/features/screening/pages/ScreeningPage').then((m) => ({ default: m.ScreeningPage })));
+const UserManagementPage = lazy(() => import('@/features/admin/pages/UserManagementPage').then((m) => ({ default: m.UserManagementPage })));
+const LayerConfigPage = lazy(() => import('@/features/admin/pages/LayerConfigPage').then((m) => ({ default: m.LayerConfigPage })));
+const AuditLogPage = lazy(() => import('@/features/admin/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+const ApiHealthPage = lazy(() => import('@/features/dev/pages/ApiHealthPage').then((m) => ({ default: m.ApiHealthPage })));
+const ProcessingLogsPage = lazy(() => import('@/features/dev/pages/ProcessingLogsPage').then((m) => ({ default: m.ProcessingLogsPage })));
+const DebugPage = lazy(() => import('@/features/dev/pages/DebugPage').then((m) => ({ default: m.DebugPage })));
+
+/** Wraps a lazily-loaded element in a Suspense boundary with a spinner. */
+function page(node: ReactNode): ReactNode {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full min-h-[50vh] items-center justify-center">
+          <LoadingSpinner size="lg" label="Carregando..." />
+        </div>
+      }
+    >
+      {node}
+    </Suspense>
+  );
+}
 
 // Operational pages: any operational role.
-const ANALYSIS_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
-const ASSESSMENT_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
-const RESULTS_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
-const SCREENING_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
-const DATA_IMPORT_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
+const OPERATIONAL_ROLES: UserRole[] = ['operador', 'administrador', 'desenvolvedor'];
 // Admin pages: administrator and developer.
-const USER_ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
-const LAYER_ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
+const ADMIN_ROLES: UserRole[] = ['administrador', 'desenvolvedor'];
 // Developer tools: developer only.
 const DEV_ROLES: UserRole[] = ['desenvolvedor'];
 
@@ -56,62 +77,62 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/dashboard/map" replace /> },
-      { path: 'map', element: <MapPage /> },
+      { path: 'map', element: page(<MapPage />) },
 
       // MESA flow — analysis/assessment/results/export
       {
         path: 'analysis',
-        element: <ProtectedRoute allowedRoles={ANALYSIS_ROLES}><AnalysisPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<AnalysisPage />)}</ProtectedRoute>,
       },
       {
         path: 'assessment',
-        element: <ProtectedRoute allowedRoles={ASSESSMENT_ROLES}><AssessmentPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<AssessmentPage />)}</ProtectedRoute>,
       },
       {
         path: 'results',
-        element: <ProtectedRoute allowedRoles={RESULTS_ROLES}><ResultsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<ResultsPage />)}</ProtectedRoute>,
       },
       {
         path: 'export',
-        element: <ProtectedRoute allowedRoles={RESULTS_ROLES}><ExportPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<ExportPage />)}</ProtectedRoute>,
       },
       {
         path: 'screening',
-        element: <ProtectedRoute allowedRoles={SCREENING_ROLES}><ScreeningPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<ScreeningPage />)}</ProtectedRoute>,
       },
 
       // Data — ingestion/import (HU-31)
       {
         path: 'data/shapefiles',
-        element: <ProtectedRoute allowedRoles={DATA_IMPORT_ROLES}><ShapefileImportPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<ShapefileImportPage />)}</ProtectedRoute>,
       },
 
       // Administration
       {
         path: 'admin/users',
-        element: <ProtectedRoute allowedRoles={USER_ADMIN_ROLES}><UserManagementPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ADMIN_ROLES}>{page(<UserManagementPage />)}</ProtectedRoute>,
       },
       {
         path: 'admin/layers',
-        element: <ProtectedRoute allowedRoles={LAYER_ADMIN_ROLES}><LayerConfigPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ADMIN_ROLES}>{page(<LayerConfigPage />)}</ProtectedRoute>,
       },
       {
         path: 'admin/audit',
-        element: <ProtectedRoute allowedRoles={LAYER_ADMIN_ROLES}><AuditLogPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={ADMIN_ROLES}>{page(<AuditLogPage />)}</ProtectedRoute>,
       },
 
       // System technical operations
       {
         path: 'dev/health',
-        element: <ProtectedRoute allowedRoles={DEV_ROLES}><ApiHealthPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<ApiHealthPage />)}</ProtectedRoute>,
       },
       {
         path: 'dev/logs',
-        element: <ProtectedRoute allowedRoles={DEV_ROLES}><ProcessingLogsPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<ProcessingLogsPage />)}</ProtectedRoute>,
       },
       {
         path: 'dev/debug',
-        element: <ProtectedRoute allowedRoles={DEV_ROLES}><DebugPage /></ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<DebugPage />)}</ProtectedRoute>,
       },
     ],
   },
