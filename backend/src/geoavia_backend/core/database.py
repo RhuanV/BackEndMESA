@@ -6,8 +6,10 @@ leaks into the production database. Any other APP_ENV value (fail-safe default
 "production") uses the main database. APP_ENV is read once per process — restart
 the backend after changing it.
 """
+
 import logging
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -47,7 +49,9 @@ BOOTSTRAP_USER = DEV_USER if APP_ENV == "sandbox" else ADMIN_USER
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 
 # Connection string used by the repository layer via psycopg2.
-DATABASE_URL = f"host={DB_HOST} dbname={ACTIVE_DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
+DATABASE_URL = (
+    f"host={DB_HOST} dbname={ACTIVE_DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
+)
 
 # SQLAlchemy-format URL used by Alembic — same active database, so migrations
 # apply to whichever environment the backend booted in.

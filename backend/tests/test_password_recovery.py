@@ -1,4 +1,5 @@
 """Password-recovery-by-code service logic, using in-memory fakes (no DB)."""
+
 import pytest
 
 from geoavia_backend.services.password_reset import (
@@ -51,11 +52,7 @@ class FakeCodes:
         return self._id
 
     def get_active_for_user(self, user_id):
-        return [
-            dict(r)
-            for r in self.rows
-            if r["user_id"] == user_id and r["used_at"] is None
-        ]
+        return [dict(r) for r in self.rows if r["user_id"] == user_id and r["used_at"] is None]
 
     def mark_used(self, code_id):
         for r in self.rows:

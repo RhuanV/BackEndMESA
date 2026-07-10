@@ -3,6 +3,7 @@
 The analysis runs as a job with a deterministic score. Each site is stored as a
 POLYGON built by _build_polygon() from the centroid and width/height/angle.
 """
+
 from __future__ import annotations
 
 import io
@@ -26,7 +27,9 @@ def _to_float(value) -> float:
     return float(value) if value is not None else 0.0
 
 
-def _build_polygon(lon: float, lat: float, width_m: float, height_m: float, angle_deg: float) -> Polygon:
+def _build_polygon(
+    lon: float, lat: float, width_m: float, height_m: float, angle_deg: float
+) -> Polygon:
     """Return a Shapely Polygon for the airport-site rectangle.
 
     The rectangle is centred at (lon, lat), has the given dimensions in metres,

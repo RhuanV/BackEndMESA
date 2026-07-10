@@ -1,4 +1,5 @@
 """Data access for admin-issued password recovery codes."""
+
 from __future__ import annotations
 
 from datetime import datetime

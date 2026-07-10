@@ -9,3 +9,6 @@ commitizen==4.16.4
 
 # Test runner
 pytest==9.1.1
+
+# Linter + formatter (fast, replaces flake8/isort/black)
+ruff==0.6.9

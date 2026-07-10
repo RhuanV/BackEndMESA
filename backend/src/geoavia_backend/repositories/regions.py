@@ -3,6 +3,7 @@
 Returns lightweight lookups (no geometry) of the state/municipality hierarchy,
 so the frontend can build dependent dropdowns without pulling full GeoJSON.
 """
+
 from __future__ import annotations
 
 from geoavia_backend.core.db import cursor

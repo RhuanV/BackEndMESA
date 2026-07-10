@@ -1,4 +1,5 @@
 """Endpoints for triggering and auditing Airflow DAGs."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

@@ -10,6 +10,7 @@ governed by APP_ENV:
 APP_ENV is read at call time (not import time) so it can be toggled per process
 and exercised in tests.
 """
+
 from __future__ import annotations
 
 import logging

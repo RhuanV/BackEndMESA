@@ -11,6 +11,7 @@ backend/alembic/versions/0010_create_resolution_views.py:
     z2 = 0.01   (~1.1 km) — mid zoom, state view
     z3 = 0.002  (~220 m)  — zoom in, municipal view
 """
+
 from __future__ import annotations
 
 ALLOWED_ZOOMS = ("z1", "z2", "z3")

@@ -31,6 +31,7 @@ services:
   backend:
     build: .
     container_name: geoavia_backend
+    restart: unless-stopped
     volumes:
       - ./backend/src:/app/src
     # --reload is opt-in via UVICORN_RELOAD=1 (off by default = production-safe).
@@ -142,8 +143,9 @@ services:
 # PERMISSION FIXER
 # ========================
   permission-fixer:
-    image: alpine
+    image: alpine:3.20
     container_name: geoavia_permission_fixer
+    restart: on-failure
     command: chown -R 50000:0 /opt/airflow/data
     volumes:
       - geo_data:/opt/airflow/data

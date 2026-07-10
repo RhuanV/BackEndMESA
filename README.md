@@ -9,6 +9,33 @@ orchestrated by Docker Compose:
 - **Airflow** — ETL/data-ingestion pipelines (Apache Airflow 2.9.3)
 - **Database** — PostgreSQL 15 + PostGIS 3.4
 
+## Quick Start
+
+Pré-requisitos: **Docker + Docker Compose V2**, **Node 20+** e **Python 3.12** (para scripts locais).
+
+```bash
+git clone <repo> && cd Geoavia
+bash install.sh      # verifica pré-requisitos, cria .env e gera um SECRET_KEY forte
+bash start.sh        # pergunta o ambiente (sandbox/produção) e sobe tudo
+```
+
+Ao final, o `start.sh` mostra a URL e o usuário/senha de acesso. Acesse:
+- Frontend: http://localhost:5173  ·  API/Swagger: http://localhost:8000/docs  ·  Airflow: http://localhost:8080
+
+Detalhes e testes em [docs/TESTING.md](docs/TESTING.md).
+
+## Deploy em produção (segurança)
+
+Antes de expor o sistema fora da sua máquina:
+
+- **HTTPS obrigatório:** nunca exponha a API/Frontend diretamente. Use um reverse proxy (nginx, Caddy,
+  Cloudflare) com TLS — o token JWT trafega em header e exige transporte cifrado.
+- **Segredos fortes:** troque `SECRET_KEY`, `DB_PASS` e as senhas de bootstrap (`ADMIN_PASS`/`DEV_PASS`)
+  no `.env`. Em `APP_ENV=production` o backend recusa subir com o `SECRET_KEY` placeholder.
+- **CORS:** defina `CORS_ORIGINS` com o(s) seu(s) domínio(s) (sem coringa).
+- **Ambiente:** rode com `APP_ENV=production` (o papel `desenvolvedor` fica somente-leitura) e
+  `UVICORN_RELOAD` desligado (padrão).
+
 ## Overview
 
 Stack:

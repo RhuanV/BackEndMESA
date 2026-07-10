@@ -3,6 +3,7 @@
 Read-only, authenticated. Used by the frontend MunicipalitySelector to
 build dependent dropdowns without pulling geometry.
 """
+
 from __future__ import annotations
 
 import re
@@ -30,8 +31,6 @@ def list_municipalities(sigla: str) -> dict:
     """Returns the municipalities of the given UF, sorted by name."""
     normalized = sigla.upper()
     if not _UF_PATTERN.match(normalized):
-        raise HTTPException(
-            status_code=400, detail="sigla must be a 2-letter UF code (e.g. SP)"
-        )
+        raise HTTPException(status_code=400, detail="sigla must be a 2-letter UF code (e.g. SP)")
     municipalities = repo.list_municipalities_by_state(normalized)
     return {"sigla_estado": normalized, "municipalities": municipalities}

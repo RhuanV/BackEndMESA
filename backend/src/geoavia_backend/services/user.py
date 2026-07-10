@@ -1,10 +1,10 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from jose import jwt
 from passlib.context import CryptContext
 
-from geoavia_backend.core.database import ALGORITHM, SECRET_KEY, BOOTSTRAP_USER
+from geoavia_backend.core.database import ALGORITHM, BOOTSTRAP_USER, SECRET_KEY
 from geoavia_backend.core.passwords import validate_password_strength
 from geoavia_backend.core.roles import ROLES
 from geoavia_backend.repositories.user import UserRepository
@@ -37,7 +37,7 @@ class SecurityService:
             raise ValueError("SECRET_KEY not found in .env")
 
         payload = dados.copy()
-        payload["exp"] = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        payload["exp"] = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -49,7 +49,7 @@ class UserService:
     def list_users(self, limit: int = 100, offset: int = 0) -> list[dict]:
         users = self.repo.get_all(limit=limit, offset=offset)
         for u in users:
-            u["is_protected"] = (u["username"] == BOOTSTRAP_USER)
+            u["is_protected"] = u["username"] == BOOTSTRAP_USER
         return users
 
     def register_user(self, username: str, password: str, role: str = "operador") -> int:
@@ -97,7 +97,9 @@ class UserService:
         # Protect root 'admin' user
         user = self.repo.obtain_user_from_id(user_id)
         if user and user["username"] == BOOTSTRAP_USER:
-            raise ValueError(f"The protected bootstrap user ('{BOOTSTRAP_USER}') cannot be deleted.")
+            raise ValueError(
+                f"The protected bootstrap user ('{BOOTSTRAP_USER}') cannot be deleted."
+            )
         return self.repo.delete(user_id)
 
     def change_password(self, user_id: int, new_password: str) -> bool:
@@ -112,7 +114,10 @@ class UserService:
         if not user:
             return False
         if user["username"] == BOOTSTRAP_USER:
-            raise ValueError(f"The password of the protected bootstrap user ('{BOOTSTRAP_USER}') cannot be changed through this route.")
+            raise ValueError(
+                f"The protected bootstrap user ('{BOOTSTRAP_USER}') password "
+                "cannot be changed through this route."
+            )
 
         password_hash = self.security.get_password_hash(clean_password)
         return self.repo.update_password_hash(user_id, password_hash)

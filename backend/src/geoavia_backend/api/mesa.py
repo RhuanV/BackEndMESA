@@ -1,5 +1,6 @@
 """MESA endpoints consumed by the frontend via apiClient
 (frontend/src/features/{assessment,analysis,results}/services)."""
+
 from __future__ import annotations
 
 from io import BytesIO
@@ -35,10 +36,7 @@ def get_ranking():
 @router.post("/analysis/run")
 def run_analysis(config: AnalysisConfigIn):
     weights_sum = (
-        config.slopeWeight
-        + config.landUseWeight
-        + config.transportWeight
-        + config.costWeight
+        config.slopeWeight + config.landUseWeight + config.transportWeight + config.costWeight
     )
     if abs(weights_sum - 100) > 0.01:
         raise HTTPException(status_code=400, detail="Weights must sum to 100")
@@ -83,9 +81,7 @@ def export_results(format: str):
         return StreamingResponse(
             BytesIO(zip_bytes),
             media_type="application/zip",
-            headers={
-                "Content-Disposition": 'attachment; filename="mesa_ranking.zip"'
-            },
+            headers={"Content-Disposition": 'attachment; filename="mesa_ranking.zip"'},
         )
 
     rows = assessment_service.ranking()

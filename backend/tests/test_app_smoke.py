@@ -4,6 +4,7 @@ Verifies the app imports and that every expected route is registered after the
 package reorganization (routers split under geoavia_backend.api). No network or
 DB access — inspects the generated OpenAPI schema only.
 """
+
 from __future__ import annotations
 
 from geoavia_backend.main import app

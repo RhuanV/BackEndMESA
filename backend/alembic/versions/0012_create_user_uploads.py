@@ -4,10 +4,12 @@ Revision ID: 0012
 Revises: 0011
 Create Date: 2026-07-08
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0012"
 down_revision = "0011"
@@ -16,7 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.user_uploaded_layers (
             id SERIAL PRIMARY KEY,
             layer_name VARCHAR(150) NOT NULL,
@@ -29,13 +32,17 @@ def upgrade() -> None:
             feature_count INTEGER NOT NULL DEFAULT 0,
             uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_user_uploaded_layers_uploaded_at
         ON mesa_a.user_uploaded_layers (uploaded_at DESC);
-    """))
+    """)
+    )
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS mesa_a.user_uploaded_features (
             id SERIAL PRIMARY KEY,
             upload_id INTEGER NOT NULL
@@ -43,15 +50,20 @@ def upgrade() -> None:
             properties JSONB NOT NULL DEFAULT '{}'::jsonb,
             geom GEOMETRY(GEOMETRY, 4674) NOT NULL
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_user_uploaded_features_upload_id
         ON mesa_a.user_uploaded_features (upload_id);
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_user_uploaded_features_geom
         ON mesa_a.user_uploaded_features USING GIST (geom);
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

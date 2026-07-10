@@ -1,4 +1,5 @@
 """User-uploaded shapefile endpoints (HU-31)."""
+
 from __future__ import annotations
 
 import os
@@ -62,9 +63,7 @@ def list_shapefiles(
     """Lists uploaded shapefiles. Administrators get the full audit view;
     other roles get a version without uploader identity fields."""
     return {
-        "uploads": shapefiles_service.list_layers(
-            limit=limit, viewer_role=current_user["role"]
-        )
+        "uploads": shapefiles_service.list_layers(limit=limit, viewer_role=current_user["role"])
     }
 
 

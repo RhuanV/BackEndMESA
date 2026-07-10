@@ -3,6 +3,7 @@
 Kept in its own module so routers can import the limiter without importing the
 app assembly (avoids a circular import with main.py).
 """
+
 from __future__ import annotations
 
 from slowapi import Limiter

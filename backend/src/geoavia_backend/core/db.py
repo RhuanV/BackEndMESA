@@ -5,6 +5,7 @@ every repository. Connections come from a lazily-initialized thread-safe pool so
 concurrent requests reuse a bounded set of connections instead of opening a new
 one per query.
 """
+
 from __future__ import annotations
 
 import threading
@@ -29,9 +30,7 @@ def _get_pool() -> pg_pool.ThreadedConnectionPool:
     if _pool is None:
         with _pool_lock:
             if _pool is None:
-                _pool = pg_pool.ThreadedConnectionPool(
-                    _POOL_MIN, _POOL_MAX, dsn=DATABASE_URL
-                )
+                _pool = pg_pool.ThreadedConnectionPool(_POOL_MIN, _POOL_MAX, dsn=DATABASE_URL)
     return _pool
 
 

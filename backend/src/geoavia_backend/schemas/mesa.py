@@ -1,4 +1,5 @@
 """Pydantic request models for the MESA (assessment/analysis) endpoints."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field

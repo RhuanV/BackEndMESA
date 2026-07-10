@@ -3,6 +3,7 @@
 geom is GEOMETRY(POLYGON, 4674); the polygon WKT comes from
 mesa_service._build_polygon(). Rows expose ST_AsGeoJSON(geom) as `geometry`.
 """
+
 from geoavia_backend.core.db import cursor
 
 
@@ -40,10 +41,18 @@ class AssessmentRepository:
                           created_at;
                 """,
                 (
-                    site_name, average_slope, urban_center_distance,
-                    has_obstacles, obstacle_description, estimated_cost,
-                    latitude, longitude,
-                    width_m, height_m, angle_deg, polygon_wkt,
+                    site_name,
+                    average_slope,
+                    urban_center_distance,
+                    has_obstacles,
+                    obstacle_description,
+                    estimated_cost,
+                    latitude,
+                    longitude,
+                    width_m,
+                    height_m,
+                    angle_deg,
+                    polygon_wkt,
                 ),
             )
             row = dict(cur.fetchone())

@@ -4,6 +4,7 @@ This module only wires the app together: CORS, the sandbox guard and router
 registration. Endpoint logic lives in the per-domain routers under
 geoavia_backend.api.
 """
+
 import logging
 from contextlib import asynccontextmanager
 

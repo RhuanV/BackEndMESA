@@ -1,4 +1,5 @@
 """User management and authentication endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -20,6 +21,8 @@ service = UserService()
 recovery_service = PasswordRecoveryService()
 
 _MANAGE_USERS_DETAIL = "Only administrador or desenvolvedor can manage users"
+# Single dependency instance reused by the user-management routes.
+_require_manage_users = require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
 
 
 @router.get("/users")
@@ -46,9 +49,7 @@ def get_me(current_user: dict = Depends(obtain_current_user)):
 def create_user(
     username: str,
     role: str = "operador",
-    current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
-    ),
+    current_user: dict = Depends(_require_manage_users),
 ):
     """Creates a user (administrador/desenvolvedor only) for the first-access flow.
 
@@ -107,9 +108,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: int,
-    current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
-    ),
+    current_user: dict = Depends(_require_manage_users),
 ):
     """Removes a user by ID."""
     deleted = service.delete_user(user_id)
@@ -145,9 +144,7 @@ def change_password(
 @router.post("/users/{user_id}/recovery-code")
 def issue_recovery_code(
     user_id: int,
-    current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
-    ),
+    current_user: dict = Depends(_require_manage_users),
 ):
     """Issues a single-use, time-limited password-recovery code for a user.
 
@@ -176,9 +173,7 @@ def reset_password_with_code(request: Request, payload: RecoveryPasswordResetReq
     whether a username or code exists.
     """
     try:
-        recovery_service.reset_with_code(
-            payload.username, payload.code, payload.new_password
-        )
+        recovery_service.reset_with_code(payload.username, payload.code, payload.new_password)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

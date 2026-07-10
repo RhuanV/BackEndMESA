@@ -13,10 +13,12 @@ Legacy roles are mapped:
   coordenador, supervisor, gestor -> administrador
   operador, administrador, desenvolvedor -> unchanged
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0016"
 down_revision = "0015"
