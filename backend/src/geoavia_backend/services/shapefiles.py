@@ -24,6 +24,14 @@ from geoavia_backend.repositories.shapefiles import ShapefilesRepository
 _UPLOADER_IDENTITY_FIELDS = ("user_id", "username", "user_role")
 
 TARGET_SRID = 4674  # SIRGAS 2000
+
+# Cap the total uncompressed size to defuse zip bombs (a small ZIP can expand to
+# many GB). Shapefiles are modest; 2 GB uncompressed is a generous ceiling.
+MAX_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024
+# Only these shapefile companion extensions are extracted from the archive.
+_ALLOWED_MEMBER_EXTS = frozenset(
+    {".shp", ".dbf", ".shx", ".prj", ".cpg", ".qpj", ".sbn", ".sbx"}
+)
 MAX_FEATURES_PER_UPLOAD = 50_000
 
 logger = logging.getLogger(__name__)
@@ -107,6 +115,37 @@ class ShapefilesService:
         return self.repo.fetch_features_as_geojson(upload_id, zoom=zoom, bbox=bbox)
 
     @staticmethod
+    def _safe_extract(zf: zipfile.ZipFile, work_dir: str) -> None:
+        """Extracts only whitelisted shapefile members, guarding against path
+        traversal (Zip Slip) and zip bombs.
+
+        - Rejects absolute paths and any member resolving outside `work_dir`.
+        - Skips directories and non-shapefile extensions.
+        - Aborts if the total uncompressed size exceeds MAX_UNCOMPRESSED_BYTES.
+        """
+        work_root = os.path.realpath(work_dir)
+        total = 0
+        for info in zf.infolist():
+            if info.is_dir():
+                continue
+            name = info.filename
+            if os.path.splitext(name)[1].lower() not in _ALLOWED_MEMBER_EXTS:
+                continue
+            # Flatten to the basename: shapefiles are a flat set of files, and it
+            # neutralizes any directory component (including '..' and absolutes).
+            target_name = os.path.basename(name)
+            if not target_name:
+                continue
+            dest = os.path.realpath(os.path.join(work_root, target_name))
+            if os.path.commonpath([work_root, dest]) != work_root:
+                raise ShapefileError("ZIP archive contains an unsafe file path.")
+            total += info.file_size
+            if total > MAX_UNCOMPRESSED_BYTES:
+                raise ShapefileError("ZIP archive is too large when uncompressed.")
+            with zf.open(info) as src, open(dest, "wb") as out:
+                out.write(src.read())
+
+    @staticmethod
     def _extract_shapefile(zip_bytes: bytes, work_dir: str) -> str:
         zip_path = os.path.join(work_dir, "upload.zip")
         with open(zip_path, "wb") as f:
@@ -114,7 +153,7 @@ class ShapefilesService:
 
         try:
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(work_dir)
+                ShapefilesService._safe_extract(zf, work_dir)
         except zipfile.BadZipFile as exc:
             raise ShapefileError("Uploaded file is not a valid ZIP archive.") from exc
 

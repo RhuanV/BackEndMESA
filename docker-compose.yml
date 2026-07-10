@@ -33,9 +33,11 @@ services:
     container_name: geoavia_backend
     volumes:
       - ./backend/src:/app/src
+    # --reload is opt-in via UVICORN_RELOAD=1 (off by default = production-safe).
+    # $$ escapes the var so it is expanded inside the container, not by Compose.
     command: >
       bash -c "alembic upgrade head &&
-               python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 --reload"
+               python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 $${UVICORN_RELOAD:+--reload}"
     ports:
       - "${API_PORT:-8000}:8000" # HOST:CONTAINER
     env_file:

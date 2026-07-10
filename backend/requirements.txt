@@ -23,6 +23,9 @@ python-jose[cryptography]==3.5.0
 # Required to receive OAuth2PasswordRequestForm in the login endpoint
 python-multipart==0.0.32
 
+# Per-IP rate limiting for abuse-sensitive endpoints (login, password reset)
+slowapi==0.1.9
+
 # Compatible version of the bcrypt backend to avoid initialization failures in Passlib 1.7.x
 bcrypt==4.0.1
 

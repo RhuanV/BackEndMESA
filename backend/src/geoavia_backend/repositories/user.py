@@ -2,9 +2,12 @@ from geoavia_backend.core.db import cursor
 
 
 class UserRepository:
-    def get_all(self) -> list[dict]:
+    def get_all(self, limit: int = 100, offset: int = 0) -> list[dict]:
         with cursor(dict_rows=True) as cur:
-            cur.execute("SELECT id, username, role FROM users;")
+            cur.execute(
+                "SELECT id, username, role FROM users ORDER BY id LIMIT %s OFFSET %s;",
+                (limit, offset),
+            )
             return cur.fetchall()
 
     def obtain_user_from_username(self, username: str) -> dict | None:

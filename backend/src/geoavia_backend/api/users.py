@@ -1,11 +1,12 @@
 """User management and authentication endpoints."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
 from geoavia_backend.core.auth import obtain_current_user, require_roles
 from geoavia_backend.core.database import BOOTSTRAP_USER
+from geoavia_backend.core.rate_limit import limiter
 from geoavia_backend.core.roles import DESENVOLVEDOR, USER_CREATION_ROLES
 from geoavia_backend.schemas.user import (
     PasswordResetRequest,
@@ -22,9 +23,13 @@ _MANAGE_USERS_DETAIL = "Only administrador or desenvolvedor can manage users"
 
 
 @router.get("/users")
-def get_users(current_user: dict = Depends(obtain_current_user)):
-    """Returns the list of users through the service and repository layers."""
-    return service.list_users()
+def get_users(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    current_user: dict = Depends(obtain_current_user),
+):
+    """Returns a paginated list of users (defaults: first 100)."""
+    return service.list_users(limit=limit, offset=offset)
 
 
 @router.get("/me")
@@ -78,8 +83,12 @@ def create_user(
 
 
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Authenticates the user and returns a JWT access token."""
+@limiter.limit("5/minute")
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+    """Authenticates the user and returns a JWT access token.
+
+    Rate-limited per IP to slow down brute-force/credential-stuffing attempts.
+    """
     user = service.authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -159,11 +168,12 @@ def issue_recovery_code(
 
 
 @router.post("/password-reset")
-def reset_password_with_code(payload: RecoveryPasswordResetRequest):
+@limiter.limit("5/minute")
+def reset_password_with_code(request: Request, payload: RecoveryPasswordResetRequest):
     """Public: resets a password using an admin-issued recovery code.
 
-    Errors are intentionally generic to avoid revealing whether a username or
-    code exists.
+    Rate-limited per IP. Errors are intentionally generic to avoid revealing
+    whether a username or code exists.
     """
     try:
         recovery_service.reset_with_code(
