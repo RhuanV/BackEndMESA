@@ -34,7 +34,13 @@ else:
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 FRONTEND_PORT = os.getenv("FRONTEND_PORT", "5173")
-DEV_USER = os.getenv("DEV_USER", "admin")
+
+# Bootstrap accounts per environment: production seeds a single administrator,
+# sandbox a single developer. BOOTSTRAP_USER is the protected account for the
+# active environment (cannot be renamed/deleted or reset through normal routes).
+ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+DEV_USER = os.getenv("DEV_USER", "dev")
+BOOTSTRAP_USER = DEV_USER if APP_ENV == "sandbox" else ADMIN_USER
 
 # Extra allowed CORS origins (comma-separated). Empty falls back to the local
 # frontend only. Configure this for staging/production domains.

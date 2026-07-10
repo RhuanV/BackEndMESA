@@ -12,14 +12,14 @@ Security properties:
   - Issuing a new code invalidates previous active codes for that user.
   - A code is burned after MAX_CODE_ATTEMPTS failed verifications.
   - Reset responses are generic (never reveal whether a username exists).
-  - The protected DEV_USER cannot be targeted through this flow.
+  - The protected bootstrap user cannot be targeted through this flow.
 """
 from __future__ import annotations
 
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from geoavia_backend.core.database import DEV_USER
+from geoavia_backend.core.database import BOOTSTRAP_USER
 from geoavia_backend.core.passwords import validate_password_strength
 from geoavia_backend.repositories.password_reset import PasswordResetRepository
 from geoavia_backend.repositories.user import UserRepository
@@ -48,7 +48,7 @@ class PasswordRecoveryService:
         user = self.users.obtain_user_from_id(target_user_id)
         if not user:
             raise ValueError("User not found")
-        if user["username"] == DEV_USER:
+        if user["username"] == BOOTSTRAP_USER:
             raise ValueError(
                 "A recovery code cannot be issued for the protected developer user."
             )
@@ -74,7 +74,7 @@ class PasswordRecoveryService:
         validate_password_strength(clean_password)
 
         user = self.users.obtain_user_from_username(username.strip())
-        if not user or user["username"] == DEV_USER:
+        if not user or user["username"] == BOOTSTRAP_USER:
             raise generic_error
 
         clean_code = code.strip()

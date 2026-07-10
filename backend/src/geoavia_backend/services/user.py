@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
 
-from geoavia_backend.core.database import ALGORITHM, SECRET_KEY, DEV_USER
+from geoavia_backend.core.database import ALGORITHM, SECRET_KEY, BOOTSTRAP_USER
 from geoavia_backend.core.passwords import validate_password_strength
 from geoavia_backend.core.roles import ROLES
 from geoavia_backend.repositories.user import UserRepository
@@ -48,7 +48,7 @@ class UserService:
     def list_users(self) -> list[dict]:
         users = self.repo.get_all()
         for u in users:
-            u["is_protected"] = (u["username"] == DEV_USER)
+            u["is_protected"] = (u["username"] == BOOTSTRAP_USER)
         return users
 
     def register_user(self, username: str, password: str, role: str = "operador") -> int:
@@ -80,10 +80,10 @@ class UserService:
         user = self.repo.obtain_user_from_id(user_id)
         if not user:
             return False
-        if user["username"] == DEV_USER:
-            raise ValueError(f"The default administrator user ('{DEV_USER}') cannot be modified.")
-        if clean_username == DEV_USER:
-            raise ValueError(f"Renaming another user to '{DEV_USER}' is not allowed.")
+        if user["username"] == BOOTSTRAP_USER:
+            raise ValueError(f"The protected bootstrap user ('{BOOTSTRAP_USER}') cannot be modified.")
+        if clean_username == BOOTSTRAP_USER:
+            raise ValueError(f"Renaming another user to '{BOOTSTRAP_USER}' is not allowed.")
 
         return self.repo.update_username(user_id, clean_username)
 
@@ -91,8 +91,8 @@ class UserService:
         """Deletes a user by ID in the database."""
         # Protect root 'admin' user
         user = self.repo.obtain_user_from_id(user_id)
-        if user and user["username"] == DEV_USER:
-            raise ValueError(f"The default administrator user ('{DEV_USER}') cannot be deleted.")
+        if user and user["username"] == BOOTSTRAP_USER:
+            raise ValueError(f"The protected bootstrap user ('{BOOTSTRAP_USER}') cannot be deleted.")
         return self.repo.delete(user_id)
 
     def change_password(self, user_id: int, new_password: str) -> bool:
@@ -102,12 +102,12 @@ class UserService:
             raise ValueError("Password must not be empty")
         validate_password_strength(clean_password)
 
-        # Verify that the user exists and is not the root DEV_USER
+        # Verify that the user exists and is not the root bootstrap user
         user = self.repo.obtain_user_from_id(user_id)
         if not user:
             return False
-        if user["username"] == DEV_USER:
-            raise ValueError(f"The password of the default administrator user ('{DEV_USER}') cannot be changed through this route.")
+        if user["username"] == BOOTSTRAP_USER:
+            raise ValueError(f"The password of the protected bootstrap user ('{BOOTSTRAP_USER}') cannot be changed through this route.")
 
         password_hash = self.security.get_password_hash(clean_password)
         return self.repo.update_password_hash(user_id, password_hash)
