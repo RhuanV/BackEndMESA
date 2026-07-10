@@ -17,7 +17,11 @@ import math
 import psycopg2
 
 from geoavia_backend.core.geo_params import normalize_zoom, parse_bbox
+from geoavia_backend.core.roles import ADMIN_ROLES
 from geoavia_backend.repositories.shapefiles import ShapefilesRepository
+
+# Uploader identity fields exposed only to administrators (audit view).
+_UPLOADER_IDENTITY_FIELDS = ("user_id", "username", "user_role")
 
 TARGET_SRID = 4674  # SIRGAS 2000
 MAX_FEATURES_PER_UPLOAD = 50_000
@@ -79,8 +83,16 @@ class ShapefilesService:
                 "target_srid": TARGET_SRID,
             }
 
-    def list_layers(self, limit: int = 100) -> list[dict]:
-        return self.repo.list_layers(limit=limit)
+    def list_layers(self, limit: int = 100, viewer_role: str | None = None) -> list[dict]:
+        """Lists uploads. Uploader identity (user_id/username/user_role) is only
+        included for administrators; other roles get a redacted, need-to-know view."""
+        layers = self.repo.list_layers(limit=limit)
+        if viewer_role in ADMIN_ROLES:
+            return layers
+        return [
+            {k: v for k, v in layer.items() if k not in _UPLOADER_IDENTITY_FIELDS}
+            for layer in layers
+        ]
 
     def fetch_features(
         self,

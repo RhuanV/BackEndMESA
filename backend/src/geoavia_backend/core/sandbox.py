@@ -37,14 +37,25 @@ def is_production() -> bool:
 
 
 def role_from_token(token: str) -> str | None:
-    """Best-effort role extraction from a bearer token; None if invalid."""
+    """Best-effort role resolution for a bearer token; None if invalid.
+
+    The token holds only the subject id, so the role is resolved from the
+    database — never trusted from the token itself.
+    """
     if not SECRET_KEY or not token:
         return None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
-    return payload.get("role")
+    sub = payload.get("sub")
+    if not sub or not str(sub).isdigit():
+        return None
+    # Imported lazily to avoid import-time coupling between core and repositories.
+    from geoavia_backend.repositories.user import UserRepository
+
+    user = UserRepository().obtain_user_from_id(int(sub))
+    return user["role"] if user else None
 
 
 def developer_write_blocked(role: str | None) -> bool:

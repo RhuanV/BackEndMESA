@@ -28,6 +28,16 @@ def get_users(current_user: dict = Depends(obtain_current_user)):
     return service.list_users()
 
 
+@router.get("/me")
+def get_me(current_user: dict = Depends(obtain_current_user)):
+    """Returns the authenticated user's identity, resolved server-side.
+
+    The client relies on this (not on decoding the token) to know who it is and
+    which role governs the UI.
+    """
+    return {"username": current_user["username"], "role": current_user["role"]}
+
+
 @router.post("/users/signup")
 def create_user(
     username: str,
@@ -63,13 +73,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     try:
-        access_token = service.security.create_access_token(
-            {
-                "sub": str(user["id"]),
-                "username": user["username"],
-                "role": user["role"],
-            }
-        )
+        # Minimal token: only the subject id. Username/role are resolved from the
+        # database on every request (see obtain_current_user), so nothing
+        # sensitive or stale is carried in the token.
+        access_token = service.security.create_access_token({"sub": str(user["id"])})
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
