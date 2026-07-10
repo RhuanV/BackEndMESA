@@ -30,8 +30,24 @@ export function MapComponent() {
 
   const [activeBaseMap, setActiveBaseMap] = useState<'bdg-mesa' | 'satellite' | 'osm'>('bdg-mesa');
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false);
+  const [isRegionPanelOpen, setIsRegionPanelOpen] = useState(false);
   const [selectedLayerMeta, setSelectedLayerMeta] = useState<LayerMetadata | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+
+  // Layers and Region panels share the top-left corner, so opening one closes the other.
+  const toggleLayerPanel = useCallback(() => {
+    setIsLayerPanelOpen((prev) => {
+      if (!prev) setIsRegionPanelOpen(false);
+      return !prev;
+    });
+  }, []);
+
+  const toggleRegionPanel = useCallback(() => {
+    setIsRegionPanelOpen((prev) => {
+      if (!prev) setIsLayerPanelOpen(false);
+      return !prev;
+    });
+  }, []);
 
   // Static LAYER_REGISTRY layers — initialized from localStorage so LayerConfigPage changes persist
   const [visibleLayers, setVisibleLayers] = useState<Set<string>>(getStoredVisibleIds);
@@ -282,13 +298,30 @@ export function MapComponent() {
       {/* Toolbar — top-left buttons */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
         <button
-          onClick={() => setIsLayerPanelOpen(!isLayerPanelOpen)}
-          className="rounded-lg bg-white/90 backdrop-blur-md shadow-md border border-neutral-200/50 p-2.5 text-neutral-600 hover:text-primary-600 hover:bg-white transition-all"
+          onClick={toggleLayerPanel}
+          className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
+            isLayerPanelOpen ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600 hover:bg-white'
+          }`}
           aria-label="Painel de camadas"
+          aria-pressed={isLayerPanelOpen}
           type="button"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3" />
+          </svg>
+        </button>
+        <button
+          onClick={toggleRegionPanel}
+          className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
+            isRegionPanelOpen ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600 hover:bg-white'
+          }`}
+          aria-label="Painel de região e estado"
+          aria-pressed={isRegionPanelOpen}
+          type="button"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
           </svg>
         </button>
         {isDevUser && (
@@ -322,10 +355,15 @@ export function MapComponent() {
         </div>
       )}
 
-      {/* Region Selector — top-center */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-80 rounded-xl bg-white/90 backdrop-blur-md shadow-lg border border-neutral-200/50 p-3">
-        <RegionSelector onRegionSelect={handleRegionSelect} />
-      </div>
+      {/* Region Selector — toggleable panel (top-left, mirrors the layers panel) */}
+      {isRegionPanelOpen && (
+        <div className="absolute top-16 left-4 z-20">
+          <RegionSelector
+            onRegionSelect={handleRegionSelect}
+            onClose={() => setIsRegionPanelOpen(false)}
+          />
+        </div>
+      )}
 
       {/* Base Map Control */}
       <LayerControl activeLayer={activeBaseMap} onLayerChange={handleBaseMapChange} />
