@@ -26,14 +26,6 @@ class UserRepository:
             )
             return cur.fetchone()[0]
 
-    def update_username(self, user_id: int, new_username: str) -> bool:
-        with cursor() as cur:
-            cur.execute(
-                "UPDATE users SET username = %s WHERE id = %s;",
-                (new_username, user_id),
-            )
-            return cur.rowcount > 0
-
     def update_password_hash(self, user_id: int, new_hash: str) -> bool:
         with cursor() as cur:
             cur.execute(

@@ -10,7 +10,6 @@ from geoavia_backend.core.roles import DESENVOLVEDOR, USER_CREATION_ROLES
 from geoavia_backend.schemas.user import (
     PasswordResetRequest,
     RecoveryPasswordResetRequest,
-    UpdateUsernameRequest,
 )
 from geoavia_backend.services.password_reset import PasswordRecoveryService
 from geoavia_backend.services.user import UserService
@@ -41,13 +40,16 @@ def get_me(current_user: dict = Depends(obtain_current_user)):
 @router.post("/users/signup")
 def create_user(
     username: str,
-    password: str,
     role: str = "operador",
     current_user: dict = Depends(
         require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
     ),
 ):
-    """Creates a user (administrador/desenvolvedor only).
+    """Creates a user (administrador/desenvolvedor only) for the first-access flow.
+
+    The admin does not set a password: the account is created without a usable
+    password and a single-use first-access code is returned so the admin can
+    relay it. The user sets their own password via POST /password-reset.
 
     Only a desenvolvedor may grant the privileged 'desenvolvedor' role.
     """
@@ -57,12 +59,22 @@ def create_user(
             detail="Only a desenvolvedor can grant the 'desenvolvedor' role.",
         )
 
+    issued_by = int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None
     try:
-        new_id = service.register_user(username, password, role)
+        new_id = service.create_pending_user(username, role)
+        result = recovery_service.issue_code(new_id, issued_by)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return {"id": new_id, "message": "User was successfully created"}
+    return {
+        "id": new_id,
+        "code": result["code"],
+        "expires_at": result["expires_at"],
+        "message": (
+            "User created. Relay this first-access code so they can set their "
+            "password on the login screen; it can be used once."
+        ),
+    }
 
 
 @router.post("/login")
@@ -81,26 +93,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-@router.put("/users/{user_id}/username")
-def update_username(
-    user_id: int,
-    payload: UpdateUsernameRequest,
-    current_user: dict = Depends(
-        require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)
-    ),
-):
-    """Updates a user's username."""
-    try:
-        updated = service.change_username(user_id, payload.username)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    if not updated:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return {"message": "Username was successfully changed"}
 
 
 @router.delete("/users/{user_id}")

@@ -100,11 +100,11 @@ export function LoginPage() {
 
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-neutral-900">
-              {showReset ? 'Recuperar Senha' : 'Acesso ao Sistema'}
+              {showReset ? 'Primeiro acesso / Recuperar senha' : 'Acesso ao Sistema'}
             </h2>
             <p className="mt-2 text-sm text-neutral-500">
               {showReset
-                ? 'Redefina sua senha com o código fornecido por um administrador.'
+                ? 'Use o código fornecido por um administrador para definir sua senha no primeiro acesso ou redefini-la.'
                 : 'Entre com suas credenciais para acessar o painel.'}
             </p>
           </div>

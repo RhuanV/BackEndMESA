@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from jose import jwt
@@ -70,22 +71,26 @@ class UserService:
         password_hash = self.security.get_password_hash(clean_password)
         return self.repo.create(clean_username, password_hash, clean_role)
 
-    def change_username(self, user_id: int, new_username: str) -> bool:
-        """Updates the username with basic input validation."""
-        clean_username = new_username.strip()
+    def create_pending_user(self, username: str, role: str = "operador") -> int:
+        """Creates an account without a usable password (first-access flow).
+
+        The account gets an unusable placeholder hash (a random secret nobody
+        knows), so it cannot be logged into until the user sets a real password
+        through the admin-issued recovery code. The admin never sets/knows it.
+        """
+        clean_username = username.strip()
         if not clean_username:
             raise ValueError("Username must not be empty")
 
-        # Protect root 'admin' user
-        user = self.repo.obtain_user_from_id(user_id)
-        if not user:
-            return False
-        if user["username"] == BOOTSTRAP_USER:
-            raise ValueError(f"The protected bootstrap user ('{BOOTSTRAP_USER}') cannot be modified.")
-        if clean_username == BOOTSTRAP_USER:
-            raise ValueError(f"Renaming another user to '{BOOTSTRAP_USER}' is not allowed.")
+        clean_role = role.strip().lower()
+        if clean_role not in ROLES:
+            raise ValueError("Invalid role. Use: operador, administrador or desenvolvedor")
 
-        return self.repo.update_username(user_id, clean_username)
+        if self.repo.obtain_user_from_username(clean_username) is not None:
+            raise ValueError("Username already exists")
+
+        placeholder_hash = self.security.get_password_hash(secrets.token_urlsafe(32))
+        return self.repo.create(clean_username, placeholder_hash, clean_role)
 
     def delete_user(self, user_id: int) -> bool:
         """Deletes a user by ID in the database."""

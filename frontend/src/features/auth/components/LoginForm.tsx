@@ -127,7 +127,7 @@ export function LoginForm({ onForgotPassword }: LoginFormProps = {}) {
           disabled={isDisabled}
           className="w-full text-center text-sm text-primary-600 hover:underline disabled:opacity-50"
         >
-          Esqueceu sua senha?
+          Primeiro acesso ou esqueceu a senha?
         </button>
       )}
     </form>

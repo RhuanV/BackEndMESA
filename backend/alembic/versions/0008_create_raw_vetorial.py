@@ -1,7 +1,7 @@
 """create mesa_a schema and raw vetorial tables
 
 Revision ID: 0008
-Revises: 0007
+Revises: 0006
 Create Date: 2026-07-08
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ from alembic import op
 from sqlalchemy import text
 
 revision = "0008"
-down_revision = "0007"
+down_revision = "0006"
 branch_labels = None
 depends_on = None
 
