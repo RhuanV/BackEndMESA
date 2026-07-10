@@ -62,6 +62,7 @@ export async function fetchShapefileFeatures(params: {
   readonly uploadId: number;
   readonly zoom: ZoomLevel;
   readonly bbox?: readonly [number, number, number, number];
+  readonly signal?: AbortSignal;
 }): Promise<FeatureCollection> {
   const query: Record<string, string> = { zoom: params.zoom };
   if (params.bbox) {
@@ -70,7 +71,7 @@ export async function fetchShapefileFeatures(params: {
 
   const response = await apiClient.get<FeatureCollection>(
     `/shapefiles/${params.uploadId}/features`,
-    { params: query }
+    { params: query, signal: params.signal }
   );
   return response.data;
 }
