@@ -2,19 +2,40 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 
 from geoavia_backend.core.auth import obtain_current_user, require_roles
-from geoavia_backend.core.database import BOOTSTRAP_USER
+from geoavia_backend.core.database import APP_ENV, BOOTSTRAP_USER
 from geoavia_backend.core.rate_limit import limiter
 from geoavia_backend.core.roles import DESENVOLVEDOR, USER_CREATION_ROLES
+from geoavia_backend.repositories.user import UserRepository
 from geoavia_backend.schemas.user import (
     PasswordResetRequest,
     RecoveryPasswordResetRequest,
 )
 from geoavia_backend.services.password_reset import PasswordRecoveryService
-from geoavia_backend.services.user import UserService
+from geoavia_backend.services.user import REFRESH_TOKEN_EXPIRE_DAYS, UserService
+
+# Refresh token lives in an httpOnly cookie; access tokens travel as Bearer.
+_REFRESH_COOKIE = "geoavia_refresh"
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=_REFRESH_COOKIE,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=(APP_ENV == "production"),
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(key=_REFRESH_COOKIE, path="/")
+
 
 router = APIRouter()
 service = UserService()
@@ -85,8 +106,9 @@ def create_user(
 
 @router.post("/login")
 @limiter.limit("5/minute")
-def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
-    """Authenticates the user and returns a JWT access token.
+def login(request: Request, response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
+    """Authenticates the user, returns a short-lived access token (JSON) and sets
+    a long-lived refresh token in an httpOnly cookie.
 
     Rate-limited per IP to slow down brute-force/credential-stuffing attempts.
     """
@@ -95,14 +117,48 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     try:
-        # Minimal token: only the subject id. Username/role are resolved from the
-        # database on every request (see obtain_current_user), so nothing
-        # sensitive or stale is carried in the token.
-        access_token = service.security.create_access_token({"sub": str(user["id"])})
+        # Tokens carry only the subject id; username/role are resolved from the
+        # database on every request (see obtain_current_user).
+        sub = str(user["id"])
+        access_token = service.security.create_access_token(sub)
+        refresh_token = service.security.create_refresh_token(sub)
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+    _set_refresh_cookie(response, refresh_token)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/refresh")
+@limiter.limit("30/minute")
+def refresh(request: Request, response: Response):
+    """Issues a new access token from the refresh cookie and rotates the cookie.
+
+    Uses only the httpOnly cookie (no Bearer). Generic 401 if it is missing,
+    invalid, expired, or the user no longer exists.
+    """
+    invalid = HTTPException(status_code=401, detail="Invalid or expired session")
+    token = request.cookies.get(_REFRESH_COOKIE)
+    if not token:
+        raise invalid
+
+    sub = service.security.decode_refresh_subject(token)
+    if not sub:
+        raise invalid
+    if UserRepository().obtain_user_from_id(int(sub)) is None:
+        _clear_refresh_cookie(response)
+        raise invalid
+
+    access_token = service.security.create_access_token(sub)
+    _set_refresh_cookie(response, service.security.create_refresh_token(sub))
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/logout")
+def logout(response: Response):
+    """Clears the refresh cookie, ending the session."""
+    _clear_refresh_cookie(response)
+    return {"message": "Logged out"}
 
 
 @router.delete("/users/{user_id}")

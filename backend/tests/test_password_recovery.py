@@ -123,10 +123,13 @@ def test_weak_password_is_rejected():
         svc.reset_with_code("alice", code, "lowercase123")
 
 
-def test_protected_dev_user_cannot_get_a_code():
+def test_protected_dev_user_cannot_get_a_code(monkeypatch):
+    # Pin the protected account to the fake 'admin' so the test doesn't depend on
+    # the ambient APP_ENV (which decides whether BOOTSTRAP_USER is admin or dev).
+    monkeypatch.setattr("geoavia_backend.services.password_reset.BOOTSTRAP_USER", "admin")
     svc = make_service()
     with pytest.raises(ValueError):
-        svc.issue_code(2, 2)  # user 'admin' is the protected DEV_USER
+        svc.issue_code(2, 2)  # user 'admin' is the protected bootstrap user
 
 
 def test_code_is_burned_after_max_attempts():
