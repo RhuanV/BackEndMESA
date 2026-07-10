@@ -24,6 +24,13 @@ Ao final, o `start.sh` mostra a URL e o usuário/senha de acesso. Acesse:
 
 Detalhes e testes em [docs/TESTING.md](docs/TESTING.md).
 
+## Dados de referência (limites)
+
+A camada **Limites Estaduais** já vem populada por padrão: uma migration carrega um seed commitado
+(`backend/seed/state_boundaries.sql.gz`, malha IBGE BR_UF_2025) em `mesa_a.vetor_limites_estaduais`.
+Os **Limites Municipais** não são commitados (a malha completa é grande demais); carregue-os quando
+precisar via o DAG do Airflow `load_municipality_boundaries`.
+
 ## Deploy em produção (segurança)
 
 Antes de expor o sistema fora da sua máquina:
