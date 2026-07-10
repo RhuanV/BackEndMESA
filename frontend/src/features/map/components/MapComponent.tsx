@@ -369,15 +369,15 @@ export function MapComponent() {
       <LayerControl activeLayer={activeBaseMap} onLayerChange={handleBaseMapChange} />
 
       {/* CRS Label */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-md bg-black/60 px-2 py-1 text-[10px] font-mono text-white/80">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-md bg-white/90 backdrop-blur-md shadow-sm border border-neutral-200/50 px-2 py-1 text-[10px] font-mono text-neutral-600">
         {CRS_LABEL}
       </div>
 
       {/* Debug overlay (dev only) */}
       {showDebug && isDevUser && cursorPosition && (
-        <div className="absolute top-4 right-16 z-10 rounded-lg bg-black/70 px-3 py-2 text-xs font-mono text-green-400 space-y-0.5">
-          <div>Lng: {cursorPosition.lng.toFixed(6)}</div>
-          <div>Lat: {cursorPosition.lat.toFixed(6)}</div>
+        <div className="absolute top-4 right-16 z-10 rounded-lg bg-white/90 backdrop-blur-md shadow-md border border-neutral-200/50 px-3 py-2 text-xs font-mono space-y-0.5">
+          <div><span className="text-neutral-500">Lng:</span> <span className="text-accent-600">{cursorPosition.lng.toFixed(6)}</span></div>
+          <div><span className="text-neutral-500">Lat:</span> <span className="text-accent-600">{cursorPosition.lat.toFixed(6)}</span></div>
         </div>
       )}
 
