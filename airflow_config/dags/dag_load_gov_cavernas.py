@@ -1,7 +1,6 @@
-"""
-DAG to automate the download, extraction, and database insertion of Brazil's Cave Potential Map
-(Mapa de Potencialidades de Ocorrência de Cavernas). Downloads data from ICMBio, processes it
-using GeoPandas, and loads it into the mesa_a.vetor_gov_cavernas PostGIS table.
+"""Cave Occurrence Potential Map DAG (ICMBio).
+
+Downloads, processes with GeoPandas and loads into mesa_a.vetor_gov_cavernas.
 """
 import os
 import zipfile
@@ -17,21 +16,12 @@ import geopandas as gpd
 from psycopg2.extras import execute_batch
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
-
-# FIX: A URL antiga apontava para a página de visualização do arquivo no portal gov.br
-# (sufixo /view), que retorna HTML — não o arquivo ZIP em si.
-# A URL correta remove o sufixo /view para fazer download direto do binário .zip.
-CAVERNAS_URL = "https://www.gov.br/icmbio/pt-br/assuntos/centros-de-pesquisa/cavernas/publicacoes/mapa-de-potencialidades-de-ocorrencia-de-cavernas-no-brasil/dados-mapa-de-potencialidades-de-ocorrencia-de-cavermas-no-brasil.zip"
+from config_urls import CAVERNAS_URL
 
 def extract_cavernas(**kwargs) -> str:
-    """
-    Task 1: Extract
-    Downloads the shapefile ZIP, extracts it, and returns the path to the extracted directory.
-    """
-    # Create a unique temporary directory based on the DAG run ID
+    """Extract: downloads and unpacks the shapefile ZIP, returning the extracted directory."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_gov_cavernas_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -44,8 +34,7 @@ def extract_cavernas(**kwargs) -> str:
     response = requests.get(CAVERNAS_URL, stream=True, verify=False, headers=headers)
     response.raise_for_status()
 
-    # FIX: Validate that what we received is actually a ZIP before saving,
-    # to surface a clear error early if the server returns HTML/redirect instead.
+    # Verify the response is actually a ZIP (the portal sometimes returns HTML/redirects).
     content_type = response.headers.get("Content-Type", "")
     if "text/html" in content_type:
         raise ValueError(
@@ -58,7 +47,6 @@ def extract_cavernas(**kwargs) -> str:
         for chunk in response.iter_content(chunk_size=8192):
             f.write(chunk)
 
-    # Additional ZIP validation before attempting extraction
     if not zipfile.is_zipfile(zip_path):
         raise ValueError(
             f"Downloaded file is not a valid ZIP. "
@@ -73,11 +61,7 @@ def extract_cavernas(**kwargs) -> str:
     return extract_path
 
 def transform_cavernas(**kwargs) -> str:
-    """
-    Task 2: Transform
-    Reads the shapefile with GeoPandas, extracts fields into a JSONB structure, 
-    and saves to a temporary JSON.
-    """
+    """Transform: reads the shapefile with GeoPandas and saves the fields to a temporary JSON."""
     ti = kwargs['ti']
     extract_path = ti.xcom_pull(task_ids='extract_cavernas')
     
@@ -126,10 +110,7 @@ def transform_cavernas(**kwargs) -> str:
     return transformed_file
 
 def load_cavernas(**kwargs) -> None:
-    """
-    Task 3: Load
-    Creates the target table if missing, inserts data into PostGIS, and cleans up.
-    """
+    """Load: inserts the data into PostGIS (TRUNCATE + insert) and cleans up temporary files."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='transform_cavernas')
     
@@ -169,7 +150,6 @@ def load_cavernas(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded government cave data into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")

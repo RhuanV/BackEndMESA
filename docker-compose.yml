@@ -12,11 +12,12 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
       AIRFLOW_DB: ${AIRFLOW_DB}
+      SANDBOX_DB_NAME: ${SANDBOX_DB_NAME:-geoavia_sandbox_db}
     ports:
       - "${DB_EXT_PORT:-5433}:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations/init:/docker-entrypoint-initdb.d
+      - ./init/db:/docker-entrypoint-initdb.d
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -30,15 +31,24 @@ services:
   backend:
     build: .
     container_name: geoavia_backend
+    restart: unless-stopped
     volumes:
       - ./backend/src:/app/src
+    # --reload is opt-in via UVICORN_RELOAD=1 (off by default = production-safe).
+    # $$ escapes the var so it is expanded inside the container, not by Compose.
     command: >
       bash -c "alembic upgrade head &&
-               python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 --reload"
+               python -m uvicorn geoavia_backend.main:app --host 0.0.0.0 --port 8000 $${UVICORN_RELOAD:+--reload}"
     ports:
       - "${API_PORT:-8000}:8000" # HOST:CONTAINER
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       db:
         condition: service_healthy
@@ -71,7 +81,7 @@ services:
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
-      - ./airflow_config/init_airflow.sh:/opt/airflow/init_airflow.sh:ro
+      - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
     command: webserver
@@ -103,7 +113,7 @@ services:
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
-      - ./airflow_config/init_airflow.sh:/opt/airflow/init_airflow.sh:ro
+      - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     command: scheduler
 
 # ========================
@@ -123,7 +133,7 @@ services:
       AIRFLOW_UID: 50000
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
     volumes:
-      - ./airflow_config/init_airflow.sh:/init_airflow.sh
+      - ./init/airflow.sh:/init_airflow.sh
       - ./airflow_config/dags:/opt/airflow/dags
       - ./airflow_config/plugins:/opt/airflow/plugins
     command: bash /init_airflow.sh
@@ -133,8 +143,9 @@ services:
 # PERMISSION FIXER
 # ========================
   permission-fixer:
-    image: alpine
+    image: alpine:3.20
     container_name: geoavia_permission_fixer
+    restart: on-failure
     command: chown -R 50000:0 /opt/airflow/data
     volumes:
       - geo_data:/opt/airflow/data

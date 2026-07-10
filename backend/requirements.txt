@@ -1,39 +1,41 @@
+# Runtime dependencies (pinned for reproducible builds).
+# Dev-only tools live in requirements-dev.txt.
+
 # Main framework for building the API (fast, modern, with automatic documentation)
-fastapi
+fastapi==0.139.0
 
 # ASGI web server required to run FastAPI and manage connections
-uvicorn
+uvicorn==0.51.0
 
 # PostgreSQL adapter that allows Python to execute SQL commands
 # The 'binary' version simplifies installation without requiring C compilers on the system
-psycopg2-binary
+psycopg2-binary==2.9.12
 
 # Essential for data validation and for creating the schemas that the API will receive
-pydantic
+pydantic==2.13.4
 
 # Secure password hashing using bcrypt through passlib
-passlib[bcrypt]
+passlib[bcrypt]==1.7.4
 
 # JWT library for access tokens
-python-jose[cryptography]
+python-jose[cryptography]==3.5.0
 
 # Required to receive OAuth2PasswordRequestForm in the login endpoint
-python-multipart
+python-multipart==0.0.32
+
+# Per-IP rate limiting for abuse-sensitive endpoints (login, password reset)
+slowapi==0.1.9
 
 # Compatible version of the bcrypt backend to avoid initialization failures in Passlib 1.7.x
 bcrypt==4.0.1
 
 # Allows Python to read .env files (where we securely store the database password)
-python-dotenv
+python-dotenv==1.2.2
 
 # Geospatial parsing for HU-31 (user shapefile upload).
 # geopandas bundles fiona/shapely/pyproj transitively.
-geopandas
+geopandas==1.1.4
 
 # Incremental database migration management (replaces docker-entrypoint-initdb.d)
-alembic
-sqlalchemy
-
-# Development tools (code quality and commit standardization)
-pre-commit
-commitizen
+alembic==1.18.5
+sqlalchemy==2.0.51

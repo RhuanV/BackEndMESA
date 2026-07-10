@@ -5,7 +5,7 @@
  * (Defense in Depth — even though data comes from a local registry,
  * future versions may fetch from an API).
  */
-import { Modal } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui';
 import { sanitize } from '@/lib/security/sanitize';
 import type { LayerMetadata } from '@/features/map/constants/layerMetadata';
 

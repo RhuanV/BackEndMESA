@@ -1,0 +1,18 @@
+"""Pydantic request models for the users endpoints."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class PasswordResetRequest(BaseModel):
+    # Fast length gate; the authoritative strength policy runs in the service layer.
+    new_password: str = Field(min_length=8)
+
+
+class RecoveryPasswordResetRequest(BaseModel):
+    """Public request to reset a password using an admin-issued recovery code."""
+
+    username: str
+    code: str
+    new_password: str = Field(min_length=8)

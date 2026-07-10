@@ -1,6 +1,5 @@
 """
-DAG to automate the extraction and database insertion of Ports from OpenStreetMap.
-Uses the local Geofabrik PBF, filters with Osmium Tool, and loads it into a PostGIS table.
+Extracts ports from OpenStreetMap (Geofabrik PBF) via Osmium and loads them into mesa_a.vetor_osm_portos.
 """
 import os
 import json
@@ -15,27 +14,20 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from psycopg2.extras import execute_batch
 
 import sys
-# Dynamically adds the 'plugins' directory to Python's path
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 
 osm_dataset = Dataset("file:///opt/airflow/data/brazil-latest.osm.pbf")
 
 def check_pbf_exists() -> None:
-    """
-    Task 0: Check Dependency
-    Verifies if the Geofabrik DAG has already been executed by checking the PBF file.
-    """
+    """Checks whether the PBF file already exists (Geofabrik DAG dependency)."""
     pbf_path = "/opt/airflow/data/brazil-latest.osm.pbf"
     if not os.path.exists(pbf_path):
         raise FileNotFoundError(f"Brazil PBF dependency missing at {pbf_path}. Run 'download_geofabrik_data' DAG first.")
     logging.info(f"Dependency met: PBF file found at {pbf_path}.")
 
 def extract_and_transform_ports(**kwargs) -> str:
-    """
-    Task 1: Extract & Transform
-    Reads the local Brazil PBF, filters port features, and exports to a processed JSON.
-    """
+    """Extract and Transform: filters port features from the PBF and exports them to a processed JSON."""
     run_id = kwargs['run_id'].replace(":", "_").replace("-", "_")
     work_dir = f"/tmp/geoavia_osm_ports_{run_id}"
     os.makedirs(work_dir, exist_ok=True)
@@ -59,7 +51,6 @@ def extract_and_transform_ports(**kwargs) -> str:
     
     logging.info("Exporting filtered data to GeoJSON...")
     
-    # Create an osmium export config
     config_path = os.path.join(work_dir, "osmium_export_config.json")
     export_config = {
         "attributes": {
@@ -97,7 +88,6 @@ def extract_and_transform_ports(**kwargs) -> str:
         props = feature.get('properties', {})
         geom = feature.get('geometry')
         
-        # Robust ID extraction
         feature_id = feature.get('id')
         if feature_id is None:
             feature_id = props.get('@id')
@@ -139,7 +129,7 @@ def extract_and_transform_ports(**kwargs) -> str:
                 geom_wkt = f"MULTIPOLYGON({', '.join(polys)})"
                 
             if geom_wkt:
-                # Extract state/UF from tags if present
+                # Extract the state (UF) from the tags, if present
                 uf_val = props.get('addr:state') or props.get('addr:province') or props.get('addr:region')
                 if isinstance(uf_val, str):
                     uf_val = uf_val.strip().upper()
@@ -148,7 +138,7 @@ def extract_and_transform_ports(**kwargs) -> str:
                 else:
                     uf_val = None
 
-                # Extract tipo_porto from tags
+                # Extract the port type from the tags
                 tipo_porto = props.get('port') or props.get('harbour') or props.get('industrial') or 'port'
                 if isinstance(tipo_porto, str):
                     tipo_porto = tipo_porto.strip().lower()
@@ -174,10 +164,7 @@ def extract_and_transform_ports(**kwargs) -> str:
     return transformed_file
 
 def load_osm_ports(**kwargs) -> None:
-    """
-    Task 2: Load
-    Reads the transformed JSON, creates temporary table, and inserts/updates data into PostGIS.
-    """
+    """Load: reads the transformed JSON and upserts the data into PostGIS via a temporary table."""
     ti = kwargs['ti']
     transformed_file = ti.xcom_pull(task_ids='extract_and_transform_ports')
     
@@ -239,7 +226,6 @@ def load_osm_ports(**kwargs) -> None:
     conn.close()
     logging.info("Successfully loaded OSM ports into the database!")
     
-    # Cleanup
     work_dir = os.path.dirname(transformed_file)
     shutil.rmtree(work_dir, ignore_errors=True)
     logging.info(f"Cleaned up temporary directory: {work_dir}")
@@ -247,7 +233,7 @@ def load_osm_ports(**kwargs) -> None:
 with DAG(
     dag_id="load_osm_ports",
     start_date=datetime(2024, 1, 1),
-    schedule=[osm_dataset], # Runs automatically when the PBF file is updated
+    schedule=[osm_dataset],  # Runs automatically when the PBF is updated
     catchup=False,
     tags=["geodata", "osm", "ports"]
 ) as dag:

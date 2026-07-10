@@ -1,8 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "geoavia-backend"
 version = "0.1.0"
 description = "Backend for GeoAvia MESA automation"
 requires-python = ">=3.12"
+dynamic = ["dependencies"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+filterwarnings = [
+    # Third-party: passlib imports the deprecated stdlib 'crypt' module.
+    "ignore:'crypt' is deprecated:DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Pragmatic, high-signal rule set: pycodestyle errors, pyflakes, import order,
+# pyupgrade and flake8-bugbear.
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI intentionally uses these in argument defaults (dependency injection),
+# so B008 ("no function call in defaults") does not apply to them.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Path",
+    "fastapi.Header",
+    # Our own dependency factory, evaluated once at import like Depends.
+    "geoavia_backend.core.auth.require_roles",
+]
+
+# Alembic migration boilerplate keeps unused imports/vars by convention.
+[tool.ruff.lint.per-file-ignores]
+"alembic/**" = ["F401", "E501"]

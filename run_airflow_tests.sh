@@ -19,4 +19,4 @@ fi
 echo "Executing pytest inside the geoavia_airflow container..."
 echo ""
 
-docker exec -it geoavia_airflow pytest /opt/airflow/tests/airflow/ -v --disable-warnings
+docker exec -it geoavia_airflow pytest /opt/airflow/tests/airflow/ -v

@@ -1,360 +1,134 @@
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+"""GeoAvia backend — FastAPI application assembly.
+
+This module only wires the app together: CORS, the sandbox guard and router
+registration. Endpoint logic lives in the per-domain routers under
+geoavia_backend.api.
+"""
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-from geoavia_backend.airflow_trigger_service import (
-    AirflowTriggerError,
-    AirflowTriggerService,
-    UnknownDagError,
+from geoavia_backend.api import (
+    airflow,
+    health,
+    layers,
+    mesa,
+    regions,
+    screening,
+    shapefiles,
+    users,
 )
-from geoavia_backend.auth_dep import obtain_current_user
-from geoavia_backend.database import FRONTEND_PORT
-from geoavia_backend.layers_service import LayersService
-from geoavia_backend.mesa_router import router as mesa_router
-from geoavia_backend.regions_router import router as regions_router
-from geoavia_backend.screening_service import LayersNotReadyError, ScreeningService
-from geoavia_backend.service import UserService
-from geoavia_backend.shapefiles_service import ShapefileError, ShapefilesService
+from geoavia_backend.core.database import APP_ENV, CORS_ORIGINS, FRONTEND_PORT, SECRET_KEY
+from geoavia_backend.core.rate_limit import limiter
+from geoavia_backend.core.sandbox import (
+    WRITE_METHODS,
+    audit_logger,
+    developer_write_blocked,
+    is_production,
+    role_from_token,
+)
 
-app = FastAPI(title="GeoAvia - Initial Test")
+logger = logging.getLogger("geoavia.startup")
+
+# Placeholder shipped in .env_example — must never be used as a real signing key.
+_PLACEHOLDER_SECRET = "change_for_a_strong_password"
+
+
+def _validate_secret_key() -> None:
+    """Fails fast in production if the JWT signing key is missing or the default.
+
+    Runs at server startup (not import time), so tests and OpenAPI generation are
+    unaffected. In sandbox a weak key only warns, keeping local dev friction-free.
+    """
+    weak = (not SECRET_KEY) or SECRET_KEY == _PLACEHOLDER_SECRET
+    if not weak:
+        return
+    if APP_ENV == "production":
+        raise RuntimeError(
+            "SECRET_KEY is missing or still the placeholder. Set a strong, unique "
+            "SECRET_KEY in .env before running in production (e.g. "
+            "`python -c 'import secrets; print(secrets.token_urlsafe(48))'`)."
+        )
+    logger.warning(
+        "SECRET_KEY is weak/placeholder in APP_ENV=%s. This is fine for local "
+        "development, but set a strong SECRET_KEY before production.",
+        APP_ENV,
+    )
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _validate_secret_key()
+    yield
+
+
+app = FastAPI(title="GeoAvia - Initial Test", lifespan=lifespan)
+
+# Rate limiting (slowapi): the limiter is attached to the app and its 429
+# handler registered here; individual routes opt in with @limiter.limit(...).
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Allowed origins: explicit CORS_ORIGINS if configured, otherwise the local
+# frontend only (never a wildcard, since credentials are allowed).
+allowed_origins = CORS_ORIGINS or [
+    f"http://localhost:{FRONTEND_PORT}",
+    f"http://127.0.0.1:{FRONTEND_PORT}",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        f"http://localhost:{FRONTEND_PORT}",
-        f"http://127.0.0.1:{FRONTEND_PORT}",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # Explicit allowlist instead of wildcards: only the methods and headers the
+    # frontend actually uses.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
-service = UserService()
-layers_service = LayersService()
-screening_service = ScreeningService()
-airflow_trigger_service = AirflowTriggerService()
-shapefiles_service = ShapefilesService()
 
-
-@app.get("/health")
-def health():
-    """Lightweight liveness probe for start.sh and the dev /health page."""
-    return {"status": "ok"}
-
-
-class UpdateUsernameRequest(BaseModel):
-    username: str
-
-
-class PasswordResetRequest(BaseModel):
-    new_password: str = Field(min_length=6)
-
-
-@app.get("/users")
-def get_users(current_user: dict = Depends(obtain_current_user)):
-    """Returns the list of users through the service and repository layers."""
-    return service.list_users()
-
-
-USER_CREATION_ROLES = {"coordenador", "supervisor", "desenvolvedor"}
-
-
-@app.post("/users/signup")
-def create_user(
-    username: str,
-    password: str,
-    role: str = "operador",
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Creates a user through the intermediate service layer.
-
-    Per Sprint 3 requirement: only coordenador and supervisor can create users.
-    """
-    if current_user["role"] not in USER_CREATION_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Apenas coordenador e supervisor podem criar usuários",
-        )
-
-    try:
-        new_id = service.register_user(username, password, role)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    return {"id": new_id, "message": "User was successfully created"}
-
-
-@app.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Authenticates the user and returns a JWT access token."""
-    user = service.authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    try:
-        access_token = service.security.create_access_token(
-            {
-                "sub": str(user["id"]),
-                "username": user["username"],
-                "role": user["role"],
-            }
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
-@app.put("/users/{user_id}/username")
-def update_username(
-    user_id: int,
-    payload: UpdateUsernameRequest,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Updates a user's username based on their ID."""
-    if current_user["role"] not in USER_CREATION_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Apenas coordenador e supervisor podem alterar o nome de usuários",
-        )
-
-    try:
-        updated = service.change_username(user_id, payload.username)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    if not updated:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return {"message": "Username was successfully changed"}
-
-
-@app.delete("/users/{user_id}")
-def delete_user(
-    user_id: int,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Removes a user from the database based on their ID."""
-    if current_user["role"] not in USER_CREATION_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Apenas coordenador e supervisor podem excluir usuários",
-        )
-
-    deleted = service.delete_user(user_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return {"message": "User was successfully deleted"}
-
-
-@app.put("/users/{user_id}/password")
-def change_password(
-    user_id: int,
-    payload: PasswordResetRequest,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Resets the password for a user. Available only to DEV_USER."""
-    from geoavia_backend.database import DEV_USER
-    if current_user["username"] != DEV_USER:
-        raise HTTPException(
-            status_code=403,
-            detail="Apenas o desenvolvedor principal pode redefinir senhas através desta rota.",
-        )
-
-    try:
-        updated = service.change_password(user_id, payload.new_password)
-        if not updated:
-            raise HTTPException(status_code=404, detail="User not found")
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    return {"message": "Password was successfully changed"}
-
-
-@app.get("/layers/{layer_name}")
-def get_layer(
-    layer_name: str,
-    zoom: str | None = None,
-    bbox: str | None = None,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Returns the requested layer as GeoJSON, simplified per zoom level.
-
-    See LAYER_REGISTRY in layers_service for the allowed layer names.
-    """
-    try:
-        return layers_service.fetch(layer_name, zoom, bbox)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-SCREENING_ROLES = {"coordenador", "gestor", "operador", "administrador", "desenvolvedor"}
-
-class ScreeningRequest(BaseModel):
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
-    target_municipality_ibge_code: str = Field(min_length=7, max_length=7, pattern=r"^[0-9]{7}$")
-
-
-@app.post("/screening")
-def screen_site(
-    payload: ScreeningRequest,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Spatial screening (HU-29 + HU-26) — classifies a point as
-    viavel / intermediario / restrito based on (a) containment in the target
-    municipality, (b) intersection with restrictive infrastructure layers, and
-    (c) proximity within layer-specific protective buffers (HU-26).
-    Requires coordenador, gestor or operador.
-    """
-    if current_user["role"] not in SCREENING_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Apenas coordenador, gestor e operador podem rodar a triagem",
-        )
-
-    try:
-        return screening_service.screen(
-            payload.latitude,
-            payload.longitude,
-            payload.target_municipality_ibge_code,
-        )
-    except LayersNotReadyError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail={"message": str(exc), "missing_layers": exc.missing_layers},
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-DAG_TRIGGER_ROLES = {
-    "coordenador",
-    "operador",
-    "administrador",
-    "desenvolvedor",
-}
-
-
-@app.post("/airflow/trigger/{dag_id}")
-def trigger_airflow_dag(
-    dag_id: str,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Triggers a whitelisted Airflow DAG and audits who did it (HU-23).
-
-    Available DAGs: see ALLOWED_DAGS in airflow_trigger_service.
-    """
-    if current_user["role"] not in DAG_TRIGGER_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Permission denied for DAG trigger",
-        )
-
-    try:
-        return airflow_trigger_service.trigger(
-            dag_id=dag_id,
-            user_id=int(current_user["sub"]) if current_user.get("sub") else None,
-            username=current_user["username"],
-            user_role=current_user["role"],
-        )
-    except UnknownDagError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except AirflowTriggerError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-
-@app.get("/airflow/triggers")
-def list_airflow_triggers(
-    limit: int = 100,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Returns the most recent manual DAG triggers (audit log). Same role gate
-    as the trigger endpoint — any authenticated operator-or-above can audit.
-    """
-    if current_user["role"] not in DAG_TRIGGER_ROLES:
-        raise HTTPException(status_code=403, detail="Permission denied")
-    return {
-        "allowed_dags": airflow_trigger_service.list_allowed_dags(),
-        "recent": airflow_trigger_service.list_recent_logs(limit=limit),
-    }
-
-
-SHAPEFILE_UPLOAD_ROLES = {
-    "coordenador",
-    "operador",
-    "administrador",
-}
-SHAPEFILE_MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
-
-
-@app.post("/shapefiles/upload")
-async def upload_shapefile(
-    file: UploadFile = File(...),
-    layer_name: str = Form(..., min_length=1, max_length=150),
-    description: str | None = Form(default=None, max_length=1000),
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Receives a zipped shapefile and ingests it into the mesa_a schema (HU-31).
-
-    The ZIP must contain a single shapefile set (.shp + .dbf + .shx [+ .prj]).
-    Geometries are reprojected to SIRGAS 2000 (EPSG:4674).
-    """
-    if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
-        raise HTTPException(status_code=403, detail="Permission denied")
-
-    if not file.filename or not file.filename.lower().endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Upload must be a .zip archive")
-
-    zip_bytes = await file.read()
-    if len(zip_bytes) > SHAPEFILE_MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds {SHAPEFILE_MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit",
-        )
-
-    try:
-        return shapefiles_service.import_zip(
-            layer_name=layer_name,
-            description=description,
-            original_filename=file.filename,
-            zip_bytes=zip_bytes,
-            user_id=int(current_user["sub"]) if current_user.get("sub") else None,
-            username=current_user["username"],
-            user_role=current_user["role"],
-        )
-    except ShapefileError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@app.get("/shapefiles")
-def list_shapefiles(
-    limit: int = 100,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Lists all uploaded shapefiles (audit view)."""
-    if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
-        raise HTTPException(status_code=403, detail="Permission denied")
-    return {"uploads": shapefiles_service.list_layers(limit=limit)}
-
-
-@app.get("/shapefiles/{upload_id}/features")
-def get_shapefile_features(
-    upload_id: int,
-    current_user: dict = Depends(obtain_current_user),
-):
-    """Returns the upload's features as GeoJSON (for rendering on the map)."""
-    if current_user["role"] not in SHAPEFILE_UPLOAD_ROLES:
-        raise HTTPException(status_code=403, detail="Permission denied")
-    try:
-        return shapefiles_service.fetch_features(upload_id)
-    except ShapefileError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-app.include_router(mesa_router)
-app.include_router(regions_router)
-
-# To run the server: uvicorn backend.main:app --reload
+@app.middleware("http")
+async def sandbox_guard(request: Request, call_next):
+    """Enforces sandbox mode: the 'desenvolvedor' role is read-only in
+    production. Every developer write attempt is audited; in production it is
+    also blocked with 403. In sandbox the developer keeps full access."""
+    if request.method in WRITE_METHODS:
+        auth = request.headers.get("Authorization", "")
+        if auth.lower().startswith("bearer "):
+            role = role_from_token(auth[7:])
+            if role == "desenvolvedor":
+                audit_logger.info(
+                    "developer write %s %s (production=%s)",
+                    request.method,
+                    request.url.path,
+                    is_production(),
+                )
+                if developer_write_blocked(role):
+                    return JSONResponse(
+                        status_code=403,
+                        content={
+                            "detail": (
+                                "Developer role is read-only in production "
+                                "(sandbox mode). Use an administrador account, "
+                                "or set APP_ENV=sandbox in a non-production "
+                                "environment."
+                            )
+                        },
+                    )
+    return await call_next(request)
+
+
+app.include_router(health.router)
+app.include_router(users.router)
+app.include_router(layers.router)
+app.include_router(screening.router)
+app.include_router(airflow.router)
+app.include_router(shapefiles.router)
+app.include_router(mesa.router)
+app.include_router(regions.router)

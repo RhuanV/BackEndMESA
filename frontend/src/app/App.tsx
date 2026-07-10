@@ -7,7 +7,7 @@
  * - RouterProvider (route-based navigation)
  */
 import { RouterProvider } from 'react-router-dom';
-import { ErrorBoundary } from '@/components/feedback/ErrorBoundary';
+import { ErrorBoundary } from '@/components/feedback';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
 import { router } from './Router';
 

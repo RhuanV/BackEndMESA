@@ -1,8 +1,4 @@
-/**
- * Button — Shared button component with variants.
- *
- * Provides consistent styling, loading state, and accessibility across the app.
- */
+/** Shared button with variants and loading state. */
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 

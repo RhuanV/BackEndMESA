@@ -29,7 +29,6 @@ def download_geofabrik_pbf(**kwargs):
     
     headers = {"User-Agent": "GeoAvia-MESA-Auto/1.0 (Airflow Data Pipeline)"}
     
-    # Resume implementation (Continues interrupted downloads)
     downloaded_size = 0
     if os.path.exists(tmp_path):
         downloaded_size = os.path.getsize(tmp_path)
@@ -64,7 +63,7 @@ def download_geofabrik_pbf(**kwargs):
     last_logged_percent = 0
     
     with open(tmp_path, mode) as f:
-        # Increased chunk size to 1MB to make disk writing significantly faster
+        # 1MB chunks: large writes keep disk throughput high on the big Brazil PBF
         for chunk in response.iter_content(chunk_size=1024*1024):
             if chunk:
                 f.write(chunk)

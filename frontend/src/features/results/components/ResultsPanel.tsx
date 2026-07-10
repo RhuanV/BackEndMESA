@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { RankingTable } from './RankingTable';
 import { getRanking } from '@/features/results/services/rankingService';
-import type { MesaRankingResult } from '@/types/mesa';
+import type { MesaRankingResult } from '@/types';
 
 interface StatCardProps {
   readonly label: string;
@@ -41,6 +41,7 @@ export function ResultsPanel() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state before the fetch
     setIsLoading(true);
     getRanking()
       .then((data) => {

@@ -1,23 +1,25 @@
 /**
- * UserManagementPage — Gestão de usuários do sistema (Sprint 3).
+ * UserManagementPage — System user management.
  *
- * Acesso (Router): coordenador, gestor, supervisor.
- * Form de criação: visível apenas para perfis com permission
- * `admin:users:create` (coordenador e supervisor).
+ * Access (Router): administrador, desenvolvedor.
+ * Creation form and recovery-code issuance are visible only for roles with the
+ * `admin:users:create` permission (administrador and desenvolvedor).
  *
- * Defense in depth: o gate na UI é cosmético; a fronteira de segurança real
- * fica em POST /users/signup, que valida o role do JWT no back.
+ * Defense in depth: the UI gate is cosmetic; the real security boundary
+ * is at POST /users/signup, which validates the JWT role on the backend.
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { FormEvent } from 'react';
 import apiClient from '@/lib/api/axiosInstance';
+import { extractErrorDetail } from '@/lib/api/errors';
 import { sanitize } from '@/lib/security/sanitize';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import { getPasswordStrengthErrors } from '@/lib/validation/password';
+import { Button, Input, Select } from '@/components/ui';
+import { RecoveryCodeModal } from '@/features/admin/components/RecoveryCodeModal';
+import { ResetPasswordModal } from '@/features/admin/components/ResetPasswordModal';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { hasPermission } from '@/types/auth';
-import type { UserRole } from '@/types/auth';
+import { hasPermission } from '@/types';
+import type { UserRole } from '@/types';
 
 interface UserRecord {
   readonly id: number;
@@ -28,18 +30,12 @@ interface UserRecord {
 }
 
 const roleBadgeColors: Record<UserRole, string> = {
-  coordenador: 'bg-purple-100 text-purple-700',
-  gestor: 'bg-amber-100 text-amber-700',
-  supervisor: 'bg-blue-100 text-blue-700',
   operador: 'bg-emerald-100 text-emerald-700',
   administrador: 'bg-teal-100 text-teal-700',
   desenvolvedor: 'bg-indigo-100 text-indigo-700',
 };
 
 const roleOptions: ReadonlyArray<{ value: UserRole; label: string }> = [
-  { value: 'coordenador', label: 'Coordenador' },
-  { value: 'gestor', label: 'Gestor' },
-  { value: 'supervisor', label: 'Supervisor' },
   { value: 'operador', label: 'Operador' },
   { value: 'administrador', label: 'Administrador' },
   { value: 'desenvolvedor', label: 'Desenvolvedor' },
@@ -54,17 +50,18 @@ export function UserManagementPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [newUsername, setNewUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<UserRole | ''>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Edit/Delete state variables
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-  const [editingUsername, setEditingUsername] = useState('');
-  const [editError, setEditError] = useState<string | null>(null);
-  const [isEditingSubmitting, setIsEditingSubmitting] = useState(false);
+  // Only a desenvolvedor may assign the privileged 'desenvolvedor' role; the UI
+  // hides it for everyone else (the backend enforces the real boundary).
+  const assignableRoles = roleOptions.filter(
+    (o) => o.value !== 'desenvolvedor' || user?.role === 'desenvolvedor'
+  );
+
+  // Delete state
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
   // Password reset state variables
@@ -74,6 +71,15 @@ export function UserManagementPage() {
   const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
   const [isResetPasswordSubmitting, setIsResetPasswordSubmitting] = useState(false);
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState<string | null>(null);
+
+  // Recovery-code state (admin issues a single-use code to relay to the user)
+  const [recoveryUserId, setRecoveryUserId] = useState<number | null>(null);
+  const [recoveryUsername, setRecoveryUsername] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+  const [recoveryExpiresAt, setRecoveryExpiresAt] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [isRecoverySubmitting, setIsRecoverySubmitting] = useState(false);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -88,6 +94,7 @@ export function UserManagementPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     void fetchUsers();
   }, [fetchUsers]);
 
@@ -99,56 +106,41 @@ export function UserManagementPage() {
       setFormError('Por favor, selecione um perfil.');
       return;
     }
+    // First-access flow: the admin does not set a password. The backend creates
+    // the account without a usable password and returns a single-use code the
+    // user redeems on the login screen to set their own password.
+    const created = newUsername.trim();
     setIsSubmitting(true);
     try {
-      await apiClient.post('/users/signup', null, {
-        params: { username: newUsername.trim(), password: newPassword, role: newRole },
-      });
-      setFormSuccess(`Usuário "${newUsername.trim()}" criado.`);
+      const res = await apiClient.post<{ id: number; code: string; expires_at: string }>(
+        '/users/signup',
+        null,
+        { params: { username: created, role: newRole } }
+      );
+      setFormSuccess(`Usuário "${created}" criado. Repasse o código de primeiro acesso.`);
       setNewUsername('');
-      setNewPassword('');
       setNewRole('');
       await fetchUsers();
+      // Reuse the code modal to display the first-access code.
+      setRecoveryUserId(res.data.id);
+      setRecoveryUsername(created);
+      setRecoveryCode(res.data.code);
+      setRecoveryExpiresAt(res.data.expires_at);
+      setRecoveryError(null);
+      setRecoveryCopied(false);
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
+      const detail = extractErrorDetail(err);
       setFormError(detail ?? 'Não foi possível criar o usuário.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleEdit = async (userId: number) => {
-    const trimmedUsername = editingUsername.trim();
-    if (!trimmedUsername) {
-      setEditError('O nome de usuário não pode ser vazio.');
-      return;
-    }
-    setEditError(null);
-    setIsEditingSubmitting(true);
-    try {
-      await apiClient.put(`/users/${userId}/username`, {
-        username: trimmedUsername,
-      });
-      setEditingUserId(null);
-      await fetchUsers();
-    } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
-      setEditError(detail ?? 'Não foi possível alterar o nome do usuário.');
-    } finally {
-      setIsEditingSubmitting(false);
-    }
-  };
-
   const handleResetPassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (newResetPassword.length < 6) {
-      setResetPasswordError('A nova senha deve ter pelo menos 6 caracteres.');
+    const passwordErrors = getPasswordStrengthErrors(newResetPassword);
+    if (passwordErrors.length > 0) {
+      setResetPasswordError(`A senha precisa de: ${passwordErrors.join(', ')}.`);
       return;
     }
     setResetPasswordError(null);
@@ -165,13 +157,38 @@ export function UserManagementPage() {
         setResetPasswordSuccess(null);
       }, 1500);
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
+      const detail = extractErrorDetail(err);
       setResetPasswordError(detail ?? 'Não foi possível alterar a senha.');
     } finally {
       setIsResetPasswordSubmitting(false);
+    }
+  };
+
+  const handleGenerateRecoveryCode = async (userId: number, username: string) => {
+    setRecoveryUserId(userId);
+    setRecoveryUsername(username);
+    setRecoveryCode(null);
+    setRecoveryExpiresAt(null);
+    setRecoveryError(null);
+    setRecoveryCopied(false);
+    setIsRecoverySubmitting(true);
+    try {
+      const res = await apiClient.post<{ code: string; expires_at: string }>(
+        `/users/${userId}/recovery-code`
+      );
+      setRecoveryCode(res.data.code);
+      setRecoveryExpiresAt(res.data.expires_at);
+    } catch (err) {
+      setRecoveryError(extractErrorDetail(err) ?? 'Não foi possível gerar o código.');
+    } finally {
+      setIsRecoverySubmitting(false);
+    }
+  };
+
+  const handleCopyRecoveryCode = () => {
+    if (recoveryCode) {
+      void navigator.clipboard?.writeText(recoveryCode);
+      setRecoveryCopied(true);
     }
   };
 
@@ -183,10 +200,7 @@ export function UserManagementPage() {
         await apiClient.delete(`/users/${userId}`);
         await fetchUsers();
       } catch (err) {
-        const detail =
-          err && typeof err === 'object' && 'response' in err
-            ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-            : undefined;
+        const detail = extractErrorDetail(err);
         setError(detail ?? 'Não foi possível excluir o usuário.');
       } finally {
         setDeletingUserId(null);
@@ -203,8 +217,12 @@ export function UserManagementPage() {
 
       {canCreateUsers && (
         <div className="mb-8 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-neutral-900">Novo Usuário</h3>
-          <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-3">
+          <h3 className="mb-1 text-lg font-semibold text-neutral-900">Novo Usuário</h3>
+          <p className="mb-4 text-sm text-neutral-500">
+            A conta é criada sem senha. Ao salvar, um código de primeiro acesso é
+            gerado para você repassar — o usuário define a própria senha na tela de login.
+          </p>
+          <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Usuário"
               type="text"
@@ -214,23 +232,14 @@ export function UserManagementPage() {
               minLength={3}
               autoComplete="off"
             />
-            <Input
-              label="Senha"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete="new-password"
-            />
             <Select
               label="Perfil"
-              options={roleOptions}
+              options={assignableRoles}
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as UserRole | '')}
               required
             />
-            <div className="sm:col-span-3 flex items-center justify-between gap-4">
+            <div className="sm:col-span-2 flex items-center justify-between gap-4">
               <div className="text-sm" aria-live="polite">
                 {formError && <p role="alert" className="text-danger-600">{formError}</p>}
                 {formSuccess && <p className="text-emerald-600">{formSuccess}</p>}
@@ -263,113 +272,61 @@ export function UserManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => {
-                const isEditing = editingUserId === u.id;
-                return (
-                  <tr key={u.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                    {isEditing ? (
-                      <>
-                        <td className="px-4 py-3 font-medium text-neutral-900" colSpan={2}>
-                          <div className="flex flex-col gap-1">
-                            <input
-                              type="text"
-                              value={editingUsername}
-                              onChange={(e) => setEditingUsername(e.target.value)}
-                              required
-                              minLength={3}
-                              className="w-full max-w-[240px] rounded-lg border border-neutral-300 px-3 py-1.5 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100 disabled:text-neutral-400"
-                              aria-label="Editar nome de usuário"
-                              disabled={isEditingSubmitting}
-                            />
-                            {editError && <p role="alert" className="text-xs text-danger-600 font-normal">{editError}</p>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-neutral-500">{u.created_at ?? '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => void handleEdit(u.id)}
-                              isLoading={isEditingSubmitting}
-                            >
-                              Salvar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingUserId(null);
-                                setEditError(null);
-                              }}
-                              disabled={isEditingSubmitting}
-                            >
-                              Cancelar
-                            </Button>
-                          </div>
-                        </td>
-                      </>
+              {users.map((u) => (
+                <tr key={u.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+                  <td className="px-4 py-3 font-medium text-neutral-900">{sanitize(u.username)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleBadgeColors[u.role] ?? 'bg-neutral-100 text-neutral-700'}`}>
+                      {sanitize(u.role)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-500">{u.created_at ?? '—'}</td>
+                  <td className="px-4 py-3 text-right">
+                    {canCreateUsers ? (
+                      <div className="flex justify-end gap-2">
+                        {user?.role === 'desenvolvedor' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
+                            onClick={() => {
+                              setResetPasswordUserId(u.id);
+                              setResetPasswordUsername(u.username);
+                              setNewResetPassword('');
+                              setResetPasswordError(null);
+                              setResetPasswordSuccess(null);
+                            }}
+                            disabled={deletingUserId !== null || u.is_protected}
+                          >
+                            Senha
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
+                          onClick={() => void handleGenerateRecoveryCode(u.id, u.username)}
+                          disabled={deletingUserId !== null || u.is_protected}
+                        >
+                          Código
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-danger-600 hover:text-danger-700 hover:bg-danger-50"
+                          onClick={() => void handleDelete(u.id, u.username)}
+                          isLoading={deletingUserId === u.id}
+                          disabled={deletingUserId !== null || u.username === user?.username || u.is_protected}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
                     ) : (
-                      <>
-                        <td className="px-4 py-3 font-medium text-neutral-900">{sanitize(u.username)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleBadgeColors[u.role] ?? 'bg-neutral-100 text-neutral-700'}`}>
-                            {sanitize(u.role)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-neutral-500">{u.created_at ?? '—'}</td>
-                        <td className="px-4 py-3 text-right">
-                          {canCreateUsers ? (
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingUserId(u.id);
-                                  setEditingUsername(u.username);
-                                  setEditError(null);
-                                }}
-                                disabled={deletingUserId !== null || u.is_protected}
-                              >
-                                Editar
-                              </Button>
-                              {user?.role === 'desenvolvedor' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
-                                  onClick={() => {
-                                    setResetPasswordUserId(u.id);
-                                    setResetPasswordUsername(u.username);
-                                    setNewResetPassword('');
-                                    setResetPasswordError(null);
-                                    setResetPasswordSuccess(null);
-                                  }}
-                                  disabled={deletingUserId !== null || u.is_protected}
-                                >
-                                  Senha
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-danger-600 hover:text-danger-700 hover:bg-danger-50"
-                                onClick={() => void handleDelete(u.id, u.username)}
-                                isLoading={deletingUserId === u.id}
-                                disabled={deletingUserId !== null || u.username === user?.username || u.is_protected}
-                              >
-                                Excluir
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-neutral-400">—</span>
-                          )}
-                        </td>
-                      </>
+                      <span className="text-neutral-400">—</span>
                     )}
-                  </tr>
-                );
-              })}
+                  </td>
+                </tr>
+              ))}
               {users.length === 0 && (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-neutral-400">Nenhum usuário encontrado.</td></tr>
               )}
@@ -379,87 +336,29 @@ export function UserManagementPage() {
       </div>
 
       {resetPasswordUserId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl animate-scale-in">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-neutral-900">
-                Alterar Senha de {sanitize(resetPasswordUsername)}
-              </h3>
-              <button
-                type="button"
-                className="text-neutral-400 hover:text-neutral-600 transition-colors"
-                onClick={() => setResetPasswordUserId(null)}
-                aria-label="Fechar"
-              >
-                ✕
-              </button>
-            </div>
+        <ResetPasswordModal
+          username={resetPasswordUsername}
+          newPassword={newResetPassword}
+          onNewPasswordChange={setNewResetPassword}
+          error={resetPasswordError}
+          success={resetPasswordSuccess}
+          isSubmitting={isResetPasswordSubmitting}
+          onSubmit={handleResetPassword}
+          onClose={() => setResetPasswordUserId(null)}
+        />
+      )}
 
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-neutral-700 block mb-1.5">
-                  Senha Atual
-                </label>
-                <input
-                  type="password"
-                  value="••••••••"
-                  disabled
-                  className="w-full rounded-lg border border-neutral-300 bg-neutral-100 px-4 py-2 text-sm text-neutral-400 cursor-not-allowed select-none"
-                  aria-label="Senha atual oculta"
-                />
-                <span className="text-xs text-neutral-400 mt-1 block">A senha atual é protegida e não pode ser revelada.</span>
-              </div>
-
-              <div>
-                <label htmlFor="new-reset-password" className="text-sm font-medium text-neutral-700 block mb-1.5">
-                  Nova Senha
-                </label>
-                <input
-                  id="new-reset-password"
-                  type="password"
-                  value={newResetPassword}
-                  onChange={(e) => setNewResetPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  placeholder="Mínimo 6 caracteres"
-                  className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100 disabled:text-neutral-400"
-                  disabled={isResetPasswordSubmitting || resetPasswordSuccess !== null}
-                />
-              </div>
-
-              {resetPasswordError && (
-                <div role="alert" className="text-sm text-danger-600 animate-fade-in">
-                  {resetPasswordError}
-                </div>
-              )}
-
-              {resetPasswordSuccess && (
-                <div className="text-sm text-emerald-600 animate-fade-in">
-                  {resetPasswordSuccess}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => setResetPasswordUserId(null)}
-                  disabled={isResetPasswordSubmitting}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  isLoading={isResetPasswordSubmitting}
-                  disabled={resetPasswordSuccess !== null}
-                >
-                  Confirmar
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {recoveryUserId !== null && (
+        <RecoveryCodeModal
+          username={recoveryUsername}
+          code={recoveryCode}
+          expiresAt={recoveryExpiresAt}
+          error={recoveryError}
+          isSubmitting={isRecoverySubmitting}
+          copied={recoveryCopied}
+          onCopy={handleCopyRecoveryCode}
+          onClose={() => setRecoveryUserId(null)}
+        />
       )}
     </div>
   );

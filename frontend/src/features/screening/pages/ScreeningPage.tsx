@@ -1,15 +1,14 @@
 /**
- * ScreeningPage — Triagem espacial de um ponto candidato (HU-29 + HU-26).
+ * ScreeningPage — Spatial screening of a candidate point (HU-29 + HU-26).
  *
- * Recebe coordenadas + município alvo, dispara POST /screening e exibe
- * o resultado ternário: viável / intermediário (dentro de buffer) / restrito.
- * Acesso: coordenador, gestor, operador (gate no backend).
+ * Takes coordinates + target municipality, fires POST /screening and displays
+ * the ternary result: viavel / intermediario (within buffer) / restrito.
+ * Access: coordinator, manager, operator (gate on the backend).
  */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { isAxiosError } from 'axios';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button, Input } from '@/components/ui';
 import { MunicipalitySelector } from '@/features/regions/components/MunicipalitySelector';
 import {
   runScreening,

@@ -9,7 +9,7 @@
  * - Error messages are generic to prevent user enumeration
  */
 import apiClient from '@/lib/api/axiosInstance';
-import type { AuthUser, LoginResponse } from '@/types/auth';
+import type { AuthUser, LoginResponse } from '@/types';
 
 /**
  * Authenticates a user with the backend.
@@ -32,72 +32,60 @@ export async function loginUser(
 
   const { access_token } = response.data;
 
-  // Decode non-sensitive payload from JWT (sub, username, role)
-  // Security: We only extract display data. The token itself is not stored in state.
-  const payload = parseJwtPayload(access_token);
+  // Identity comes from the server (GET /me), never from decoding the token.
+  // The token is opaque to the client.
+  const user = await fetchCurrentUser(access_token);
 
-  return {
-    user: {
-      username: payload.username,
-      role: payload.role,
-    },
-    token: access_token,
-  };
+  return { user, token: access_token };
 }
 
 /**
- * Validates the current session by calling a protected endpoint.
+ * Resets a password using an admin-issued recovery code (public endpoint).
+ * The user provides their username, the code relayed by an administrator, and a
+ * new password. Errors from the backend are intentionally generic.
+ */
+export async function resetPasswordByCode(
+  username: string,
+  code: string,
+  newPassword: string
+): Promise<void> {
+  await apiClient.post('/password-reset', {
+    username,
+    code,
+    new_password: newPassword,
+  });
+}
+
+/**
+ * Validates the current session and returns the server-resolved identity.
  * Used on app mount to check if the user is still authenticated.
  */
 export async function validateSession(token: string): Promise<AuthUser | null> {
   try {
-    const response = await apiClient.get<Array<Record<string, unknown>>>('/users', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    // If we get a 200, the session is valid
-    if (response.status === 200) {
-      const payload = parseJwtPayload(token);
-      return { username: payload.username, role: payload.role };
-    }
-    return null;
+    return await fetchCurrentUser(token);
   } catch {
     return null;
   }
 }
 
+const VALID_ROLES = ['operador', 'administrador', 'desenvolvedor'] as const;
+
 /**
- * Parses the non-sensitive payload from a JWT without verifying the signature.
+ * Fetches the authenticated user's identity from the server (GET /me).
  *
- * Security: This is ONLY used for UI display purposes (username, role).
- * The actual token validation is done server-side on every API call.
- * We NEVER trust client-side JWT decoding for authorization decisions.
+ * Security: role and username are the server's answer, never derived from
+ * decoding the (opaque) token on the client.
  */
-function parseJwtPayload(token: string): { sub: string; username: string; role: AuthUser['role'] } {
-  try {
-    const base64Payload = token.split('.')[1];
-    if (!base64Payload) {
-      throw new Error('Invalid token format');
-    }
-    const jsonPayload = atob(base64Payload);
-    const payload: unknown = JSON.parse(jsonPayload);
-
-    if (
-      typeof payload === 'object' &&
-      payload !== null &&
-      'sub' in payload &&
-      'username' in payload &&
-      'role' in payload
-    ) {
-      const p = payload as { sub: string; username: string; role: string };
-      const validRoles = ['coordenador', 'gestor', 'supervisor', 'operador', 'administrador', 'desenvolvedor'] as const;
-      const role = validRoles.includes(p.role as AuthUser['role'])
-        ? (p.role as AuthUser['role'])
-        : 'operador';
-
-      return { sub: p.sub, username: p.username, role };
-    }
-    throw new Error('Invalid payload structure');
-  } catch {
-    return { sub: '', username: 'Usuário', role: 'operador' };
+async function fetchCurrentUser(token: string): Promise<AuthUser> {
+  const response = await apiClient.get<{ username: string; role: string }>('/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const { username, role } = response.data;
+  if (
+    typeof username !== 'string' ||
+    !VALID_ROLES.includes(role as AuthUser['role'])
+  ) {
+    throw new Error('Invalid /me response');
   }
+  return { username, role: role as AuthUser['role'] };
 }

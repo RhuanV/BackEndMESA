@@ -1,15 +1,4 @@
-/**
- * MapComponent — Interactive geospatial map with MESA layer support.
- *
- * Sprint 2 enhancements:
- * - Brazil maxBounds (SIRGAS 2000 labeled)
- * - Layer panel with tree structure
- * - Metadata modal for layer info
- * - Region selector with flyTo
- * - Base map switching (BDG/Satellite/OSM)
- * - CRS indicator overlay
- * - Debug coordinate display (dev role only)
- */
+/** Interactive geospatial map: MESA vector layers + user-uploaded shapefiles. */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useMap } from '@/features/map/hooks/useMap';
@@ -25,6 +14,8 @@ import { LAYER_REGISTRY } from '@/features/map/constants/layerMetadata';
 import type { LayerMetadata } from '@/features/map/constants/layerMetadata';
 import { fetchLayer, zoomLevelFor } from '@/features/map/services/layersApi';
 import type { ZoomLevel } from '@/features/map/services/layersApi';
+import { fetchShapefileFeatures } from '@/features/data/services/shapefilesApi';
+import { getStoredVisibleIds, storeVisibleIds } from '@/features/map/utils/layerVisibility';
 
 const MAP_CONTAINER_ID = 'geoavia-map';
 
@@ -37,22 +28,33 @@ export function MapComponent() {
   const [selectedLayerMeta, setSelectedLayerMeta] = useState<LayerMetadata | null>(null);
   const [showDebug, setShowDebug] = useState(false);
 
-  // Lifted from LayerPanel — owned here so the map can react to toggles.
-  const [visibleLayers, setVisibleLayers] = useState<Set<string>>(() => {
-    const defaults = new Set<string>();
-    LAYER_REGISTRY.forEach((l) => {
-      if (l.defaultVisible && l.available !== false) defaults.add(l.id);
-    });
-    return defaults;
-  });
+  // Static LAYER_REGISTRY layers — initialized from localStorage so LayerConfigPage changes persist
+  const [visibleLayers, setVisibleLayers] = useState<Set<string>>(getStoredVisibleIds);
+
+  // User-uploaded shapefile layers
+  const [visibleUploads, setVisibleUploads] = useState<Set<number>>(new Set());
+
   const [currentZoomLevel, setCurrentZoomLevel] = useState<ZoomLevel>('z1');
 
-  // Tracks which (layerId, zoom) tuples are currently sourced on the map, so
-  // we know when to refetch vs. just rebind the existing source.
-  const sourceVersions = useRef<Map<string, ZoomLevel>>(new Map());
+  // Bumped (debounced) on map pan/zoom so viewport-filtered uploads refetch.
+  const [bboxTick, setBboxTick] = useState(0);
+
+  // Tracks the resolution token currently sourced for each layer/upload key.
+  // Static layers store a ZoomLevel; uploads store a zoom or "z3:<bbox>" token.
+  const sourceVersions = useRef<Map<string, string>>(new Map());
 
   const toggleLayer = useCallback((id: string) => {
     setVisibleLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      storeVisibleIds(next);
+      return next;
+    });
+  }, []);
+
+  const toggleUpload = useCallback((id: number) => {
+    setVisibleUploads((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -80,7 +82,7 @@ export function MapComponent() {
     [flyTo]
   );
 
-  // Click handler for secure popups
+  // Click handler for secure popups on static vector layers
   useEffect(() => {
     const mapInstance = map.current;
     if (!mapInstance || !isMapReady) return;
@@ -101,8 +103,7 @@ export function MapComponent() {
     return () => { mapInstance.off('click', handleClick); };
   }, [map, isMapReady]);
 
-  // Track MapLibre zoom and translate to our z1/z2/z3 buckets. Only re-renders
-  // when the bucket actually changes (not on every wheel tick).
+  // Track zoom bucket
   useEffect(() => {
     const m = map.current;
     if (!m || !isMapReady) return;
@@ -117,8 +118,22 @@ export function MapComponent() {
     return () => { m.off('zoomend', handleZoom); };
   }, [map, isMapReady]);
 
-  // Sync MapLibre sources/layers with the user's selection and the current
-  // resolution bucket. Adds, refetches on bucket change, or removes as needed.
+  // Debounced pan/zoom signal so viewport-filtered uploads refetch on move
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !isMapReady) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const handleMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setBboxTick((v) => v + 1), 300);
+    };
+
+    m.on('moveend', handleMove);
+    return () => { if (timer) clearTimeout(timer); m.off('moveend', handleMove); };
+  }, [map, isMapReady]);
+
+  // Sync static LAYER_REGISTRY layers
   useEffect(() => {
     const m = map.current;
     if (!m || !isMapReady) return;
@@ -128,8 +143,9 @@ export function MapComponent() {
     const tracked = sourceVersions.current;
 
     const sync = async () => {
-      // 1) Remove layers no longer in `visibleLayers`
+      // Remove layers no longer visible
       for (const id of Array.from(tracked.keys())) {
+        if (id.startsWith('upload-')) continue; // handled separately
         if (visibleLayers.has(id)) continue;
         const layerId = `${LAYER_PREFIX}${id}`;
         const sourceId = `${SOURCE_PREFIX}${id}`;
@@ -138,11 +154,11 @@ export function MapComponent() {
         tracked.delete(id);
       }
 
-      // 2) Add or refetch visible layers
+      // Add or refetch visible static layers
       for (const id of visibleLayers) {
         const meta = LAYER_REGISTRY.find((l) => l.id === id);
         if (!meta || meta.available === false || !meta.backendName || !meta.paint) continue;
-        if (tracked.get(id) === currentZoomLevel) continue; // already up to date
+        if (tracked.get(id) === currentZoomLevel) continue;
 
         const geojson = await fetchLayer({
           layerName: meta.backendName,
@@ -157,9 +173,6 @@ export function MapComponent() {
           (existing as maplibregl.GeoJSONSource).setData(geojson);
         } else {
           m.addSource(sourceId, { type: 'geojson', data: geojson });
-          // Cast: MapLibre's AddLayerObject is a discriminated union by `type`;
-          // since meta.paint.maplibreType widens to a union of literals, TS
-          // can't narrow. Runtime is fine — paint keys match the layer type.
           m.addLayer({
             id: layerId,
             type: meta.paint.maplibreType,
@@ -175,6 +188,72 @@ export function MapComponent() {
       console.error('[MapComponent] Failed to sync data layers', err);
     });
   }, [map, isMapReady, visibleLayers, currentZoomLevel]);
+
+  // Sync user-uploaded layers
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !isMapReady) return;
+
+    const tracked = sourceVersions.current;
+
+    const syncUploads = async () => {
+      // Remove de-selected upload layers
+      for (const key of Array.from(tracked.keys())) {
+        if (!key.startsWith('upload-')) continue;
+        const uploadId = Number(key.replace('upload-', ''));
+        if (visibleUploads.has(uploadId)) continue;
+        if (m.getLayer(key)) m.removeLayer(key);
+        if (m.getSource(key)) m.removeSource(key);
+        tracked.delete(key);
+      }
+
+      // Bbox filtering only at the most detailed zoom; z1/z2 load the whole
+      // (simplified) base since it's already light enough to render.
+      const useBbox = currentZoomLevel === 'z3';
+      const b = useBbox ? m.getBounds() : null;
+      const bbox: [number, number, number, number] | undefined = b
+        ? [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+        : undefined;
+      // Round the bbox so tiny pans don't trigger a refetch.
+      const token = bbox
+        ? `z3:${bbox.map((n) => n.toFixed(2)).join(',')}`
+        : currentZoomLevel;
+
+      // Add or refetch visible upload layers
+      for (const uploadId of visibleUploads) {
+        const key = `upload-${uploadId}`;
+        if (tracked.get(key) === token) continue; // already at this resolution/viewport
+
+        try {
+          const geojson = await fetchShapefileFeatures({
+            uploadId,
+            zoom: currentZoomLevel,
+            bbox,
+          });
+
+          const existing = m.getSource(key);
+          if (existing) {
+            (existing as maplibregl.GeoJSONSource).setData(geojson);
+          } else {
+            m.addSource(key, { type: 'geojson', data: geojson });
+            m.addLayer({
+              id: key,
+              type: 'line',
+              source: key,
+              paint: { 'line-color': '#f97316', 'line-width': 2, 'line-opacity': 0.85 },
+            });
+          }
+          tracked.set(key, token);
+        } catch (err) {
+          console.error(`[MapComponent] Failed to load upload ${uploadId}`, err);
+        }
+      }
+    };
+
+    syncUploads().catch((err) => {
+      console.error('[MapComponent] Upload sync error', err);
+    });
+  }, [map, isMapReady, visibleUploads, currentZoomLevel, bboxTick]);
 
   return (
     <div className="relative h-full w-full">
@@ -217,6 +296,8 @@ export function MapComponent() {
             onLayerInfo={setSelectedLayerMeta}
             visibleLayers={visibleLayers}
             onToggleLayer={toggleLayer}
+            visibleUploads={visibleUploads}
+            onToggleUpload={toggleUpload}
           />
         </div>
       )}
@@ -242,7 +323,7 @@ export function MapComponent() {
         </div>
       )}
 
-      {/* Assessment pins (sítios avaliados) */}
+      {/* Assessment rectangles (sítios avaliados) */}
       <AssessmentMarkers map={map} isMapReady={isMapReady} />
 
       {/* Metadata Modal */}

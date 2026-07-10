@@ -4,10 +4,12 @@ Revision ID: 0004
 Revises: 0003
 Create Date: 2026-07-08
 """
+
 from __future__ import annotations
 
-from alembic import op
 from sqlalchemy import text
+
+from alembic import op
 
 revision = "0004"
 down_revision = "0003"
@@ -16,7 +18,8 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE IF NOT EXISTS state_boundaries (
             id SERIAL PRIMARY KEY,
             ibge_code VARCHAR(10),
@@ -24,11 +27,14 @@ def upgrade() -> None:
             state_abbr VARCHAR(2),
             geom GEOMETRY(MULTIPOLYGON, 4674) NOT NULL
         );
-    """))
-    op.execute(text("""
+    """)
+    )
+    op.execute(
+        text("""
         CREATE INDEX IF NOT EXISTS idx_state_boundaries_geom
         ON state_boundaries USING GIST (geom);
-    """))
+    """)
+    )
 
 
 def downgrade() -> None:

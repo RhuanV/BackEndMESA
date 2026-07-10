@@ -1,19 +1,19 @@
 /**
  * ShapefileImportPage — Upload de shapefiles (Sprint 5 HU-31).
  *
- * Acesso: operador, supervisor, gestor, coordenador, administrador (gate no router).
+ * Acesso: operador, administrador, desenvolvedor (gate no router).
  * Backend reprojeta automaticamente pra SIRGAS 2000 (EPSG:4674).
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button, Input } from '@/components/ui';
 import {
   listShapefiles,
   uploadShapefile,
   type UploadedLayer,
 } from '@/features/data/services/shapefilesApi';
 import { sanitize } from '@/lib/security/sanitize';
+import { extractErrorDetail } from '@/lib/api/errors';
 
 export function ShapefileImportPage() {
   const [uploads, setUploads] = useState<UploadedLayer[]>([]);
@@ -40,6 +40,7 @@ export function ShapefileImportPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial list load on mount
     void refreshList();
   }, [refreshList]);
 
@@ -74,15 +75,11 @@ export function ShapefileImportPage() {
       setFile(null);
       setLayerName('');
       setDescription('');
-      (document.getElementById('shapefile-input') as HTMLInputElement | null)?.value &&
-        ((document.getElementById('shapefile-input') as HTMLInputElement).value = '');
+      const fileInput = document.getElementById('shapefile-input') as HTMLInputElement | null;
+      if (fileInput) fileInput.value = '';
       await refreshList();
     } catch (err) {
-      const detail =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-          : undefined;
-      setFormError(detail ?? 'Falha ao importar o shapefile.');
+      setFormError(extractErrorDetail(err) ?? 'Falha ao importar o shapefile.');
     } finally {
       setIsSubmitting(false);
     }
@@ -93,7 +90,7 @@ export function ShapefileImportPage() {
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-neutral-900">Importar Shapefile</h2>
         <p className="mt-1 text-sm text-neutral-500">
-          Envie um arquivo ZIP contendo .shp + .dbf + .shx (+ .prj recomendado).
+          Envie um arquivo ZIP contendo .shp + .dbf + .shx (+ .prj recomendado). Limite: 500 MB.
           Geometrias são reprojetadas automaticamente para SIRGAS 2000 (EPSG:4674).
         </p>
       </div>

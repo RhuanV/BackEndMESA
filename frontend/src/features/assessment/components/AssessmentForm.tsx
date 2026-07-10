@@ -1,23 +1,11 @@
-/**
- * AssessmentForm — MESA site assessment form.
- *
- * Integrates React Hook Form with Zod validation for the MESA classificatory
- * criteria from the Manual de Apoio 2021.
- *
- * Security:
- * - All fields validated by strict Zod schema (type, bounds, regex)
- * - Prevents XSS payloads, negative values, and payload overload
- * - Error messages are user-friendly (Portuguese)
- * - No sensitive data exposed in the DOM
- */
+/** MESA site assessment form (React Hook Form + Zod validation). */
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { assessmentSchema } from '@/features/assessment/schemas/assessmentSchema';
 import type { AssessmentFormData } from '@/features/assessment/schemas/assessmentSchema';
 import { useAssessment } from '@/features/assessment/hooks/useAssessment';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button, Input } from '@/components/ui';
 
 export function AssessmentForm() {
   const { submit, isSubmitting, submitSuccess, error, reset } = useAssessment();
@@ -39,13 +27,16 @@ export function AssessmentForm() {
       estimatedCost: 0,
       latitude: 0,
       longitude: 0,
+      widthM: 45,
+      heightM: 1200,
+      angleDeg: 0,
     },
     mode: 'onBlur',
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() is not memoizable by the React Compiler
   const hasObstacles = watch('hasObstacles');
 
-  // Reset form after successful submission
   useEffect(() => {
     if (submitSuccess) {
       resetForm();
@@ -65,7 +56,6 @@ export function AssessmentForm() {
       noValidate
       aria-label="Formulário de avaliação MESA"
     >
-      {/* Success message */}
       {submitSuccess && (
         <div
           role="alert"
@@ -75,7 +65,6 @@ export function AssessmentForm() {
         </div>
       )}
 
-      {/* Server error */}
       {error && (
         <div
           role="alert"
@@ -85,7 +74,6 @@ export function AssessmentForm() {
         </div>
       )}
 
-      {/* Site Name */}
       <Input
         label="Nome do Sítio"
         placeholder="Ex: Sítio Aeroportuário Norte"
@@ -95,13 +83,11 @@ export function AssessmentForm() {
         {...register('siteName')}
       />
 
-      {/* Classificatory Criteria Section */}
       <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
         <legend className="px-2 text-sm font-semibold text-primary-700">
           Critérios Classificatórios MESA
         </legend>
 
-        {/* Average Slope */}
         <Input
           label="Declividade Média (%)"
           type="number"
@@ -115,7 +101,6 @@ export function AssessmentForm() {
           {...register('averageSlope', { valueAsNumber: true })}
         />
 
-        {/* Urban Center Distance */}
         <Input
           label="Distância de Centros Urbanos (km)"
           type="number"
@@ -129,7 +114,6 @@ export function AssessmentForm() {
           {...register('urbanCenterDistance', { valueAsNumber: true })}
         />
 
-        {/* Obstacles */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <input
@@ -158,7 +142,6 @@ export function AssessmentForm() {
           )}
         </div>
 
-        {/* Estimated Cost */}
         <Input
           label="Custo Estimado (R$)"
           type="number"
@@ -172,7 +155,6 @@ export function AssessmentForm() {
         />
       </fieldset>
 
-      {/* Geographic Coordinates */}
       <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
         <legend className="px-2 text-sm font-semibold text-primary-700">
           Coordenadas Geográficas
@@ -205,7 +187,56 @@ export function AssessmentForm() {
         </div>
       </fieldset>
 
-      {/* Submit */}
+      <fieldset className="space-y-4 rounded-lg border border-neutral-200 p-4">
+        <legend className="px-2 text-sm font-semibold text-primary-700">
+          Geometria do Sítio
+        </legend>
+        <p className="text-xs text-neutral-500">
+          Defina as dimensões da faixa de pista e sua orientação. O centróide é a coordenada acima.
+        </p>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Largura (m)"
+            type="number"
+            placeholder="1 - 10.000"
+            step="1"
+            min={1}
+            max={10000}
+            error={errors.widthM?.message}
+            disabled={isSubmitting}
+            helperText="Largura da faixa em metros (padrão ANAC: 45 m)"
+            {...register('widthM', { valueAsNumber: true })}
+          />
+
+          <Input
+            label="Comprimento (m)"
+            type="number"
+            placeholder="1 - 50.000"
+            step="1"
+            min={1}
+            max={50000}
+            error={errors.heightM?.message}
+            disabled={isSubmitting}
+            helperText="Comprimento da pista em metros"
+            {...register('heightM', { valueAsNumber: true })}
+          />
+        </div>
+
+        <Input
+          label="Ângulo de Orientação (°)"
+          type="number"
+          placeholder="0 - 359"
+          step="0.1"
+          min={0}
+          max={359.9}
+          error={errors.angleDeg?.message}
+          disabled={isSubmitting}
+          helperText="Graus no sentido horário a partir do Norte geográfico"
+          {...register('angleDeg', { valueAsNumber: true })}
+        />
+      </fieldset>
+
       <Button
         type="submit"
         isLoading={isSubmitting}

@@ -8,7 +8,7 @@
  * properties in a MapLibre popup using DOMPurify sanitization.
  */
 import maplibregl from 'maplibre-gl';
-import { buildSecurePopupContent } from '@/features/map/utils/sanitize';
+import { buildSecurePopupContent } from '@/features/map/utils/securePopupContent';
 
 /**
  * Attaches a secure popup to the map for a clicked feature.
