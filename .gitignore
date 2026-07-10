@@ -54,3 +54,6 @@ README.md
 .github/copilot-instructions.md
 .claude/
 
+
+# Large source data archives (never commit — see backend/seed for derived data)
+*.zip

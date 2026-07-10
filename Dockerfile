@@ -22,6 +22,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/alembic.ini .
 COPY backend/alembic ./alembic
 
+# Committed data seeds loaded by migrations (e.g. IBGE state boundaries)
+COPY backend/seed ./seed
+
 # Copies the backend source code
 COPY backend/src ./src
 
