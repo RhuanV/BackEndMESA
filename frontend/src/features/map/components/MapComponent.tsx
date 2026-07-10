@@ -28,7 +28,7 @@ export function MapComponent() {
   const { user } = useAuth();
   const isDevUser = user?.role === 'administrador';
 
-  const [activeBaseMap, setActiveBaseMap] = useState<'bdg-mesa' | 'satellite' | 'osm'>('bdg-mesa');
+  const [activeBaseMap, setActiveBaseMap] = useState<'satellite' | 'osm'>('osm');
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false);
   const [isRegionPanelOpen, setIsRegionPanelOpen] = useState(false);
   const [selectedLayerMeta, setSelectedLayerMeta] = useState<LayerMetadata | null>(null);
@@ -85,15 +85,15 @@ export function MapComponent() {
     });
   }, []);
 
-  const bdgMesaStyle = import.meta.env.VITE_MAPLIBRE_STYLE_URL;
+  const mapStyle = import.meta.env.VITE_MAPLIBRE_STYLE_URL;
 
   const { map, isMapReady, setBaseMap, flyTo, cursorPosition } = useMap({
     containerId: MAP_CONTAINER_ID,
-    styleUrl: bdgMesaStyle,
+    styleUrl: mapStyle,
   });
 
   const handleBaseMapChange = useCallback(
-    (layer: 'bdg-mesa' | 'satellite' | 'osm') => {
+    (layer: 'satellite' | 'osm') => {
       setActiveBaseMap(layer);
       setBaseMap(layer);
     },

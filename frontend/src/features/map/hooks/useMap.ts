@@ -192,24 +192,14 @@ export function useMap({ containerId, styleUrl }: UseMapOptions) {
     };
   }, [containerId, styleUrl]);
 
-  const setBaseMap = useCallback((baseMapId: 'bdg-mesa' | 'satellite' | 'osm') => {
+  const setBaseMap = useCallback((baseMapId: 'satellite' | 'osm') => {
     const m = mapRef.current;
     if (!m) return;
 
-    const hasVectorStyle = !!styleUrl;
-
-    if (baseMapId === 'osm') {
-      if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', 'visible');
-      if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', 'none');
-    } else if (baseMapId === 'satellite') {
-      if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', 'none');
-      if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', 'visible');
-    } else {
-      // bdg-mesa
-      if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', hasVectorStyle ? 'none' : 'visible');
-      if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', 'none');
-    }
-  }, [styleUrl]);
+    const showSatellite = baseMapId === 'satellite';
+    if (m.getLayer('osm')) m.setLayoutProperty('osm', 'visibility', showSatellite ? 'none' : 'visible');
+    if (m.getLayer('google-hybrid')) m.setLayoutProperty('google-hybrid', 'visibility', showSatellite ? 'visible' : 'none');
+  }, []);
 
   const flyTo = useCallback((center: [number, number], zoom: number) => {
     if (mapRef.current) {
