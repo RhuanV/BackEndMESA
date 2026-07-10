@@ -36,8 +36,12 @@ frontend, Airflow) e **testes manuais end-to-end**, nos dois modos de ambiente:
 
 ```bash
 bash install.sh   # primeira vez: build das imagens Docker + deps do frontend
-bash start.sh      # sobe DB + backend + Airflow (Docker) e o frontend (Vite)
+bash start.sh      # pergunta o ambiente (sandbox/produção), sobe tudo e prepara o usuário
 ```
+
+O `start.sh` pergunta em qual ambiente rodar (ou aceita `./start.sh sandbox` / `./start.sh prod`),
+cria o banco de sandbox se necessário, recria o backend no ambiente escolhido e garante o usuário de
+acesso (admin em produção, dev em sandbox) com a senha do `.env`, mostrando as credenciais no fim.
 
 Serviços e URLs:
 
