@@ -188,16 +188,15 @@ body {
   border-top-color: var(--color-neutral-800) !important;
 }
 
-/* MapLibre scale control — light chip matching the design system */
+/* MapLibre scale control — matches the map overlay chip pattern (CRS label, coordinates) */
 .maplibregl-ctrl-scale {
   background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--color-neutral-200) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.5) !important;
   border-radius: 6px !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-  color: var(--color-neutral-700) !important;
-  font-family: var(--font-sans) !important;
-  font-size: 0.7rem !important;
-  font-weight: 500 !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1) !important;
+  color: var(--color-neutral-600) !important;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace) !important;
+  font-size: 10px !important;
   padding: 2px 6px !important;
 }
