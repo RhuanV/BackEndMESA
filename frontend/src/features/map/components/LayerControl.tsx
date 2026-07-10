@@ -1,16 +1,15 @@
 /**
- * LayerControl — Base map switcher (BDG MESA / Satellite / OSM).
+ * LayerControl — Base map switcher (Satellite / OpenStreetMap).
  */
 
 interface LayerControlProps {
-  readonly activeLayer: 'bdg-mesa' | 'satellite' | 'osm';
-  readonly onLayerChange: (layer: 'bdg-mesa' | 'satellite' | 'osm') => void;
+  readonly activeLayer: 'satellite' | 'osm';
+  readonly onLayerChange: (layer: 'satellite' | 'osm') => void;
 }
 
 const layers = [
-  { id: 'bdg-mesa' as const, label: 'BDG MESA', icon: '🗺️' },
-  { id: 'satellite' as const, label: 'Satélite Híbrido', icon: '🛰️' },
-  { id: 'osm' as const, label: 'OSM', icon: '🌐' },
+  { id: 'satellite' as const, label: 'Satélite', icon: '🛰️' },
+  { id: 'osm' as const, label: 'OpenStreetMap', icon: '🌐' },
 ];
 
 export function LayerControl({ activeLayer, onLayerChange }: LayerControlProps) {
