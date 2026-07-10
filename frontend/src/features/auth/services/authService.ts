@@ -9,6 +9,7 @@
  * - Error messages are generic to prevent user enumeration
  */
 import apiClient from '@/lib/api/axiosInstance';
+import { setAccessToken } from '@/lib/api/authToken';
 import type { AuthUser, LoginResponse } from '@/types';
 
 /**
@@ -31,12 +32,37 @@ export async function loginUser(
   });
 
   const { access_token } = response.data;
+  setAccessToken(access_token);
 
   // Identity comes from the server (GET /me), never from decoding the token.
   // The token is opaque to the client.
-  const user = await fetchCurrentUser(access_token);
+  const user = await fetchCurrentUser();
 
   return { user, token: access_token };
+}
+
+/**
+ * Exchanges the httpOnly refresh cookie for a fresh access token. Returns the
+ * user identity, or null if there is no valid session (e.g. after logout).
+ */
+export async function refreshSession(): Promise<AuthUser | null> {
+  try {
+    const { data } = await apiClient.post<{ access_token: string }>('/refresh');
+    setAccessToken(data.access_token);
+    return await fetchCurrentUser();
+  } catch {
+    setAccessToken(null);
+    return null;
+  }
+}
+
+/** Ends the session on the server (clears the refresh cookie). */
+export async function logoutUser(): Promise<void> {
+  try {
+    await apiClient.post('/logout');
+  } finally {
+    setAccessToken(null);
+  }
 }
 
 /**
@@ -56,30 +82,16 @@ export async function resetPasswordByCode(
   });
 }
 
-/**
- * Validates the current session and returns the server-resolved identity.
- * Used on app mount to check if the user is still authenticated.
- */
-export async function validateSession(token: string): Promise<AuthUser | null> {
-  try {
-    return await fetchCurrentUser(token);
-  } catch {
-    return null;
-  }
-}
-
 const VALID_ROLES = ['operador', 'administrador', 'desenvolvedor'] as const;
 
 /**
  * Fetches the authenticated user's identity from the server (GET /me).
  *
- * Security: role and username are the server's answer, never derived from
- * decoding the (opaque) token on the client.
+ * The access token is attached by the axios request interceptor. Role and
+ * username are the server's answer, never derived from decoding the token.
  */
-async function fetchCurrentUser(token: string): Promise<AuthUser> {
-  const response = await apiClient.get<{ username: string; role: string }>('/me', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+async function fetchCurrentUser(): Promise<AuthUser> {
+  const response = await apiClient.get<{ username: string; role: string }>('/me');
   const { username, role } = response.data;
   if (
     typeof username !== 'string' ||

@@ -14,6 +14,8 @@ EXPECTED_PATHS = {
     "/users",
     "/users/signup",
     "/login",
+    "/refresh",
+    "/logout",
     "/me",
     "/users/{user_id}",
     "/users/{user_id}/password",

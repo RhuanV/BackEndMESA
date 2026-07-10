@@ -4,9 +4,10 @@
  * Provides global auth state to the entire application via React Context.
  *
  * Security design:
- * - No tokens or passwords are stored in React state
- * - Token is stored in memory only (variable closure, not localStorage/sessionStorage)
- * - On mount, validates session by calling a protected endpoint
+ * - No tokens or passwords are stored in React state or localStorage
+ * - The access token lives in an in-memory store (lib/api/authToken)
+ * - The session survives a refresh via an httpOnly refresh cookie: on mount we
+ *   call /refresh to mint a new access token and resolve the user from /me
  * - Exposes only non-sensitive user data (username, role)
  */
 import {
@@ -19,14 +20,9 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { AuthContextType, AuthUser } from '@/types';
-import { loginUser, validateSession } from '@/features/auth/services/authService';
-import apiClient from '@/lib/api/axiosInstance';
+import { loginUser, logoutUser, refreshSession } from '@/features/auth/services/authService';
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-// In-memory token storage (never in localStorage or sessionStorage)
-// This is a module-level variable, not React state, to avoid exposing it in devtools
-let memoryToken: string | null = null;
 
 interface AuthProviderProps {
   readonly children: ReactNode;
@@ -36,19 +32,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount: try to restore session from memory token
+  // On mount: restore the session from the httpOnly refresh cookie (survives F5).
   useEffect(() => {
     const restoreSession = async () => {
-      if (memoryToken) {
-        const validUser = await validateSession(memoryToken);
-        if (validUser) {
-          setUser(validUser);
-          // Set default Authorization header for all requests
-          apiClient.defaults.headers.common['Authorization'] = `Bearer ${memoryToken}`;
-        } else {
-          memoryToken = null;
-        }
-      }
+      const restored = await refreshSession();
+      if (restored) setUser(restored);
       setIsLoading(false);
     };
 
@@ -57,24 +45,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = useCallback(async (username: string, password: string) => {
     const result = await loginUser(username, password);
-
-    // Store token in memory only
-    memoryToken = result.token;
-
-    // Set default Authorization header for subsequent requests
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${result.token}`;
-
     setUser(result.user);
   }, []);
 
   const logout = useCallback(async () => {
-    // Clear in-memory token
-    memoryToken = null;
-
-    // Remove Authorization header
-    delete apiClient.defaults.headers.common['Authorization'];
-
-    // Clear user state
+    await logoutUser();
     setUser(null);
   }, []);
 

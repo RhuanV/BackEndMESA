@@ -1,7 +1,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from jose import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from geoavia_backend.core.database import ALGORITHM, BOOTSTRAP_USER, SECRET_KEY
@@ -9,11 +9,13 @@ from geoavia_backend.core.passwords import validate_password_strength
 from geoavia_backend.core.roles import ROLES
 from geoavia_backend.repositories.user import UserRepository
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Short-lived access token (Bearer) + long-lived refresh token (httpOnly cookie).
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
 class SecurityService:
-    """Centralizes the application's password hashing logic."""
+    """Centralizes the application's password hashing and JWT logic."""
 
     def __init__(self) -> None:
         # bcrypt_sha256 avoids the practical 72-byte limitation of pure bcrypt.
@@ -31,14 +33,42 @@ class SecurityService:
         """Compares a plain-text password with the stored hash."""
         return self._pwd_context.verify(plain_password, hashed_password)
 
-    def create_access_token(self, dados: dict) -> str:
-        """Creates a JWT token with a 30-minute expiration."""
+    def _require_secret(self) -> str:
         if not SECRET_KEY:
             raise ValueError("SECRET_KEY not found in .env")
+        return SECRET_KEY
 
-        payload = dados.copy()
-        payload["exp"] = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    def create_access_token(self, sub: str) -> str:
+        """Creates a short-lived access JWT (Bearer). Carries only the subject id."""
+        secret = self._require_secret()
+        payload = {
+            "sub": sub,
+            "type": "access",
+            "exp": datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        }
+        return jwt.encode(payload, secret, algorithm=ALGORITHM)
+
+    def create_refresh_token(self, sub: str) -> str:
+        """Creates a long-lived refresh JWT (stored in an httpOnly cookie)."""
+        secret = self._require_secret()
+        payload = {
+            "sub": sub,
+            "type": "refresh",
+            "exp": datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        }
+        return jwt.encode(payload, secret, algorithm=ALGORITHM)
+
+    def decode_refresh_subject(self, token: str) -> str | None:
+        """Returns the subject id of a valid refresh token, or None if invalid."""
+        secret = self._require_secret()
+        try:
+            payload = jwt.decode(token, secret, algorithms=[ALGORITHM])
+        except JWTError:
+            return None
+        if payload.get("type") != "refresh":
+            return None
+        sub = payload.get("sub")
+        return str(sub) if sub and str(sub).isdigit() else None
 
 
 class UserService:

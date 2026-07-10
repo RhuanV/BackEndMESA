@@ -34,7 +34,8 @@ async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         sub = payload.get("sub")
-        if not sub or not str(sub).isdigit():
+        # A refresh token must never be accepted as a Bearer access token.
+        if payload.get("type") == "refresh" or not sub or not str(sub).isdigit():
             raise unauthorized_exception
     except JWTError as exc:
         raise unauthorized_exception from exc
