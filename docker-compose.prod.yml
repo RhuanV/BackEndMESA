@@ -1,0 +1,21 @@
+# Production overrides for docker-compose.yml.
+#
+# Binds every published port to the loopback interface so the database, backend
+# and Airflow UI are never reachable from the public internet directly. The only
+# public entry point in production is the reverse proxy (see docs/DEPLOY.md).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_EXT_PORT:-5433}:${DB_PORT:-5432}"
+
+  backend:
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+
+  airflow:
+    ports:
+      - "127.0.0.1:${AIRFLOW_PORT:-8080}:8080"

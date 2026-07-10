@@ -48,12 +48,8 @@ local_scripts/
 frontend/node_modules/
 frontend/dist/
 
-README.md
-
-# --- AI assistant artifacts (to be removed from the remote repo manually) ---
-.github/copilot-instructions.md
+# --- Local tooling configuration ---
 .claude/
-
 
 # Large source data archives (never commit — see backend/seed for derived data)
 *.zip
