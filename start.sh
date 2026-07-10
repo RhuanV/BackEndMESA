@@ -286,6 +286,7 @@ echo -e "${GREEN}╚════════════════════
 echo -e "  Ambiente:  ${CYAN}${ENV_LABEL}${NC}"
 echo -e "  Sistema:   ${CYAN}http://localhost:${FRONTEND_PORT}${NC}"
 echo -e "  API/Docs:  ${CYAN}http://localhost:${API_PORT}/docs${NC}"
+echo -e "  Airflow:   ${CYAN}http://localhost:${AIRFLOW_PORT}${NC}"
 echo ""
 echo -e "  ${GREEN}Entre no sistema com:${NC}"
 echo -e "    Usuário: ${CYAN}${BOOT_USER}${NC}"
