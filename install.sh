@@ -32,27 +32,27 @@ echo -e "${YELLOW}[1/4]${NC} Checking prerequisites..."
 MISSING=0
 
 if command -v docker >/dev/null 2>&1; then
-  echo -e "  ${GREEN}✓${NC} docker"
+  echo -e "  ${GREEN}ok${NC} docker"
 else
-  echo -e "  ${RED}✗ docker not found — install Docker first${NC}"
+  echo -e "  ${RED}x docker not found — install Docker first${NC}"
   MISSING=1
 fi
 
 if docker compose version >/dev/null 2>&1; then
   COMPOSE="docker compose"
-  echo -e "  ${GREEN}✓${NC} docker compose"
+  echo -e "  ${GREEN}ok${NC} docker compose"
 elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE="docker-compose"
-  echo -e "  ${GREEN}✓${NC} docker-compose"
+  echo -e "  ${GREEN}ok${NC} docker-compose"
 else
-  echo -e "  ${RED}✗ docker compose not found${NC}"
+  echo -e "  ${RED}x docker compose not found${NC}"
   MISSING=1
 fi
 
 if command -v npm >/dev/null 2>&1; then
-  echo -e "  ${GREEN}✓${NC} npm"
+  echo -e "  ${GREEN}ok${NC} npm"
 else
-  echo -e "  ${RED}✗ npm not found — install Node.js first${NC}"
+  echo -e "  ${RED}x npm not found — install Node.js first${NC}"
   MISSING=1
 fi
 
@@ -67,18 +67,18 @@ echo -e "${YELLOW}[2/4]${NC} Checking environment file..."
 if [ ! -f "$ROOT_DIR/.env" ]; then
   if [ -f "$ROOT_DIR/.env_example" ]; then
     cp "$ROOT_DIR/.env_example" "$ROOT_DIR/.env"
-    echo -e "  ${GREEN}✓${NC} Created .env from .env_example"
+    echo -e "  ${GREEN}ok${NC} Created .env from .env_example"
     # Generate a strong SECRET_KEY so a fresh install never ships the placeholder.
     SECRET_KEY_VALUE="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
     sed -i "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY_VALUE}|" "$ROOT_DIR/.env"
-    echo -e "  ${GREEN}✓${NC} Generated a strong SECRET_KEY"
-    echo -e "  ${RED}⚠ Review .env and set the remaining secrets before production!${NC}"
+    echo -e "  ${GREEN}ok${NC} Generated a strong SECRET_KEY"
+    echo -e "  ${RED}! Review .env and set the remaining secrets before production!${NC}"
   else
-    echo -e "  ${RED}✗ No .env or .env_example found. Cannot continue.${NC}"
+    echo -e "  ${RED}x No .env or .env_example found. Cannot continue.${NC}"
     exit 1
   fi
 else
-  echo -e "  ${GREEN}✓${NC} .env already exists"
+  echo -e "  ${GREEN}ok${NC} .env already exists"
 fi
 
 # --- Step 3: Build Docker images (installs backend + Airflow Python deps) ---
@@ -86,14 +86,14 @@ echo ""
 echo -e "${YELLOW}[3/4]${NC} Building Docker images (backend + Airflow)..."
 cd "$ROOT_DIR"
 $COMPOSE build
-echo -e "  ${GREEN}✓${NC} Images built"
+echo -e "  ${GREEN}ok${NC} Images built"
 
 # --- Step 4: Install frontend dependencies ---
 echo ""
 echo -e "${YELLOW}[4/4]${NC} Installing frontend dependencies..."
 cd "$FRONTEND_DIR"
 npm install
-echo -e "  ${GREEN}✓${NC} Frontend dependencies installed"
+echo -e "  ${GREEN}ok${NC} Frontend dependencies installed"
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
