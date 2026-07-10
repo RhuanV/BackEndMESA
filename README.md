@@ -416,6 +416,8 @@ The system enforces RBAC with **3 roles**, defined once in
 
 ## Testing
 
+> Guia completo (automatizados + E2E manual, sandbox vs produção): [docs/TESTING.md](docs/TESTING.md).
+
 ### Airflow test suite
 
 The Airflow pipelines are covered by an automated `pytest` suite (DAG integrity, DB

@@ -12,6 +12,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
       AIRFLOW_DB: ${AIRFLOW_DB}
+      SANDBOX_DB_NAME: ${SANDBOX_DB_NAME:-geoavia_sandbox_db}
     ports:
       - "${DB_EXT_PORT:-5433}:${DB_PORT:-5432}"
     volumes:
