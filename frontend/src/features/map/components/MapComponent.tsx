@@ -15,7 +15,12 @@ import type { LayerMetadata } from '@/features/map/constants/layerMetadata';
 import { fetchLayer, zoomLevelFor } from '@/features/map/services/layersApi';
 import type { ZoomLevel } from '@/features/map/services/layersApi';
 import { fetchShapefileFeatures } from '@/features/data/services/shapefilesApi';
-import { getStoredVisibleIds, storeVisibleIds } from '@/features/map/utils/layerVisibility';
+import {
+  getStoredVisibleIds,
+  storeVisibleIds,
+  getStoredVisibleUploadIds,
+  storeVisibleUploadIds,
+} from '@/features/map/utils/layerVisibility';
 
 const MAP_CONTAINER_ID = 'geoavia-map';
 
@@ -31,8 +36,9 @@ export function MapComponent() {
   // Static LAYER_REGISTRY layers — initialized from localStorage so LayerConfigPage changes persist
   const [visibleLayers, setVisibleLayers] = useState<Set<string>>(getStoredVisibleIds);
 
-  // User-uploaded shapefile layers
-  const [visibleUploads, setVisibleUploads] = useState<Set<number>>(new Set());
+  // User-uploaded shapefile layers — initialized from localStorage so the
+  // selection survives a refresh (mirrors the static layers above).
+  const [visibleUploads, setVisibleUploads] = useState<Set<number>>(getStoredVisibleUploadIds);
 
   const [currentZoomLevel, setCurrentZoomLevel] = useState<ZoomLevel>('z1');
 
@@ -58,6 +64,7 @@ export function MapComponent() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      storeVisibleUploadIds(next);
       return next;
     });
   }, []);
@@ -195,6 +202,10 @@ export function MapComponent() {
     if (!m || !isMapReady) return;
 
     const tracked = sourceVersions.current;
+    // Cancels in-flight feature fetches when this effect re-runs (toggle off,
+    // zoom/pan). Without it, a slow response could arrive after a layer was
+    // turned off and wrongly re-add it (stale-response race).
+    const controller = new AbortController();
 
     const syncUploads = async () => {
       // Remove de-selected upload layers
@@ -229,7 +240,12 @@ export function MapComponent() {
             uploadId,
             zoom: currentZoomLevel,
             bbox,
+            signal: controller.signal,
           });
+
+          // A newer run superseded this one (toggle/zoom/pan): drop the stale
+          // response so it can't re-add a layer the user already turned off.
+          if (controller.signal.aborted) return;
 
           const existing = m.getSource(key);
           if (existing) {
@@ -245,14 +261,18 @@ export function MapComponent() {
           }
           tracked.set(key, token);
         } catch (err) {
+          if (controller.signal.aborted) return; // expected on supersede
           console.error(`[MapComponent] Failed to load upload ${uploadId}`, err);
         }
       }
     };
 
     syncUploads().catch((err) => {
+      if (controller.signal.aborted) return;
       console.error('[MapComponent] Upload sync error', err);
     });
+
+    return () => controller.abort();
   }, [map, isMapReady, visibleUploads, currentZoomLevel, bboxTick]);
 
   return (

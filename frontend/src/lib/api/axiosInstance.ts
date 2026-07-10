@@ -2,16 +2,19 @@
  * Axios instance for GeoAvia API communication.
  *
  * Security features:
- * - withCredentials: true for HttpOnly cookie support
- * - Global 401/403 interceptor to handle auth failures
- * - No sensitive data logged to console
- * - Base URL from environment variables (never hardcoded)
+ * - Access token attached from an in-memory store (never localStorage).
+ * - withCredentials: true so the httpOnly refresh cookie is sent to /refresh.
+ * - On 401, transparently refreshes the access token once and retries; if the
+ *   refresh fails, redirects to login.
+ * - No sensitive data logged to console.
  */
 import axios from 'axios';
+import type { InternalAxiosRequestConfig } from 'axios';
+import { getAccessToken, setAccessToken } from './authToken';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  withCredentials: true, // Required for HttpOnly cookies (future backend migration)
+  withCredentials: true, // send/receive the httpOnly refresh cookie
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -19,37 +22,65 @@ const apiClient = axios.create({
   timeout: 15000, // 15 second timeout to prevent hanging requests
 });
 
-/**
- * Response interceptor: Global error handling.
- *
- * - 401: Session expired or invalid → redirect to login
- * - 403: Insufficient permissions → user stays on page, sees access denied
- * - Other errors: Generic handling, never expose technical details
- */
+// Attach the current access token (if any) to every request.
+apiClient.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+/** Endpoints that must never trigger the refresh-and-retry flow. */
+function isAuthEndpoint(url: string | undefined): boolean {
+  return !!url && (url.includes('/refresh') || url.includes('/login'));
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (axios.isAxiosError(error) && error.response) {
-      const { status } = error.response;
+  async (error) => {
+    if (!axios.isAxiosError(error) || !error.response) {
+      // Network / timeout / 5xx without response — never expose details.
+      return Promise.reject(new Error('Erro de comunicação com o servidor.'));
+    }
 
-      if (status === 401) {
-        // Session expired — clear any client-side state and redirect
-        window.location.href = '/login';
+    const { status } = error.response;
+    const original = error.config as RetriableConfig | undefined;
+
+    // 401: try to refresh the access token once, then replay the request.
+    if (status === 401 && original && !original._retry && !isAuthEndpoint(original.url)) {
+      original._retry = true;
+      try {
+        const { data } = await apiClient.post<{ access_token: string }>('/refresh');
+        setAccessToken(data.access_token);
+        original.headers.Authorization = `Bearer ${data.access_token}`;
+        return await apiClient(original);
+      } catch {
+        setAccessToken(null);
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         return Promise.reject(new Error('Sessão expirada. Faça login novamente.'));
-      }
-
-      if (status === 403) {
-        return Promise.reject(new Error('Acesso negado. Permissão insuficiente.'));
-      }
-
-      // 4xx validation errors (400, 404, 422, …): pass through with the original
-      // axios error so callers can read error.response.data.detail for user feedback.
-      if (status < 500) {
-        return Promise.reject(error);
       }
     }
 
-    // 5xx and network errors — never expose technical details to the user
+    if (status === 401) {
+      setAccessToken(null);
+      return Promise.reject(new Error('Sessão expirada. Faça login novamente.'));
+    }
+
+    if (status === 403) {
+      return Promise.reject(new Error('Acesso negado. Permissão insuficiente.'));
+    }
+
+    // 4xx (400/404/422/429/…): pass the original error so callers can read
+    // error.response.data.detail for user feedback.
+    if (status < 500) {
+      return Promise.reject(error);
+    }
+
     return Promise.reject(new Error('Erro de comunicação com o servidor.'));
   }
 );
