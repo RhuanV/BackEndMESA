@@ -75,6 +75,10 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${AIRFLOW_DB}
       AIRFLOW_CONN_GEOAVIA_MAIN_CONN: postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      # Enable HTTP Basic Auth on the REST API (kept alongside session auth for the
+      # UI) so the backend can call the API programmatically. Without this, Airflow
+      # 2.9 defaults to session-only and ignores Basic Auth -> anonymous -> 403.
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
     volumes:
       - ./airflow_config/dags:/opt/airflow/dags
       - airflow_logs:/opt/airflow/logs
