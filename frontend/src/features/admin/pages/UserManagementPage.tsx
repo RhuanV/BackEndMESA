@@ -216,7 +216,7 @@ export function UserManagementPage() {
       </div>
 
       {canCreateUsers && (
-        <div className="mb-8 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <div className="mb-8 rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm">
           <h3 className="mb-1 text-lg font-semibold text-neutral-900">Novo Usuário</h3>
           <p className="mb-4 text-sm text-neutral-500">
             A conta é criada sem senha. Ao salvar, um código de primeiro acesso é
@@ -256,7 +256,7 @@ export function UserManagementPage() {
         <div role="alert" className="mb-4 rounded-lg border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-600">{error}</div>
       )}
 
-      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-neutral-200 bg-surface shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />

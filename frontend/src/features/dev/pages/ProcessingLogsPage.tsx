@@ -107,7 +107,7 @@ export function ProcessingLogsPage() {
                 Airflow indisponível: {sanitize(data.airflow_error)}
               </div>
             )}
-            <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-neutral-200 bg-surface shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono" aria-label="DAG runs do Airflow">
                   <thead>
@@ -143,7 +143,7 @@ export function ProcessingLogsPage() {
           {/* Backend MCDA jobs — persisted in processing_log */}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-neutral-700">Jobs de análise (MCDA)</h3>
-            <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-neutral-200 bg-surface shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono" aria-label="Jobs de análise MCDA">
                   <thead>

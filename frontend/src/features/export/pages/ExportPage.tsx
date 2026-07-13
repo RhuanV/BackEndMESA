@@ -70,7 +70,7 @@ export function ExportPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm text-center">
+        <div className="rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm text-center">
           <div className="text-4xl mb-3" aria-hidden="true">📐</div>
           <h3 className="text-sm font-semibold text-neutral-900 mb-1">Shapefile (.shp)</h3>
           <p className="text-xs text-neutral-500 mb-4">Formato vetorial compatível com QGIS e ArcGIS.</p>

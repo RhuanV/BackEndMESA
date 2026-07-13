@@ -8,7 +8,7 @@
  * - Sidebar toggle for mobile
  */
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { Button } from '@/components/ui';
+import { Button, ThemeToggle } from '@/components/ui';
 import { APP_NAME } from '@/lib/constants';
 
 interface HeaderProps {
@@ -30,7 +30,7 @@ export function Header({ onToggleSidebar, isSidebarOpen }: HeaderProps) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-4 lg:px-6">
+    <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-surface px-4 lg:px-6">
       {/* Left: hamburger + title */}
       <div className="flex items-center gap-3">
         <button
@@ -75,6 +75,7 @@ export function Header({ onToggleSidebar, isSidebarOpen }: HeaderProps) {
             </div>
           </div>
         )}
+        <ThemeToggle />
         <Button
           variant="ghost"
           size="sm"

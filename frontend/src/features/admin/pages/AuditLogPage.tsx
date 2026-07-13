@@ -80,7 +80,7 @@ export function AuditLogPage() {
         <div role="alert" className="mb-4 rounded-lg border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-600">{error}</div>
       )}
 
-      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-neutral-200 bg-surface shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />

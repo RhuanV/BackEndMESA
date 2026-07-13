@@ -90,7 +90,7 @@ export function LayerConfigPage() {
           return (
             <div
               key={layer.id}
-              className={`rounded-xl border border-neutral-200 bg-white shadow-sm hover:shadow-md transition-shadow ${isDisabled ? 'opacity-60' : ''}`}
+              className={`rounded-xl border border-neutral-200 bg-surface shadow-sm hover:shadow-md transition-shadow ${isDisabled ? 'opacity-60' : ''}`}
             >
               {/* Main row */}
               <div className="flex items-center justify-between p-4">
@@ -125,7 +125,7 @@ export function LayerConfigPage() {
                       className="sr-only peer"
                       aria-label={`Camada ${layer.name}: ${isVisible ? 'visível' : 'oculta'}`}
                     />
-                    <div className="w-9 h-5 bg-neutral-300 peer-focus:ring-2 peer-focus:ring-accent-500 rounded-full peer peer-checked:bg-primary-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full peer-disabled:cursor-not-allowed" />
+                    <div className="w-9 h-5 bg-neutral-300 peer-focus:ring-2 peer-focus:ring-accent-500 rounded-full peer peer-checked:bg-primary-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full peer-disabled:cursor-not-allowed" />
                   </label>
                 </div>
               </div>

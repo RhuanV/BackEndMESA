@@ -34,7 +34,7 @@ export function ResetPasswordModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-6 shadow-xl animate-scale-in">
+      <div className="w-full max-w-md rounded-xl border border-neutral-200 bg-surface p-6 shadow-xl animate-scale-in">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-neutral-900">
             Alterar Senha de {sanitize(username)}

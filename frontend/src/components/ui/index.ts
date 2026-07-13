@@ -9,3 +9,4 @@ export * from './Modal';
 export * from './ProgressBar';
 export * from './Select';
 export * from './Slider';
+export * from './ThemeToggle';
