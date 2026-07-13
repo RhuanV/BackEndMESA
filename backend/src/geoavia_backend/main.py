@@ -20,6 +20,7 @@ from geoavia_backend.api import (
     health,
     layers,
     mesa,
+    processing,
     regions,
     screening,
     shapefiles,
@@ -135,6 +136,7 @@ async def sandbox_guard(request: Request, call_next):
 
 app.include_router(health.router)
 app.include_router(audit.router)
+app.include_router(processing.router)
 app.include_router(users.router)
 app.include_router(layers.router)
 app.include_router(screening.router)

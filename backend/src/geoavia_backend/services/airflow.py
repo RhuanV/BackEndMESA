@@ -12,6 +12,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from datetime import datetime
 
 from geoavia_backend.repositories.airflow import AirflowTriggerRepository
 
@@ -105,6 +106,75 @@ class AirflowTriggerService:
 
     def list_recent_logs(self, limit: int = 100) -> list[dict]:
         return self.repo.list_recent(limit=limit)
+
+    def list_dag_runs(self, limit: int = 50) -> list[dict]:
+        """Returns recent DAG runs across all DAGs (real processing history).
+
+        Reads Airflow's stable REST API and maps each run to the shape the
+        Processing Logs page renders. Raises AirflowTriggerError if Airflow is
+        unreachable/misconfigured, so the caller can degrade gracefully.
+        """
+        limit = max(1, min(limit, 100))
+        payload = self._get_airflow(
+            f"/api/v1/dags/~/dagRuns?order_by=-start_date&limit={limit}"
+        )
+        runs = payload.get("dag_runs", [])
+        return [self._map_dag_run(run) for run in runs]
+
+    @staticmethod
+    def _map_dag_run(run: dict) -> dict:
+        """Maps an Airflow dag run to {job, run_id, status, started_at, ended_at,
+        duration_ms}. Airflow states → completed/processing/failed."""
+        state = run.get("state")
+        status = {
+            "success": "completed",
+            "running": "processing",
+            "queued": "processing",
+            "failed": "failed",
+        }.get(state, state or "unknown")
+
+        start = run.get("start_date")
+        end = run.get("end_date")
+        duration_ms = None
+        if start and end:
+            try:
+                delta = datetime.fromisoformat(end) - datetime.fromisoformat(start)
+                duration_ms = int(delta.total_seconds() * 1000)
+            except ValueError:
+                duration_ms = None
+
+        return {
+            "job": run.get("dag_id"),
+            "run_id": run.get("dag_run_id"),
+            "status": status,
+            "started_at": start,
+            "ended_at": end,
+            "duration_ms": duration_ms,
+        }
+
+    @staticmethod
+    def _get_airflow(path: str) -> dict:
+        """GETs an Airflow REST API path and returns the parsed JSON body."""
+        if not AIRFLOW_USERNAME or not AIRFLOW_PASSWORD:
+            raise AirflowTriggerError(
+                "Airflow credentials are not configured. Set AIRFLOW_USER/AIRFLOW_PASS "
+                "(or AIRFLOW_USERNAME/AIRFLOW_PASSWORD) in the environment."
+            )
+        url = f"{AIRFLOW_BASE_URL}{path}"
+        auth = base64.b64encode(f"{AIRFLOW_USERNAME}:{AIRFLOW_PASSWORD}".encode()).decode("ascii")
+        req = urllib.request.Request(
+            url,
+            headers={"Accept": "application/json", "Authorization": f"Basic {auth}"},
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=TRIGGER_TIMEOUT_SECONDS) as resp:
+                return json.load(resp)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise AirflowTriggerError(f"Airflow returned HTTP {exc.code}: {detail[:300]}") from exc
+        except urllib.error.URLError as exc:
+            raise AirflowTriggerError(f"Failed to reach Airflow: {exc}") from exc
 
     @staticmethod
     def _call_airflow(dag_id: str) -> str:
