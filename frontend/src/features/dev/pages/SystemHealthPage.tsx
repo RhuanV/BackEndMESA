@@ -1,5 +1,5 @@
 /**
- * ApiHealthPage — Dev-only API health dashboard.
+ * SystemHealthPage — Dev-only system health dashboard.
  *
  * Reads GET /health/detailed, which checks the real dependencies (PostgreSQL/
  * PostGIS, Airflow, disk, memory) server-side and reports each with a status,
@@ -39,7 +39,7 @@ const aggregateLabel: Record<CheckStatus, string> = {
   unknown: 'Estado desconhecido',
 };
 
-export function ApiHealthPage() {
+export function SystemHealthPage() {
   const [report, setReport] = useState<HealthReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastCheck, setLastCheck] = useState<string>('');
@@ -50,7 +50,7 @@ export function ApiHealthPage() {
       setReport(res.data);
       setError(null);
     } catch {
-      setError('Não foi possível obter a saúde da API.');
+      setError('Não foi possível obter a saúde do sistema.');
     } finally {
       setLastCheck(new Date().toLocaleTimeString('pt-BR'));
     }
@@ -67,7 +67,7 @@ export function ApiHealthPage() {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-neutral-900">Saúde da API</h2>
+          <h2 className="text-2xl font-bold text-neutral-900">Saúde do Sistema</h2>
           <p className="mt-1 text-sm text-neutral-500">Auto-refresh a cada 30s • Último check: {lastCheck}</p>
         </div>
         <button

@@ -40,7 +40,7 @@ const ScreeningPage = lazy(() => import('@/features/screening/pages/ScreeningPag
 const UserManagementPage = lazy(() => import('@/features/admin/pages/UserManagementPage').then((m) => ({ default: m.UserManagementPage })));
 const LayerConfigPage = lazy(() => import('@/features/admin/pages/LayerConfigPage').then((m) => ({ default: m.LayerConfigPage })));
 const AuditLogPage = lazy(() => import('@/features/admin/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
-const ApiHealthPage = lazy(() => import('@/features/dev/pages/ApiHealthPage').then((m) => ({ default: m.ApiHealthPage })));
+const SystemHealthPage = lazy(() => import('@/features/dev/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const ProcessingLogsPage = lazy(() => import('@/features/dev/pages/ProcessingLogsPage').then((m) => ({ default: m.ProcessingLogsPage })));
 const DebugPage = lazy(() => import('@/features/dev/pages/DebugPage').then((m) => ({ default: m.DebugPage })));
 
@@ -124,7 +124,7 @@ export const router = createBrowserRouter([
       // System technical operations
       {
         path: 'dev/health',
-        element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<ApiHealthPage />)}</ProtectedRoute>,
+        element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<SystemHealthPage />)}</ProtectedRoute>,
       },
       {
         path: 'dev/logs',
