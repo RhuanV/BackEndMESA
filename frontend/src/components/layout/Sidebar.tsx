@@ -161,17 +161,6 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
-  {
-    to: '/dashboard/dev/debug',
-    label: 'Debug Mode',
-    section: 'Desenvolvimento',
-    allowedRoles: ['desenvolvedor'],
-    icon: (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0112 12.75zm0 0c2.883 0 5.647.508 8.207 1.44a23.91 23.91 0 01-1.152-6.135c-.22-2.057-1.907-3.555-3.97-3.555H8.916c-2.064 0-3.75 1.498-3.97 3.555a23.91 23.91 0 01-1.153 6.135C6.353 13.258 9.117 12.75 12 12.75zM9.75 8.625a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-      </svg>
-    ),
-  },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {

@@ -42,7 +42,6 @@ const LayerConfigPage = lazy(() => import('@/features/admin/pages/LayerConfigPag
 const AuditLogPage = lazy(() => import('@/features/admin/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const SystemHealthPage = lazy(() => import('@/features/dev/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
 const ProcessingLogsPage = lazy(() => import('@/features/dev/pages/ProcessingLogsPage').then((m) => ({ default: m.ProcessingLogsPage })));
-const DebugPage = lazy(() => import('@/features/dev/pages/DebugPage').then((m) => ({ default: m.DebugPage })));
 
 /** Wraps a lazily-loaded element in a Suspense boundary with a spinner. */
 function page(node: ReactNode): ReactNode {
@@ -129,10 +128,6 @@ export const router = createBrowserRouter([
       {
         path: 'dev/logs',
         element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<ProcessingLogsPage />)}</ProtectedRoute>,
-      },
-      {
-        path: 'dev/debug',
-        element: <ProtectedRoute allowedRoles={DEV_ROLES}>{page(<DebugPage />)}</ProtectedRoute>,
       },
     ],
   },

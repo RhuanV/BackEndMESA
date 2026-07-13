@@ -27,8 +27,7 @@ export type Permission =
   | 'admin:layers'
   | 'admin:audit'
   | 'dev:health'
-  | 'dev:logs'
-  | 'dev:debug';
+  | 'dev:logs';
 
 /**
  * Per-role permission sets (3-role model).
@@ -73,7 +72,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
     'admin:audit',
     'dev:health',
     'dev:logs',
-    'dev:debug',
   ],
 } as const;
 
