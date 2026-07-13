@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 
 from geoavia_backend.api import (
     airflow,
+    audit,
     health,
     layers,
     mesa,
@@ -33,6 +34,7 @@ from geoavia_backend.core.sandbox import (
     is_production,
     role_from_token,
 )
+from geoavia_backend.services.audit import AuditService
 
 logger = logging.getLogger("geoavia.startup")
 
@@ -110,6 +112,13 @@ async def sandbox_guard(request: Request, call_next):
                     is_production(),
                 )
                 if developer_write_blocked(role):
+                    AuditService().record(
+                        action="DEV_WRITE_BLOCKED",
+                        user_role=role,
+                        resource=request.url.path,
+                        detail=f"Blocked developer write {request.method} {request.url.path}",
+                        ip_address=request.client.host if request.client else None,
+                    )
                     return JSONResponse(
                         status_code=403,
                         content={
@@ -125,6 +134,7 @@ async def sandbox_guard(request: Request, call_next):
 
 
 app.include_router(health.router)
+app.include_router(audit.router)
 app.include_router(users.router)
 app.include_router(layers.router)
 app.include_router(screening.router)
