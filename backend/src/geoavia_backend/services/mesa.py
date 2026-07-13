@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import math
 import os
 import tempfile
@@ -21,6 +22,9 @@ from shapely.affinity import rotate, translate
 from shapely.geometry import Point, Polygon, shape
 
 from geoavia_backend.repositories.mesa import AssessmentRepository
+from geoavia_backend.repositories.processing import ProcessingLogRepository
+
+logger = logging.getLogger("geoavia.processing")
 
 
 def _to_float(value) -> float:
@@ -218,6 +222,7 @@ class AnalysisJobService:
     def __init__(self) -> None:
         self._jobs: dict[str, dict] = {}
         self._lock = Lock()
+        self._processing_repo = ProcessingLogRepository()
 
     def submit(self, config: dict) -> str:
         job_id = str(uuid.uuid4())
@@ -225,6 +230,7 @@ class AnalysisJobService:
             self._jobs[job_id] = {
                 "config": config,
                 "started_at": time.monotonic(),
+                "logged": False,
             }
         return job_id
 
@@ -243,6 +249,9 @@ class AnalysisJobService:
         else:
             status = "pending"
 
+        if status == "completed":
+            self._log_completion(job_id, elapsed)
+
         response = {
             "id": job_id,
             "status": status,
@@ -251,3 +260,25 @@ class AnalysisJobService:
         if status == "completed":
             response["resultUrl"] = "/ranking"
         return response
+
+    def _log_completion(self, job_id: str, elapsed: float) -> None:
+        """Persists one processing_log row the first time a job completes.
+
+        Guarded by the per-job `logged` flag so repeated status polls don't
+        duplicate the entry. Best-effort: a logging failure never breaks polling.
+        """
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.get("logged"):
+                return
+            job["logged"] = True
+        try:
+            self._processing_repo.insert(
+                job=f"MCDA-{job_id[:8]}",
+                layer="aggregation",
+                status="completed",
+                duration_ms=int(elapsed * 1000),
+                detail="MCDA analysis completed",
+            )
+        except Exception:  # noqa: BLE001 — processing log must not break polling
+            logger.exception("failed to persist processing_log for job %s", job_id)
