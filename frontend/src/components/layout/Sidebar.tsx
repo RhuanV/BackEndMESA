@@ -141,7 +141,7 @@ const navItems: NavItem[] = [
   // === Dev ===
   {
     to: '/dashboard/dev/health',
-    label: 'Saúde da API',
+    label: 'Saúde do Sistema',
     section: 'Desenvolvimento',
     allowedRoles: ['desenvolvedor'],
     icon: (
