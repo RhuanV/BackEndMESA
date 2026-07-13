@@ -251,7 +251,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 border-t border-neutral-200 p-4">
-          <p className="text-xs text-neutral-400 text-center">v2.0 — Sprint 6</p>
+          <p className="text-xs text-neutral-400 text-center">v2.0</p>
         </div>
       </aside>
     </>
