@@ -64,14 +64,14 @@ export function Header({ onToggleSidebar, isSidebarOpen }: HeaderProps) {
       <div className="flex items-center gap-4">
         {user && (
           <div className="hidden sm:flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white">
-              {user.username.charAt(0).toUpperCase()}
-            </div>
             <div className="text-right">
               <p className="text-sm font-medium text-neutral-800">{user.username}</p>
               <p className="text-xs text-neutral-500">
                 {roleLabels[user.role] ?? user.role}
               </p>
+            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white">
+              {user.username.charAt(0).toUpperCase()}
             </div>
           </div>
         )}
