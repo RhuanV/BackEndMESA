@@ -260,15 +260,16 @@ body {
 
 /* MapLibre scale control — classic cartographic ruler: label above a line with
    end ticks (⊔). The control's width is the measured distance, so the bottom +
-   side borders form the ruler. Site font (Inter) and neutral palette; a soft
-   white glow keeps it legible over satellite imagery without a filled box. */
+   side borders form the ruler. Fixed dark literals (not neutral tokens) so the
+   ruler stays black on the OSM base map in BOTH themes — it must not follow the
+   inverted dark-mode ramp. A soft white glow keeps it legible over the map. */
 .maplibregl-ctrl-scale {
   background: transparent !important;
-  border: 2px solid var(--color-neutral-700) !important;
+  border: 2px solid #334155 !important;
   border-top: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  color: var(--color-neutral-800) !important;
+  color: #1e293b !important;
   font-family: var(--font-sans) !important;
   font-size: 11px !important;
   font-weight: 600 !important;
@@ -281,10 +282,9 @@ body {
     0 0 2px rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Dark contexts (satellite imagery, or dark theme where OSM is dimmed): light
-   ruler with a dark halo so it stays legible over the darker map. */
-.basemap-satellite .maplibregl-ctrl-scale,
-.dark .maplibregl-ctrl-scale {
+/* Satellite imagery is dark: only there does the ruler go white (with a dark
+   halo). The OSM base map keeps the black ruler above in both light and dark. */
+.basemap-satellite .maplibregl-ctrl-scale {
   color: #fff !important;
   border-color: rgba(255, 255, 255, 0.95) !important;
   text-shadow:
