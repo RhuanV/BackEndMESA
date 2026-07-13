@@ -11,6 +11,7 @@ from geoavia_backend.main import app
 
 EXPECTED_PATHS = {
     "/health",
+    "/audit-logs",
     "/users",
     "/users/signup",
     "/login",

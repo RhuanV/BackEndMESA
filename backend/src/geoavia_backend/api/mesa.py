@@ -5,16 +5,23 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from geoavia_backend.core.auth import obtain_current_user
 from geoavia_backend.schemas.mesa import AnalysisConfigIn, AssessmentIn
+from geoavia_backend.services.audit import AuditService
 from geoavia_backend.services.mesa import AnalysisJobService, AssessmentService
 
 router = APIRouter(dependencies=[Depends(obtain_current_user)])
 assessment_service = AssessmentService()
 analysis_service = AnalysisJobService()
+audit_service = AuditService()
+
+
+def _client_ip(request: Request) -> str | None:
+    """Best-effort client IP for the audit log (no proxy header trust)."""
+    return request.client.host if request.client else None
 
 
 @router.post("/assessments")
@@ -34,13 +41,26 @@ def get_ranking():
 
 
 @router.post("/analysis/run")
-def run_analysis(config: AnalysisConfigIn):
+def run_analysis(
+    config: AnalysisConfigIn,
+    request: Request,
+    current_user: dict = Depends(obtain_current_user),
+):
     weights_sum = (
         config.slopeWeight + config.landUseWeight + config.transportWeight + config.costWeight
     )
     if abs(weights_sum - 100) > 0.01:
         raise HTTPException(status_code=400, detail="Weights must sum to 100")
     job_id = analysis_service.submit(config.model_dump())
+    audit_service.record(
+        action="ANALYSIS_RUN",
+        user_id=int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None,
+        username=current_user["username"],
+        user_role=current_user["role"],
+        resource=job_id,
+        detail="MCDA analysis submitted",
+        ip_address=_client_ip(request),
+    )
     return {"id": job_id}
 
 
@@ -53,7 +73,11 @@ def get_analysis_status(job_id: str):
 
 
 @router.get("/export/{format}")
-def export_results(format: str):
+def export_results(
+    format: str,
+    request: Request,
+    current_user: dict = Depends(obtain_current_user),
+):
     """Exports the current ranking.
 
     - `shapefile`: zipped Esri Shapefile (.shp/.dbf/.shx/.prj/.cpg), one point
@@ -72,6 +96,16 @@ def export_results(format: str):
                 "pipeline. Export as shapefile or csv for now."
             ),
         )
+
+    audit_service.record(
+        action="EXPORT",
+        user_id=int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None,
+        username=current_user["username"],
+        user_role=current_user["role"],
+        resource=format,
+        detail=f"Exported ranking as {format}",
+        ip_address=_client_ip(request),
+    )
 
     if format == "shapefile":
         try:

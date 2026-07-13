@@ -14,6 +14,7 @@ from geoavia_backend.schemas.user import (
     PasswordResetRequest,
     RecoveryPasswordResetRequest,
 )
+from geoavia_backend.services.audit import AuditService
 from geoavia_backend.services.password_reset import PasswordRecoveryService
 from geoavia_backend.services.user import REFRESH_TOKEN_EXPIRE_DAYS, UserService
 
@@ -40,6 +41,12 @@ def _clear_refresh_cookie(response: Response) -> None:
 router = APIRouter()
 service = UserService()
 recovery_service = PasswordRecoveryService()
+audit_service = AuditService()
+
+
+def _client_ip(request: Request) -> str | None:
+    """Best-effort client IP for the audit log (no proxy header trust)."""
+    return request.client.host if request.client else None
 
 _MANAGE_USERS_DETAIL = "Only administrador or desenvolvedor can manage users"
 # Single dependency instance reused by the user-management routes.
@@ -68,6 +75,7 @@ def get_me(current_user: dict = Depends(obtain_current_user)):
 
 @router.post("/users/signup")
 def create_user(
+    request: Request,
     username: str,
     role: str = "operador",
     current_user: dict = Depends(_require_manage_users),
@@ -93,6 +101,16 @@ def create_user(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    audit_service.record(
+        action="USER_CREATE",
+        user_id=issued_by,
+        username=current_user["username"],
+        user_role=current_user["role"],
+        resource=str(new_id),
+        detail=f"Created user '{username.strip()}' with role '{role.strip().lower()}'",
+        ip_address=_client_ip(request),
+    )
+
     return {
         "id": new_id,
         "code": result["code"],
@@ -114,7 +132,23 @@ def login(request: Request, response: Response, form_data: OAuth2PasswordRequest
     """
     user = service.authenticate_user(form_data.username, form_data.password)
     if not user:
+        # Security event: record the attempt (username only, never the password).
+        audit_service.record(
+            action="LOGIN_FAILED",
+            username=form_data.username[:50] if form_data.username else None,
+            detail="Invalid credentials",
+            ip_address=_client_ip(request),
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    audit_service.record(
+        action="LOGIN",
+        user_id=user["id"],
+        username=user["username"],
+        user_role=user["role"],
+        detail="Login successful",
+        ip_address=_client_ip(request),
+    )
 
     try:
         # Tokens carry only the subject id; username/role are resolved from the
@@ -155,14 +189,28 @@ def refresh(request: Request, response: Response):
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response):
     """Clears the refresh cookie, ending the session."""
+    # Best-effort: resolve who is logging out from the refresh cookie (never trusted
+    # for auth here — used only to label the audit entry).
+    token = request.cookies.get(_REFRESH_COOKIE)
+    sub = service.security.decode_refresh_subject(token) if token else None
+    user = UserRepository().obtain_user_from_id(int(sub)) if sub else None
+    audit_service.record(
+        action="LOGOUT",
+        user_id=user["id"] if user else None,
+        username=user["username"] if user else None,
+        user_role=user["role"] if user else None,
+        detail="Logout",
+        ip_address=_client_ip(request),
+    )
     _clear_refresh_cookie(response)
     return {"message": "Logged out"}
 
 
 @router.delete("/users/{user_id}")
 def delete_user(
+    request: Request,
     user_id: int,
     current_user: dict = Depends(_require_manage_users),
 ):
@@ -171,6 +219,15 @@ def delete_user(
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
 
+    audit_service.record(
+        action="USER_DELETE",
+        user_id=int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None,
+        username=current_user["username"],
+        user_role=current_user["role"],
+        resource=str(user_id),
+        detail=f"Deleted user id {user_id}",
+        ip_address=_client_ip(request),
+    )
     return {"message": "User was successfully deleted"}
 
 
