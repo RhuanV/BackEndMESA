@@ -15,7 +15,7 @@ const layers = [
 export function LayerControl({ activeLayer, onLayerChange }: LayerControlProps) {
   return (
     <div
-      className="absolute bottom-8 right-4 z-10 rounded-xl bg-white/90 backdrop-blur-md shadow-lg border border-neutral-200/50 p-1.5"
+      className="absolute bottom-8 right-4 z-10 rounded-xl bg-surface/90 backdrop-blur-md shadow-lg border border-neutral-200/50 p-1.5"
       role="radiogroup"
       aria-label="Mapa base"
     >

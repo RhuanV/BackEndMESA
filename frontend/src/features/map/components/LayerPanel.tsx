@@ -67,7 +67,7 @@ export function LayerPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute top-4 left-4 z-20 w-72 max-h-[calc(100vh-8rem)] overflow-y-auto rounded-xl bg-white/95 backdrop-blur-md shadow-xl border border-neutral-200/50 animate-fade-in">
+    <div className="absolute top-4 left-4 z-20 w-72 max-h-[calc(100vh-8rem)] overflow-y-auto rounded-xl bg-surface/95 backdrop-blur-md shadow-xl border border-neutral-200/50 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <h3 className="text-sm font-semibold text-neutral-800">Camadas</h3>

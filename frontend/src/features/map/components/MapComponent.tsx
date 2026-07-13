@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useMap } from '@/features/map/hooks/useMap';
+import { useTheme } from '@/features/theme/hooks/useTheme';
 import { AssessmentMarkers } from './AssessmentMarkers';
 import { LayerControl } from './LayerControl';
 import { LayerPanel } from './LayerPanel';
@@ -24,6 +25,7 @@ import {
 const MAP_CONTAINER_ID = 'geoavia-map';
 
 export function MapComponent() {
+  const { theme } = useTheme();
   const [activeBaseMap, setActiveBaseMap] = useState<'satellite' | 'osm'>('osm');
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false);
   const [isRegionPanelOpen, setIsRegionPanelOpen] = useState(false);
@@ -136,6 +138,19 @@ export function MapComponent() {
     m.on('zoomend', handleZoom);
     return () => { m.off('zoomend', handleZoom); };
   }, [map, isMapReady]);
+
+  // Dim the OSM raster base map in dark mode so it stops glaring against the
+  // dark UI. Uses MapLibre's raster paint (native) so only the OSM tiles are
+  // affected — vector data layers and overlays are untouched. Satellite imagery
+  // is already dark, so it is left as-is.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !isMapReady || !m.getLayer('osm')) return;
+    const dark = theme === 'dark';
+    m.setPaintProperty('osm', 'raster-brightness-max', dark ? 0.6 : 1);
+    m.setPaintProperty('osm', 'raster-saturation', dark ? -0.15 : 0);
+    m.setPaintProperty('osm', 'raster-contrast', dark ? -0.05 : 0);
+  }, [map, isMapReady, theme]);
 
   // Debounced pan/zoom signal so viewport-filtered uploads refetch on move
   useEffect(() => {
@@ -299,7 +314,7 @@ export function MapComponent() {
         <button
           onClick={toggleLayerPanel}
           className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
-            isLayerPanelOpen ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600 hover:bg-white'
+            isLayerPanelOpen ? 'bg-accent-500 text-white' : 'bg-surface/90 backdrop-blur-md text-neutral-600 hover:text-primary-600 hover:bg-surface'
           }`}
           aria-label="Painel de camadas"
           aria-pressed={isLayerPanelOpen}
@@ -312,7 +327,7 @@ export function MapComponent() {
         <button
           onClick={toggleRegionPanel}
           className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
-            isRegionPanelOpen ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600 hover:bg-white'
+            isRegionPanelOpen ? 'bg-accent-500 text-white' : 'bg-surface/90 backdrop-blur-md text-neutral-600 hover:text-primary-600 hover:bg-surface'
           }`}
           aria-label="Painel de região e estado"
           aria-pressed={isRegionPanelOpen}
@@ -326,7 +341,7 @@ export function MapComponent() {
         <button
           onClick={() => setShowDebug(!showDebug)}
           className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
-            showDebug ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600'
+            showDebug ? 'bg-accent-500 text-white' : 'bg-surface/90 backdrop-blur-md text-neutral-600 hover:text-primary-600'
           }`}
           aria-label="Mostrar coordenadas"
           aria-pressed={showDebug}
@@ -367,13 +382,13 @@ export function MapComponent() {
       <LayerControl activeLayer={activeBaseMap} onLayerChange={handleBaseMapChange} />
 
       {/* CRS Label */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-md bg-white/90 backdrop-blur-md shadow-sm border border-neutral-200/50 px-2 py-1 text-[10px] font-mono text-neutral-600">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-md bg-surface/90 backdrop-blur-md shadow-sm border border-neutral-200/50 px-2 py-1 text-[10px] font-mono text-neutral-600">
         {CRS_LABEL}
       </div>
 
       {/* Coordinate overlay — available to every user */}
       {showDebug && cursorPosition && (
-        <div className="absolute top-4 right-16 z-10 rounded-lg bg-white/90 backdrop-blur-md shadow-md border border-neutral-200/50 px-3 py-2 text-xs font-sans tabular-nums space-y-0.5">
+        <div className="absolute top-4 right-16 z-10 rounded-lg bg-surface/90 backdrop-blur-md shadow-md border border-neutral-200/50 px-3 py-2 text-xs font-sans tabular-nums space-y-0.5">
           <div><span className="text-neutral-500">Lng:</span> <span className="text-accent-600">{cursorPosition.lng.toFixed(6)}</span></div>
           <div><span className="text-neutral-500">Lat:</span> <span className="text-accent-600">{cursorPosition.lat.toFixed(6)}</span></div>
         </div>

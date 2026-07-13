@@ -110,18 +110,21 @@
   --color-neutral-900: #f8fafc;
   --color-neutral-950: #ffffff;
 
-  /* Primary — blue tuned for dark surfaces */
-  --color-primary-50: #0b1623;
-  --color-primary-100: #112236;
-  --color-primary-200: #172e4a;
-  --color-primary-300: #1e3a5f;
-  --color-primary-400: #3b82f6;
-  --color-primary-500: #2563eb;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
-  --color-primary-950: #172554;
+  /* Primary — desaturated steel/slate blue for dark surfaces (a muted blue that
+     sits with the slate theme instead of a vivid, clashing blue). 600 is the
+     fill for buttons/logo/avatar (holds white text); 700 reads as text on dark
+     and lightens on hover; 800 is the darker active state. */
+  --color-primary-50: #131b26;
+  --color-primary-100: #1c2735;
+  --color-primary-200: #2b3a4f;
+  --color-primary-300: #3a4d66;
+  --color-primary-400: #7e93b3;
+  --color-primary-500: #566d90;
+  --color-primary-600: #46597a;
+  --color-primary-700: #5a7196;
+  --color-primary-800: #35455d;
+  --color-primary-900: #26313f;
+  --color-primary-950: #1b2430;
 
   /* Accent — teal tuned for dark surfaces */
   --color-accent-50: #042f2e;
@@ -278,12 +281,41 @@ body {
     0 0 2px rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Satellite base map is dark: invert the ruler to light text/line with a dark
-   halo so it stays legible over the imagery. */
-.basemap-satellite .maplibregl-ctrl-scale {
+/* Dark contexts (satellite imagery, or dark theme where OSM is dimmed): light
+   ruler with a dark halo so it stays legible over the darker map. */
+.basemap-satellite .maplibregl-ctrl-scale,
+.dark .maplibregl-ctrl-scale {
   color: #fff !important;
   border-color: rgba(255, 255, 255, 0.95) !important;
   text-shadow:
     0 1px 3px rgba(0, 0, 0, 0.9),
     0 0 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* MapLibre native controls (zoom/compass, attribution) — dark theme. Chips get
+   a dark slate surface; the dark glyph icons are inverted to read light. */
+.dark .maplibregl-ctrl-group {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+
+.dark .maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(148, 163, 184, 0.2) !important;
+}
+
+.dark .maplibregl-ctrl-group button:hover {
+  background-color: rgba(51, 65, 85, 0.9) !important;
+}
+
+.dark .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+
+.dark .maplibregl-ctrl-attrib {
+  background: rgba(30, 41, 59, 0.75) !important;
+}
+
+.dark .maplibregl-ctrl-attrib,
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--color-neutral-700) !important;
 }
