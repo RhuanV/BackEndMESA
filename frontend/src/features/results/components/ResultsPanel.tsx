@@ -20,7 +20,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon, color }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md">
+    <div className="rounded-xl border border-neutral-200 bg-surface p-5 shadow-sm transition-all duration-200 hover:shadow-md">
       <div className="flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
           <span className="text-lg" aria-hidden="true">{icon}</span>
@@ -107,7 +107,7 @@ export function ResultsPanel() {
       )}
 
       {/* Ranking Table */}
-      <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-neutral-900">
             Ranqueamento de Sítios

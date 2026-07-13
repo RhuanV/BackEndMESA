@@ -8,6 +8,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@/styles/index.css';
 import { App } from '@/app/App';
+import { initTheme } from '@/features/theme/initTheme';
+
+// Apply the persisted theme before the first render to avoid a flash of the
+// wrong theme (the ThemeProvider then owns it from here on).
+initTheme();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -16,7 +16,7 @@ export function AnalysisPage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm">
         <AnalysisConfigPanel />
       </div>
     </div>

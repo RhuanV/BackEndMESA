@@ -125,7 +125,7 @@ export function ScreeningPage() {
 
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="mb-6 grid gap-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm sm:grid-cols-2"
+        className="mb-6 grid gap-4 rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm sm:grid-cols-2"
       >
         <Input
           label="Latitude"

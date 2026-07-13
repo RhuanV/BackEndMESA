@@ -33,7 +33,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           aria-describedby={error ? errorId : undefined}
           className={`
             w-full rounded-lg border px-3 py-2.5 text-sm text-neutral-900
-            bg-white appearance-none cursor-pointer
+            bg-surface appearance-none cursor-pointer
             transition-colors duration-200
             focus:outline-none focus:ring-2 focus:ring-offset-1
             ${error

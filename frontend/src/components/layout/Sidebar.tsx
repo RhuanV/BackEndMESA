@@ -189,7 +189,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 w-64 transform bg-white border-r border-neutral-200
+          fixed inset-y-0 left-0 z-40 w-64 transform bg-surface border-r border-neutral-200
           transition-transform duration-300 ease-out
           lg:relative lg:translate-x-0 lg:z-auto
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}

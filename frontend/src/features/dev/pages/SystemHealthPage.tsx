@@ -84,7 +84,7 @@ export function SystemHealthPage() {
       )}
 
       {report && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-neutral-200 bg-surface p-4 shadow-sm">
           <div className={`h-3 w-3 rounded-full ${dotColor[report.status]}`} />
           <p className="text-sm font-semibold text-neutral-900">{aggregateLabel[report.status]}</p>
         </div>
@@ -92,7 +92,7 @@ export function SystemHealthPage() {
 
       <div className="space-y-3">
         {(report?.checks ?? []).map((check) => (
-          <div key={check.name} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <div key={check.name} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-surface p-4 shadow-sm">
             <div className="flex items-center gap-3">
               <div className={`h-3 w-3 rounded-full ${dotColor[check.status] ?? dotColor.unknown}`} />
               <div>

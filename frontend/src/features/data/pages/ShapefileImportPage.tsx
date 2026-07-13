@@ -95,7 +95,7 @@ export function ShapefileImportPage() {
         </p>
       </div>
 
-      <div className="mb-8 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="mb-8 rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-neutral-900">Novo upload</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -155,7 +155,7 @@ export function ShapefileImportPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-neutral-200 bg-surface shadow-sm overflow-hidden">
         <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3">
           <h3 className="text-sm font-semibold text-neutral-700">Uploads anteriores</h3>
         </div>

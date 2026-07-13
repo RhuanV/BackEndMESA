@@ -62,7 +62,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
 
       {/* Panel */}
       <div
-        className={`relative w-full ${maxWidthClasses[maxWidth]} rounded-xl bg-white shadow-2xl animate-fade-in`}
+        className={`relative w-full ${maxWidthClasses[maxWidth]} rounded-xl bg-surface shadow-2xl animate-fade-in`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-4">

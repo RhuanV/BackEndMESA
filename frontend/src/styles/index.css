@@ -8,6 +8,10 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
 
+/* Enable class-based dark mode: `.dark` on <html> (set by the theme provider)
+   flips the tokens below and enables `dark:` utilities where needed. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Custom theme tokens for the GeoAvia design system.
  * Navy conveys governmental authority, Teal represents geographic/GIS context,
@@ -63,6 +67,10 @@
   --color-info-500: #3b82f6;
   --color-info-600: #2563eb;
 
+  /* Elevated surface (cards, modals, header). Light by default; the .dark block
+     overrides it with a dark surface so `bg-surface` works in both themes. */
+  --color-surface: #ffffff;
+
   /* Font family */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
@@ -71,6 +79,62 @@
   --animate-slide-in: slide-in 0.3s ease-out;
   --animate-scale-in: scale-in 0.2s ease-out;
   --animate-pulse-subtle: pulse-subtle 2s ease-in-out infinite;
+}
+
+/*
+ * Dark mode (modo noturno) — token overrides applied when <html> has `.dark`.
+ * Because every color utility compiles to `var(--color-*)`, redefining the
+ * tokens here flips the whole UI without touching component classes.
+ * - Neutral ramp is inverted (backgrounds ↔ text/borders).
+ * - Primary/accent are tuned so button fills keep white-text contrast while
+ *   text/link tones stay readable; their light tints become dark.
+ * - `white`/`black` and semantic colors are intentionally left unchanged so
+ *   `text-white` on colored controls stays white.
+ */
+.dark {
+  color-scheme: dark;
+
+  /* Elevated surface (above the darker body background) */
+  --color-surface: #1e293b;
+
+  /* Neutral — inverted slate ramp */
+  --color-neutral-50: #0f172a;
+  --color-neutral-100: #1e293b;
+  --color-neutral-200: #334155;
+  --color-neutral-300: #475569;
+  --color-neutral-400: #64748b;
+  --color-neutral-500: #94a3b8;
+  --color-neutral-600: #cbd5e1;
+  --color-neutral-700: #e2e8f0;
+  --color-neutral-800: #f1f5f9;
+  --color-neutral-900: #f8fafc;
+  --color-neutral-950: #ffffff;
+
+  /* Primary — blue tuned for dark surfaces */
+  --color-primary-50: #0b1623;
+  --color-primary-100: #112236;
+  --color-primary-200: #172e4a;
+  --color-primary-300: #1e3a5f;
+  --color-primary-400: #3b82f6;
+  --color-primary-500: #2563eb;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+
+  /* Accent — teal tuned for dark surfaces */
+  --color-accent-50: #042f2e;
+  --color-accent-100: #134e4a;
+  --color-accent-200: #115e59;
+  --color-accent-300: #0f766e;
+  --color-accent-400: #14b8a6;
+  --color-accent-500: #14b8a6;
+  --color-accent-600: #2dd4bf;
+  --color-accent-700: #5eead4;
+  --color-accent-800: #99f6e4;
+  --color-accent-900: #ccfbf1;
+  --color-accent-950: #f0fdfa;
 }
 
 /* Custom animations */
@@ -135,6 +199,9 @@ body {
   background-color: var(--color-neutral-50);
   color: var(--color-neutral-900);
   line-height: 1.6;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Focus ring for accessibility (WCAG) */
