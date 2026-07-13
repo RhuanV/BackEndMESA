@@ -48,6 +48,7 @@ def _client_ip(request: Request) -> str | None:
     """Best-effort client IP for the audit log (no proxy header trust)."""
     return request.client.host if request.client else None
 
+
 _MANAGE_USERS_DETAIL = "Only administrador or desenvolvedor can manage users"
 # Single dependency instance reused by the user-management routes.
 _require_manage_users = require_roles(USER_CREATION_ROLES, detail=_MANAGE_USERS_DETAIL)

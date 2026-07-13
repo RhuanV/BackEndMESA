@@ -115,9 +115,7 @@ class AirflowTriggerService:
         unreachable/misconfigured, so the caller can degrade gracefully.
         """
         limit = max(1, min(limit, 100))
-        payload = self._get_airflow(
-            f"/api/v1/dags/~/dagRuns?order_by=-start_date&limit={limit}"
-        )
+        payload = self._get_airflow(f"/api/v1/dags/~/dagRuns?order_by=-start_date&limit={limit}")
         runs = payload.get("dag_runs", [])
         return [self._map_dag_run(run) for run in runs]
 
