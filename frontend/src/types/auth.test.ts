@@ -26,6 +26,6 @@ describe('RBAC permissions (3-role model)', () => {
   it('desenvolvedor has everything, including developer tools', () => {
     expect(hasPermission('desenvolvedor', 'admin:users')).toBe(true);
     expect(hasPermission('desenvolvedor', 'dev:health')).toBe(true);
-    expect(hasPermission('desenvolvedor', 'dev:debug')).toBe(true);
+    expect(hasPermission('desenvolvedor', 'dev:logs')).toBe(true);
   });
 });
