@@ -370,7 +370,7 @@ export function MapComponent() {
 
       {/* Coordinate overlay — available to every user */}
       {showDebug && cursorPosition && (
-        <div className="absolute top-4 right-16 z-10 rounded-lg bg-white/90 backdrop-blur-md shadow-md border border-neutral-200/50 px-3 py-2 text-xs font-mono space-y-0.5">
+        <div className="absolute top-4 right-16 z-10 rounded-lg bg-white/90 backdrop-blur-md shadow-md border border-neutral-200/50 px-3 py-2 text-xs font-sans tabular-nums space-y-0.5">
           <div><span className="text-neutral-500">Lng:</span> <span className="text-accent-600">{cursorPosition.lng.toFixed(6)}</span></div>
           <div><span className="text-neutral-500">Lat:</span> <span className="text-accent-600">{cursorPosition.lat.toFixed(6)}</span></div>
         </div>
