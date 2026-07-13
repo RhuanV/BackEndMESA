@@ -42,7 +42,7 @@ export function RegionSelector({ onRegionSelect, onClose }: RegionSelectorProps)
   );
 
   return (
-    <div className="w-72 rounded-xl bg-white/95 backdrop-blur-md shadow-xl border border-neutral-200/50 animate-fade-in">
+    <div className="w-72 rounded-xl bg-surface/95 backdrop-blur-md shadow-xl border border-neutral-200/50 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
         <h3 className="text-sm font-semibold text-neutral-800">Região e Estado</h3>
