@@ -228,7 +228,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                       isActive
                         ? 'bg-primary-600/10 text-primary-700'
-                        : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+                        : 'text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900'
                     }`
                   }
                 >
