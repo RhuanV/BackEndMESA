@@ -68,10 +68,7 @@ export function PasswordResetForm({ onBackToLogin }: PasswordResetFormProps) {
       noValidate
       aria-label="Formulário de recuperação de senha"
     >
-      <p className="text-sm text-neutral-500">
-        No primeiro acesso ou ao esquecer a senha, use o código fornecido pelo
-        administrador para definir sua senha abaixo.
-      </p>
+      
 
       {serverError && (
         <div

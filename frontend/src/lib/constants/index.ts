@@ -7,7 +7,7 @@
 
 /** Application metadata */
 export const APP_NAME = 'GeoAvia';
-export const APP_DESCRIPTION = 'Sistema de Prospecção de Sítios Aeroportuários — MESA-Auto';
+export const APP_DESCRIPTION = 'Sistema de Prospecção de Sítios Aeroportuários';
 
 /** Rate limiting for login attempts (client-side visual feedback) */
 export const LOGIN_COOLDOWN_BASE_MS = 3000;
