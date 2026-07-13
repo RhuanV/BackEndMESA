@@ -381,8 +381,8 @@ export function MapComponent() {
       {/* Base Map Control */}
       <LayerControl activeLayer={activeBaseMap} onLayerChange={handleBaseMapChange} />
 
-      {/* CRS Label */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 rounded-md bg-surface/90 backdrop-blur-md shadow-sm border border-neutral-200/50 px-2 py-1 text-[10px] font-mono text-neutral-600">
+      {/* CRS Label — bottom-left, above the scale ruler (keeps the map center clear) */}
+      <div className="absolute bottom-10 left-3 z-10 rounded-md bg-surface/90 backdrop-blur-md shadow-sm border border-neutral-200/50 px-2 py-1 text-[10px] font-mono text-neutral-600">
         {CRS_LABEL}
       </div>
 
