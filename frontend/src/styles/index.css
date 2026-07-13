@@ -292,6 +292,13 @@ body {
     0 0 3px rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Attribution: force a single small font size across states/base maps (MapLibre
+   varies it between its compact and expanded renderings). 10px matches the CRS chip. */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib-inner {
+  font-size: 10px !important;
+}
+
 /* MapLibre native controls (zoom/compass, attribution) — dark theme. Chips get
    a dark slate surface; the dark glyph icons are inverted to read light. */
 .dark .maplibregl-ctrl-group {
