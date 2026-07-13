@@ -2,7 +2,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useMap } from '@/features/map/hooks/useMap';
-import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AssessmentMarkers } from './AssessmentMarkers';
 import { LayerControl } from './LayerControl';
 import { LayerPanel } from './LayerPanel';
@@ -25,9 +24,6 @@ import {
 const MAP_CONTAINER_ID = 'geoavia-map';
 
 export function MapComponent() {
-  const { user } = useAuth();
-  const isDevUser = user?.role === 'administrador';
-
   const [activeBaseMap, setActiveBaseMap] = useState<'satellite' | 'osm'>('osm');
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState(false);
   const [isRegionPanelOpen, setIsRegionPanelOpen] = useState(false);
@@ -324,20 +320,19 @@ export function MapComponent() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
           </svg>
         </button>
-        {isDevUser && (
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
-              showDebug ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600'
-            }`}
-            aria-label="Toggle debug mode"
-            type="button"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0112 12.75z" />
-            </svg>
-          </button>
-        )}
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className={`rounded-lg shadow-md border border-neutral-200/50 p-2.5 transition-all ${
+            showDebug ? 'bg-accent-500 text-white' : 'bg-white/90 backdrop-blur-md text-neutral-600 hover:text-primary-600'
+          }`}
+          aria-label="Mostrar coordenadas"
+          aria-pressed={showDebug}
+          type="button"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0112 12.75z" />
+          </svg>
+        </button>
       </div>
 
       {/* Layer Panel (slides from left) */}
@@ -373,8 +368,8 @@ export function MapComponent() {
         {CRS_LABEL}
       </div>
 
-      {/* Debug overlay (dev only) */}
-      {showDebug && isDevUser && cursorPosition && (
+      {/* Coordinate overlay — available to every user */}
+      {showDebug && cursorPosition && (
         <div className="absolute top-4 right-16 z-10 rounded-lg bg-white/90 backdrop-blur-md shadow-md border border-neutral-200/50 px-3 py-2 text-xs font-mono space-y-0.5">
           <div><span className="text-neutral-500">Lng:</span> <span className="text-accent-600">{cursorPosition.lng.toFixed(6)}</span></div>
           <div><span className="text-neutral-500">Lat:</span> <span className="text-accent-600">{cursorPosition.lat.toFixed(6)}</span></div>
