@@ -289,7 +289,10 @@ export function MapComponent() {
 
   return (
     <div className="relative h-full w-full">
-      <div id={MAP_CONTAINER_ID} className="h-full w-full" />
+      <div
+        id={MAP_CONTAINER_ID}
+        className={`h-full w-full${activeBaseMap === 'satellite' ? ' basemap-satellite' : ''}`}
+      />
 
       {/* Toolbar — top-left buttons */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
