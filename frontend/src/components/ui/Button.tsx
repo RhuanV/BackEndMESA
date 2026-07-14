@@ -17,7 +17,7 @@ const variantClasses = {
   danger:
     'bg-danger-600 text-white hover:bg-danger-500 active:bg-red-800 focus-visible:ring-danger-500',
   ghost:
-    'bg-transparent text-neutral-600 hover:bg-neutral-100 active:bg-neutral-200 focus-visible:ring-neutral-400',
+    'bg-transparent text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 focus-visible:ring-neutral-400',
 } as const;
 
 const sizeClasses = {

@@ -8,6 +8,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { CRS_LABEL } from '@/features/map/constants/bounds';
 import type { UserRole } from '@/types';
 
 interface SidebarProps {
@@ -227,7 +228,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                       isActive
                         ? 'bg-primary-600/10 text-primary-700'
-                        : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+                        : 'text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900'
                     }`
                   }
                 >
@@ -239,8 +240,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 border-t border-neutral-200 p-4">
-          <p className="text-xs text-neutral-400 text-center">v2.0</p>
+        <div className="absolute bottom-0 left-0 right-0">
+          <p className="px-4 pb-2 text-center text-[10px] font-mono text-neutral-400">{CRS_LABEL}</p>
+          <div className="border-t border-neutral-200 p-4">
+            <p className="text-xs text-neutral-400 text-center">v2.0</p>
+          </div>
         </div>
       </aside>
     </>

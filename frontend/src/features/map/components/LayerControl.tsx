@@ -31,7 +31,7 @@ export function LayerControl({ activeLayer, onLayerChange }: LayerControlProps) 
             ${
               activeLayer === layer.id
                 ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-neutral-600 hover:bg-neutral-100'
+                : 'text-neutral-600 hover:bg-neutral-200'
             }
           `}
           type="button"
