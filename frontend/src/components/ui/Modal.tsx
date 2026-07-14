@@ -71,7 +71,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+            className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 transition-colors"
             aria-label="Fechar"
             type="button"
           >

@@ -48,7 +48,7 @@ export function RegionSelector({ onRegionSelect, onClose }: RegionSelectorProps)
         <h3 className="text-sm font-semibold text-neutral-800">Região e Estado</h3>
         <button
           onClick={onClose}
-          className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+          className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-600 transition-colors"
           aria-label="Fechar painel de região"
           type="button"
         >

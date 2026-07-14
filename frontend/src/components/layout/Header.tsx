@@ -35,7 +35,7 @@ export function Header({ onToggleSidebar, isSidebarOpen }: HeaderProps) {
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 transition-colors lg:hidden"
+          className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 transition-colors lg:hidden"
           aria-label={isSidebarOpen ? 'Fechar menu' : 'Abrir menu'}
           aria-expanded={isSidebarOpen}
           type="button"
