@@ -9,7 +9,7 @@ import { Navigate } from 'react-router-dom';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { PasswordResetForm } from '@/features/auth/components/PasswordResetForm';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui';
+import { LoadingSpinner, ThemeToggle } from '@/components/ui';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 
 export function LoginPage() {
@@ -29,7 +29,12 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen">
+    <main className="relative flex min-h-screen">
+      {/* Theme toggle — outside the login form */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Left panel — Branding */}
       <div className="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 p-12 text-white">
         <div className="max-w-md text-center animate-fade-in">
@@ -41,7 +46,7 @@ export function LoginPage() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.5"
-                className="h-10 w-10 text-accent-300"
+                className="h-10 w-10 text-[#5eead4]"
                 aria-hidden="true"
               >
                 <path
@@ -55,17 +60,17 @@ export function LoginPage() {
           <h1 className="mb-3 text-3xl font-bold tracking-tight">
             {APP_NAME}
           </h1>
-          <p className="text-lg text-primary-200 leading-relaxed">
+          <p className="text-lg text-[#bfdbfe] leading-relaxed">
             {APP_DESCRIPTION}
           </p>
           <div className="mt-8 flex justify-center gap-2">
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-primary-200 border border-white/10">
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-[#bfdbfe] border border-white/10">
               SAC
             </span>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-primary-200 border border-white/10">
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-[#bfdbfe] border border-white/10">
               ANAC
             </span>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-primary-200 border border-white/10">
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-[#bfdbfe] border border-white/10">
               ITA
             </span>
           </div>
