@@ -40,9 +40,7 @@ def upgrade() -> None:
         );
     """)
     )
-    op.execute(
-        text("CREATE INDEX IF NOT EXISTS idx_projeto_status ON mesa_a.projeto (status);")
-    )
+    op.execute(text("CREATE INDEX IF NOT EXISTS idx_projeto_status ON mesa_a.projeto (status);"))
     op.execute(
         text(
             "CREATE INDEX IF NOT EXISTS idx_projeto_municipio "
@@ -86,8 +84,7 @@ def upgrade() -> None:
     )
     op.execute(
         text(
-            "CREATE INDEX IF NOT EXISTS idx_assessments_projeto_id "
-            "ON assessments (projeto_id);"
+            "CREATE INDEX IF NOT EXISTS idx_assessments_projeto_id " "ON assessments (projeto_id);"
         )
     )
 

@@ -50,9 +50,7 @@ class UserRepository:
 
     def update_profile(self, user_id: int, profile_id: int | None) -> bool:
         with cursor() as cur:
-            cur.execute(
-                "UPDATE users SET profile_id = %s WHERE id = %s;", (profile_id, user_id)
-            )
+            cur.execute("UPDATE users SET profile_id = %s WHERE id = %s;", (profile_id, user_id))
             return cur.rowcount > 0
 
     def delete(self, user_id: int) -> bool:
