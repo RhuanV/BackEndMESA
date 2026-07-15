@@ -91,13 +91,23 @@ const VALID_ROLES = ['operador', 'administrador', 'desenvolvedor'] as const;
  * username are the server's answer, never derived from decoding the token.
  */
 async function fetchCurrentUser(): Promise<AuthUser> {
-  const response = await apiClient.get<{ username: string; role: string }>('/me');
-  const { username, role } = response.data;
+  const response = await apiClient.get<{
+    username: string;
+    role: string;
+    profile_id?: number | null;
+    permissions?: string[];
+  }>('/me');
+  const { username, role, profile_id, permissions } = response.data;
   if (
     typeof username !== 'string' ||
     !VALID_ROLES.includes(role as AuthUser['role'])
   ) {
     throw new Error('Invalid /me response');
   }
-  return { username, role: role as AuthUser['role'] };
+  return {
+    username,
+    role: role as AuthUser['role'],
+    profileId: profile_id ?? null,
+    permissions: Array.isArray(permissions) ? permissions : [],
+  };
 }

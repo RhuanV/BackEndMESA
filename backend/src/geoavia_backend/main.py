@@ -22,6 +22,7 @@ from geoavia_backend.api import (
     layers,
     mesa,
     processing,
+    profiles,
     regions,
     screening,
     shapefiles,
@@ -146,3 +147,4 @@ app.include_router(shapefiles.router)
 app.include_router(mesa.router)
 app.include_router(regions.router)
 app.include_router(catalog.router)
+app.include_router(profiles.router)

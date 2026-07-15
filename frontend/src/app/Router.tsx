@@ -38,6 +38,7 @@ const ExportPage = lazy(() => import('@/features/export/pages/ExportPage').then(
 const ShapefileImportPage = lazy(() => import('@/features/data/pages/ShapefileImportPage').then((m) => ({ default: m.ShapefileImportPage })));
 const ScreeningPage = lazy(() => import('@/features/screening/pages/ScreeningPage').then((m) => ({ default: m.ScreeningPage })));
 const UserManagementPage = lazy(() => import('@/features/admin/pages/UserManagementPage').then((m) => ({ default: m.UserManagementPage })));
+const ProfilesManagementPage = lazy(() => import('@/features/admin/pages/ProfilesManagementPage').then((m) => ({ default: m.ProfilesManagementPage })));
 const LayerConfigPage = lazy(() => import('@/features/admin/pages/LayerConfigPage').then((m) => ({ default: m.LayerConfigPage })));
 const AuditLogPage = lazy(() => import('@/features/admin/pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const SystemHealthPage = lazy(() => import('@/features/dev/pages/SystemHealthPage').then((m) => ({ default: m.SystemHealthPage })));
@@ -110,6 +111,10 @@ export const router = createBrowserRouter([
       {
         path: 'admin/users',
         element: <ProtectedRoute allowedRoles={ADMIN_ROLES}>{page(<UserManagementPage />)}</ProtectedRoute>,
+      },
+      {
+        path: 'admin/profiles',
+        element: <ProtectedRoute allowedRoles={ADMIN_ROLES}>{page(<ProfilesManagementPage />)}</ProtectedRoute>,
       },
       {
         path: 'admin/layers',

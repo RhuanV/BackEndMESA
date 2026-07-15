@@ -84,6 +84,14 @@ export function hasPermission(role: UserRole, permission: Permission): boolean {
 export interface AuthUser {
   readonly username: string;
   readonly role: UserRole;
+  /**
+   * Backend effective permissions (base role ∪ assigned custom profile), as
+   * returned by GET /me. Used for permission-aware UI gating (defense in depth;
+   * the backend remains the real boundary). Optional for backward compatibility.
+   */
+  readonly permissions?: readonly string[];
+  /** Assigned custom permission profile id, or null when none. */
+  readonly profileId?: number | null;
 }
 
 /** Shape of the authentication context provided to the application */

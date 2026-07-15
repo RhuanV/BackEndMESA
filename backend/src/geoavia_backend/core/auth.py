@@ -7,11 +7,14 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 
 from geoavia_backend.core.database import ALGORITHM, SECRET_KEY
+from geoavia_backend.core.permissions import effective_permissions
+from geoavia_backend.repositories.profile import ProfileRepository
 from geoavia_backend.repositories.user import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 _users = UserRepository()
+_profiles = ProfileRepository()
 
 
 async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
@@ -44,7 +47,18 @@ async def obtain_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if not user:
         raise unauthorized_exception
 
-    return {"sub": str(user["id"]), "username": user["username"], "role": user["role"]}
+    # Effective permissions = base-role permissions ∪ assigned-profile grants.
+    profile_id = user.get("profile_id")
+    profile_perms = _profiles.get_permissions(profile_id) if profile_id else []
+    permissions = effective_permissions(user["role"], profile_perms)
+
+    return {
+        "sub": str(user["id"]),
+        "username": user["username"],
+        "role": user["role"],
+        "profile_id": profile_id,
+        "permissions": permissions,
+    }
 
 
 def require_roles(
@@ -60,6 +74,27 @@ def require_roles(
 
     def dependency(current_user: dict = Depends(obtain_current_user)) -> dict:
         if current_user["role"] not in allowed:
+            raise HTTPException(status_code=403, detail=detail)
+        return current_user
+
+    return dependency
+
+
+def require_permissions(
+    permissions: Iterable[str],
+    detail: str = "Permission denied",
+) -> Callable[..., dict]:
+    """Dependency factory: enforces that the user holds ALL given permissions.
+
+    Effective permissions come from the base role plus any assigned custom
+    profile (resolved in ``obtain_current_user``). Raises 403 (with ``detail``)
+    when a required permission is missing.
+    """
+    required = set(permissions)
+
+    def dependency(current_user: dict = Depends(obtain_current_user)) -> dict:
+        held = set(current_user.get("permissions", []))
+        if not required.issubset(held):
             raise HTTPException(status_code=403, detail=detail)
         return current_user
 
