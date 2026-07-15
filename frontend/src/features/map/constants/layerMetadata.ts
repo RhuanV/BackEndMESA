@@ -33,6 +33,12 @@ export interface LayerMetadata {
   readonly paint?: LayerPaint;
   /** False = visible but disabled in UI (no backend yet). Defaults to true. */
   readonly available?: boolean;
+  /**
+   * Key into the backend metadata catalog (mesa_a.layer_catalog, RF01). When
+   * set, the MetadataModal shows live metadata from the catalog API instead of
+   * the static fields above. Visual config stays here regardless.
+   */
+  readonly catalogKey?: string;
 }
 
 export const LAYER_REGISTRY: readonly LayerMetadata[] = [
@@ -48,6 +54,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     type: 'vector',
     defaultVisible: true,
     backendName: 'state_boundaries',
+    catalogKey: 'estado__ibge',
     paint: {
       maplibreType: 'line',
       paint: {
@@ -68,6 +75,7 @@ export const LAYER_REGISTRY: readonly LayerMetadata[] = [
     type: 'vector',
     defaultVisible: false,
     backendName: 'municipality_boundaries',
+    catalogKey: 'municipio__ibge',
     paint: {
       maplibreType: 'line',
       paint: {

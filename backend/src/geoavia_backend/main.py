@@ -17,6 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from geoavia_backend.api import (
     airflow,
     audit,
+    catalog,
     health,
     layers,
     mesa,
@@ -144,3 +145,4 @@ app.include_router(airflow.router)
 app.include_router(shapefiles.router)
 app.include_router(mesa.router)
 app.include_router(regions.router)
+app.include_router(catalog.router)
