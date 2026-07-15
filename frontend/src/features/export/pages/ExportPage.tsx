@@ -4,21 +4,26 @@
  * Security: Downloads via proxied Axios (never direct external URLs).
  */
 import { useState } from 'react';
-import { Button, ProgressBar } from '@/components/ui';
+import { Button, Input, ProgressBar } from '@/components/ui';
 import { downloadExport } from '@/features/analysis/services/analysisService';
 
 export function ExportPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportType, setExportType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [codigoIbge, setCodigoIbge] = useState('');
 
   const handleExport = async (format: 'shapefile' | 'geotiff') => {
     setIsExporting(true);
     setExportType(format);
     setError(null);
     try {
-      const blob = await downloadExport(format);
-      const filename = format === 'shapefile' ? 'mesa_ranking.zip' : 'mesa_ranking.tif';
+      const blob = await downloadExport(
+        format,
+        format === 'geotiff' ? { codigoIbge: codigoIbge.trim() } : undefined,
+      );
+      const filename =
+        format === 'shapefile' ? 'mesa_ranking.zip' : `mesa_suitability_${codigoIbge.trim()}.tif`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -78,17 +83,27 @@ export function ExportPage() {
             Baixar Shapefile
           </Button>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-6 shadow-sm text-center opacity-75">
+        <div className="rounded-xl border border-neutral-200 bg-surface p-6 shadow-sm text-center">
           <div className="text-4xl mb-3" aria-hidden="true">🗺️</div>
-          <div className="mb-1 flex items-center justify-center gap-2">
-            <h3 className="text-sm font-semibold text-neutral-900">GeoTIFF (.tif)</h3>
-            <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-600">
-              em breve
-            </span>
+          <h3 className="text-sm font-semibold text-neutral-900 mb-1">GeoTIFF (.tif)</h3>
+          <p className="text-xs text-neutral-500 mb-3">
+            Mapa de adequabilidade (MCDA) do município em SIRGAS 2000 (RF03/RF05).
+          </p>
+          <div className="mb-3 text-left">
+            <Input
+              label="Código IBGE do município"
+              value={codigoIbge}
+              onChange={(e) => setCodigoIbge(e.target.value)}
+              maxLength={7}
+              placeholder="ex.: 3550308"
+            />
           </div>
-          <p className="text-xs text-neutral-500 mb-4">Depende do pipeline de dados matriciais (RF03).</p>
-          <Button disabled className="w-full" title="GeoTIFF ainda não disponível">
-            Indisponível
+          <Button
+            onClick={() => void handleExport('geotiff')}
+            disabled={isExporting || codigoIbge.trim().length === 0}
+            className="w-full"
+          >
+            Baixar GeoTIFF
           </Button>
         </div>
       </div>

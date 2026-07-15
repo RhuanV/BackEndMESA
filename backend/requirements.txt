@@ -36,6 +36,12 @@ python-dotenv==1.2.2
 # geopandas bundles fiona/shapely/pyproj transitively.
 geopandas==1.1.4
 
+# Raster processing for the MESA analytic core (RF03/RF05/RNF01): declividade,
+# uso do solo, MCDA suitability and GeoTIFF export. libgdal-dev is already
+# installed in the backend Dockerfile.
+rasterio==1.4.3
+numpy==2.1.3
+
 # Incremental database migration management (replaces docker-entrypoint-initdb.d)
 alembic==1.18.5
 sqlalchemy==2.0.51

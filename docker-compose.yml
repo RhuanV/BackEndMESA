@@ -37,6 +37,9 @@ services:
       # Read-only mount so `python -m geoavia_backend.scripts.load_catalog` can
       # reach the metadata spreadsheet (RF01) inside the container.
       - ./docs:/app/docs:ro
+      # Shared raster store (Fase 5): municipal COGs written by Airflow, read by
+      # the backend for MCDA/GeoTIFF export.
+      - raster_data:/data/raster
     # --reload is opt-in via UVICORN_RELOAD=1 (off by default = production-safe).
     # $$ escapes the var so it is expanded inside the container, not by Compose.
     command: >
@@ -89,6 +92,7 @@ services:
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
       - ./docs:/opt/airflow/docs:ro
+      - raster_data:/data/raster
       - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
@@ -122,6 +126,7 @@ services:
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
       - ./docs:/opt/airflow/docs:ro
+      - raster_data:/data/raster
       - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     command: scheduler
 
@@ -166,3 +171,4 @@ volumes:
   postgres_data:
   airflow_logs:
   geo_data:
+  raster_data:

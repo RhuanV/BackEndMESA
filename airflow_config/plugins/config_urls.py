@@ -3,6 +3,8 @@ Centralized configuration file for external URLs.
 Used by Airflow DAGs to download geographic data.
 """
 
+import os
+
 # IBGE URL for acessing 2025 state boundaries
 IBGE_STATES_URL = "https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2025/Brasil/BR_UF_2025.zip"
 
@@ -47,3 +49,14 @@ AERODROMOS_ANA_URL = "https://metadados.snirh.gov.br/geonetwork/srv/api/records/
 
 # ANEEL SIGEL ArcGIS REST API - Transmission Lines (query endpoint)
 LINHAS_TRANSMISSAO_GOV_URL = "https://sigel.aneel.gov.br/arcgis/rest/services/PORTAL/Transmiss%C3%A3o/MapServer/1/query"
+
+# --- Raster sources (Fase 5) ---
+# ANADEM — Modelo Digital de Terreno (MDT) 30 m, UFRGS/HGE. Override with the
+# concrete release/tile URL in the environment before running the DAG.
+ANADEM_MDT_URL = os.environ.get(
+    "ANADEM_MDT_URL",
+    "https://www.ufrgs.br/hge/wp-content/uploads/anadem/ANADEM.tif",
+)
+# MapBiomas — annual land use/cover GeoTIFF (Coleção Brasil). Set the concrete
+# collection/year asset URL via the environment before running the DAG.
+MAPBIOMAS_LANDUSE_URL = os.environ.get("MAPBIOMAS_LANDUSE_URL", "")

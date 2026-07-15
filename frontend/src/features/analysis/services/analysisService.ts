@@ -35,8 +35,14 @@ export async function getAnalysisStatus(id: string): Promise<AnalysisStatusRespo
 /**
  * Downloads analysis results as a blob (for Shapefile/GeoTIFF export).
  */
-export async function downloadExport(format: 'shapefile' | 'geotiff', analysisId?: string): Promise<Blob> {
-  const params = analysisId ? { analysisId } : {};
+export async function downloadExport(
+  format: 'shapefile' | 'geotiff',
+  options?: { analysisId?: string; codigoIbge?: string },
+): Promise<Blob> {
+  const params: Record<string, string> = {};
+  if (options?.analysisId) params['analysisId'] = options.analysisId;
+  // GeoTIFF is the MCDA suitability raster for a município (Fase 5).
+  if (options?.codigoIbge) params['codigo_ibge'] = options.codigoIbge;
   const response = await apiClient.get(`/export/${format}`, {
     params,
     responseType: 'blob',
