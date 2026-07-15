@@ -50,6 +50,30 @@ AERODROMOS_ANA_URL = "https://metadados.snirh.gov.br/geonetwork/srv/api/records/
 # ANEEL SIGEL ArcGIS REST API - Transmission Lines (query endpoint)
 LINHAS_TRANSMISSAO_GOV_URL = "https://sigel.aneel.gov.br/arcgis/rest/services/PORTAL/Transmiss%C3%A3o/MapServer/1/query"
 
+# --- Remaining BDG vetorial sources (Fase 4) ---
+# INCRA — Áreas de Quilombolas (Sistema de certificação, export SHP).
+INCRA_QUILOMBOLAS_URL = os.environ.get(
+    "INCRA_QUILOMBOLAS_URL",
+    "https://certificacao.incra.gov.br/csv_shp/zip/Áreas%20de%20Quilombolas.zip",
+)
+# INCRA — Assentamentos (Reforma Agrária).
+INCRA_ASSENTAMENTOS_URL = os.environ.get(
+    "INCRA_ASSENTAMENTOS_URL",
+    "https://certificacao.incra.gov.br/csv_shp/zip/Assentamento%20Brasil.zip",
+)
+# MMA — Florestas Públicas (Cadastro Nacional de Florestas Públicas).
+MMA_FLORESTAS_PUBLICAS_URL = os.environ.get(
+    "MMA_FLORESTAS_PUBLICAS_URL",
+    "http://mapas.mma.gov.br/i3geo/datadownload.htm",
+)
+# CPRM — Geodiversidade (Serviço Geológico do Brasil).
+CPRM_GEODIVERSIDADE_URL = os.environ.get("CPRM_GEODIVERSIDADE_URL", "")
+# IBGE — Biomas do Brasil (informações ambientais).
+IBGE_BIOMAS_URL = os.environ.get(
+    "IBGE_BIOMAS_URL",
+    "https://geoftp.ibge.gov.br/informacoes_ambientais/estudos_ambientais/biomas/vetores/Biomas_250mil.zip",
+)
+
 # --- Raster sources (Fase 5) ---
 # ANADEM — Modelo Digital de Terreno (MDT) 30 m, UFRGS/HGE. Override with the
 # concrete release/tile URL in the environment before running the DAG.

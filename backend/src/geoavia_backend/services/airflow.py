@@ -38,6 +38,11 @@ ALLOWED_DAGS: frozenset[str] = frozenset(
         "load_metadata_catalog",
         "load_raster_anadem",
         "load_raster_mapbiomas",
+        "load_incra_quilombolas",
+        "load_incra_assentamentos",
+        "load_mma_florestas_publicas",
+        "load_cprm_geodiversidade",
+        "load_ibge_biomas",
     }
 )
 
