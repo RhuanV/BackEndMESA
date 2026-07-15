@@ -21,10 +21,12 @@ from requests.adapters import HTTPAdapter
 
 class CustomSSLAdapter(HTTPAdapter):
     def init_poolmanager(self, *args, **kwargs):
+        # geoserver.car.gov.br only negotiates legacy ciphers, so we lower the
+        # OpenSSL security level. Certificate verification stays ENABLED
+        # (check_hostname / CERT_REQUIRED) — the legacy cipher is a handshake
+        # requirement, not a reason to skip validating the peer certificate.
         ssl_context = ssl.create_default_context()
-        # geoserver.car.gov.br requires legacy ciphers (SECLEVEL=0)
         ssl_context.set_ciphers('DEFAULT@SECLEVEL=0')
-        ssl_context.check_hostname = False
         kwargs["ssl_context"] = ssl_context
         return super().init_poolmanager(*args, **kwargs)
 
@@ -32,6 +34,7 @@ plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plu
 sys.path.insert(0, plugins_dir)
 
 from config_urls import SICAR_STATE_URL_TEMPLATE
+from secure_http import resolve_verify
 
 # The 27 federative units
 ESTADOS = [
@@ -62,8 +65,9 @@ def extract_sicar(**kwargs) -> str:
         
         logging.info(f"Downloading SICAR data for {state_upper} from {url}...")
         try:
-            # verify=False: government geoservers often have certificate authority issues
-            response = session.get(url, stream=True, verify=False, headers=headers, timeout=180)
+            response = session.get(
+                url, stream=True, verify=resolve_verify(url), headers=headers, timeout=180
+            )
             response.raise_for_status()
             
             with open(zip_path, "wb") as f:

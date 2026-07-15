@@ -18,6 +18,7 @@ import sys
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 from config_urls import LINHAS_TRANSMISSAO_GOV_URL
+from secure_http import government_get
 
 def extract_linhas_transmissao(**kwargs) -> str:
     """Extract: downloads transmission lines from the SIGEL API as GeoJSON,
@@ -41,7 +42,7 @@ def extract_linhas_transmissao(**kwargs) -> str:
             "resultRecordCount": batch_size,
         }
         logging.info(f"Querying SIGEL API, offset={offset}...")
-        response = requests.get(LINHAS_TRANSMISSAO_GOV_URL, params=params, verify=False, headers=headers, timeout=120)
+        response = government_get(LINHAS_TRANSMISSAO_GOV_URL, params=params, headers=headers, timeout=120)
         response.raise_for_status()
         data = response.json()
 
