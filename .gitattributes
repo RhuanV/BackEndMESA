@@ -1,1 +1,7 @@
 * text=auto eol=lf
+
+# Binary seed data (committed in plain Git — see docs/adr/0007). Mark as binary
+# so Git never applies text/EOL normalization or line-based diffs to them.
+backend/seed/**/*.gz binary
+backend/seed/**/*.tif binary
+*.sql.gz binary
