@@ -37,6 +37,8 @@ const AnalysisPage = lazy(() => import('@/features/analysis/pages/AnalysisPage')
 const ExportPage = lazy(() => import('@/features/export/pages/ExportPage').then((m) => ({ default: m.ExportPage })));
 const ShapefileImportPage = lazy(() => import('@/features/data/pages/ShapefileImportPage').then((m) => ({ default: m.ShapefileImportPage })));
 const ScreeningPage = lazy(() => import('@/features/screening/pages/ScreeningPage').then((m) => ({ default: m.ScreeningPage })));
+const CaseListPage = lazy(() => import('@/features/cases/pages/CaseListPage').then((m) => ({ default: m.CaseListPage })));
+const CaseDetailPage = lazy(() => import('@/features/cases/pages/CaseDetailPage').then((m) => ({ default: m.CaseDetailPage })));
 const UserManagementPage = lazy(() => import('@/features/admin/pages/UserManagementPage').then((m) => ({ default: m.UserManagementPage })));
 const ProfilesManagementPage = lazy(() => import('@/features/admin/pages/ProfilesManagementPage').then((m) => ({ default: m.ProfilesManagementPage })));
 const LayerConfigPage = lazy(() => import('@/features/admin/pages/LayerConfigPage').then((m) => ({ default: m.LayerConfigPage })));
@@ -99,6 +101,16 @@ export const router = createBrowserRouter([
       {
         path: 'screening',
         element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<ScreeningPage />)}</ProtectedRoute>,
+      },
+
+      // Cases (Caso/Projeto) — MESA case lifecycle
+      {
+        path: 'cases',
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<CaseListPage />)}</ProtectedRoute>,
+      },
+      {
+        path: 'cases/:id',
+        element: <ProtectedRoute allowedRoles={OPERATIONAL_ROLES}>{page(<CaseDetailPage />)}</ProtectedRoute>,
       },
 
       // Data — ingestion/import (HU-31)

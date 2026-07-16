@@ -39,6 +39,12 @@ SCREENING_ROLES = OPERATIONAL_ROLES
 DAG_TRIGGER_ROLES = OPERATIONAL_ROLES
 # Upload and read user shapefiles.
 SHAPEFILE_UPLOAD_ROLES = OPERATIONAL_ROLES
+# Create a case/project (Gestor) and manage it (Coordenador). Mapped to the
+# admin-level base roles for now; refined by custom profiles (Perfis).
+CASE_CREATE_ROLES = ADMIN_ROLES
+CASE_MANAGE_ROLES = ADMIN_ROLES
+# Read cases and link candidate sites (Operador and above).
+CASE_EXECUTE_ROLES = OPERATIONAL_ROLES
 
 # Roles an administrator may assign when creating a user. The privileged
 # 'desenvolvedor' role can only be granted by another 'desenvolvedor'
