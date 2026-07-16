@@ -49,6 +49,31 @@ _LAYER_OVERRIDES = {
         "backend_table": "municipality_boundaries",
         "available": True,
     },
+    "terras_quilombolas__incra": {
+        "grupo": "exclusion",
+        "backend_table": "vetor_incra_quilombolas",
+        "available": True,
+    },
+    "assentamentos__incra": {
+        "grupo": "base",
+        "backend_table": "vetor_incra_assentamentos",
+        "available": True,
+    },
+    "florestas_publicas__min_meio_ambiente": {
+        "grupo": "exclusion",
+        "backend_table": "vetor_mma_florestas_publicas",
+        "available": True,
+    },
+    "diverso__cprm": {
+        "grupo": "analysis",
+        "backend_table": "vetor_cprm_geodiversidade",
+        "available": True,
+    },
+    "diverso__ibge": {
+        "grupo": "base",
+        "backend_table": "vetor_ibge_biomas",
+        "available": True,
+    },
 }
 _UPSERT_COLUMNS = [
     "layer_key",
