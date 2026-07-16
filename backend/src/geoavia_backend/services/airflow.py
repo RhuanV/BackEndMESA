@@ -36,6 +36,8 @@ ALLOWED_DAGS: frozenset[str] = frozenset(
         "load_gov_waterways",
         "load_gov_ports",
         "load_metadata_catalog",
+        "load_raster_anadem",
+        "load_raster_mapbiomas",
     }
 )
 

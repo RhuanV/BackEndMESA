@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from geoavia_backend.core.auth import obtain_current_user
@@ -76,6 +76,13 @@ def get_analysis_status(job_id: str):
 def export_results(
     format: str,
     request: Request,
+    codigo_ibge: str | None = Query(default=None, max_length=7),
+    slope_weight: float = Query(default=30.0, ge=0, le=100),
+    land_use_weight: float = Query(default=25.0, ge=0, le=100),
+    transport_weight: float = Query(default=25.0, ge=0, le=100),
+    cost_weight: float = Query(default=20.0, ge=0, le=100),
+    slope_threshold: float = Query(default=2.0, ge=0, le=45),
+    apply_exclusions: bool = Query(default=True),
     current_user: dict = Depends(obtain_current_user),
 ):
     """Exports the current ranking.
@@ -83,18 +90,49 @@ def export_results(
     - `shapefile`: zipped Esri Shapefile (.shp/.dbf/.shx/.prj/.cpg), one point
       per assessment in SIRGAS 2000 (EPSG:4674), with scores in the attributes.
     - `csv`: same ranking as CSV.
-    - `geotiff`: 501 — depends on raster data not yet in the pipeline.
+    - `geotiff`: MCDA suitability raster for `codigo_ibge` (EPSG:4674). Requires
+      the ANADEM/MapBiomas rasters for that município to be ingested (409 if not).
     """
     if format not in {"shapefile", "geotiff", "csv"}:
         raise HTTPException(status_code=400, detail="Unsupported format")
 
     if format == "geotiff":
-        raise HTTPException(
-            status_code=501,
-            detail=(
-                "GeoTIFF export not yet available — depends on the raster data "
-                "pipeline. Export as shapefile or csv for now."
-            ),
+        if not codigo_ibge:
+            raise HTTPException(
+                status_code=400,
+                detail="codigo_ibge é obrigatório para exportar GeoTIFF de adequabilidade.",
+            )
+        # Lazy import so the raster stack is only loaded when actually exporting.
+        from geoavia_backend.services.raster import RasterDataUnavailable, RasterService
+
+        config = {
+            "slopeWeight": slope_weight,
+            "landUseWeight": land_use_weight,
+            "transportWeight": transport_weight,
+            "costWeight": cost_weight,
+            "slopeThreshold": slope_threshold,
+            "applyExclusions": apply_exclusions,
+        }
+        try:
+            tiff_bytes = RasterService().export_suitability_geotiff(codigo_ibge, config)
+        except RasterDataUnavailable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        sub = str(current_user.get("sub", ""))
+        audit_service.record(
+            action="EXPORT",
+            user_id=int(sub) if sub.isdigit() else None,
+            username=current_user["username"],
+            user_role=current_user["role"],
+            resource=f"geotiff:{codigo_ibge}",
+            detail=f"Exported suitability GeoTIFF for {codigo_ibge}",
+            ip_address=_client_ip(request),
+        )
+        return StreamingResponse(
+            BytesIO(tiff_bytes),
+            media_type="image/tiff",
+            headers={
+                "Content-Disposition": f'attachment; filename="mesa_suitability_{codigo_ibge}.tif"'
+            },
         )
 
     audit_service.record(

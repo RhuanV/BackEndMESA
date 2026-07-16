@@ -3,3 +3,6 @@ geopandas==1.1.4
 geoalchemy2==0.20.0
 osmium==4.3.1
 pytest==9.1.1
+# Raster ingestion (ANADEM/MapBiomas) for the MESA analytic core (Fase 5).
+rasterio==1.4.3
+numpy==2.1.3
