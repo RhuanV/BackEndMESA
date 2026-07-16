@@ -10,6 +10,7 @@ from geoavia_backend.core.database import APP_ENV, BOOTSTRAP_USER
 from geoavia_backend.core.rate_limit import limiter
 from geoavia_backend.core.roles import DESENVOLVEDOR, USER_CREATION_ROLES
 from geoavia_backend.repositories.user import UserRepository
+from geoavia_backend.schemas.profile import ProfileAssignRequest, RoleChangeRequest
 from geoavia_backend.schemas.user import (
     PasswordResetRequest,
     RecoveryPasswordResetRequest,
@@ -69,9 +70,15 @@ def get_me(current_user: dict = Depends(obtain_current_user)):
     """Returns the authenticated user's identity, resolved server-side.
 
     The client relies on this (not on decoding the token) to know who it is and
-    which role governs the UI.
+    which role/permissions govern the UI (defense in depth; backend is the real
+    boundary).
     """
-    return {"username": current_user["username"], "role": current_user["role"]}
+    return {
+        "username": current_user["username"],
+        "role": current_user["role"],
+        "profile_id": current_user.get("profile_id"),
+        "permissions": current_user.get("permissions", []),
+    }
 
 
 @router.post("/users/signup")
@@ -230,6 +237,66 @@ def delete_user(
         ip_address=_client_ip(request),
     )
     return {"message": "User was successfully deleted"}
+
+
+@router.patch("/users/{user_id}/role")
+def change_user_role(
+    request: Request,
+    user_id: int,
+    payload: RoleChangeRequest,
+    current_user: dict = Depends(_require_manage_users),
+):
+    """Changes a user's base role (administrador/desenvolvedor only, audited).
+
+    Only a desenvolvedor may grant the privileged 'desenvolvedor' role; the
+    bootstrap account is protected in the service layer.
+    """
+    if payload.role.strip().lower() == DESENVOLVEDOR and current_user["role"] != DESENVOLVEDOR:
+        raise HTTPException(
+            status_code=403,
+            detail="Only a desenvolvedor can grant the 'desenvolvedor' role.",
+        )
+    try:
+        result = service.change_role(user_id, payload.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    audit_service.record(
+        action="USER_ROLE_CHANGE",
+        user_id=int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None,
+        username=current_user["username"],
+        user_role=current_user["role"],
+        resource=str(user_id),
+        detail=f"Changed role of '{result['username']}' "
+        f"from '{result['previous_role']}' to '{result['new_role']}'",
+        ip_address=_client_ip(request),
+    )
+    return {"message": "Role updated", **result}
+
+
+@router.patch("/users/{user_id}/profile")
+def assign_user_profile(
+    request: Request,
+    user_id: int,
+    payload: ProfileAssignRequest,
+    current_user: dict = Depends(_require_manage_users),
+):
+    """Assigns (or clears) a user's custom permission profile (audited)."""
+    try:
+        result = service.assign_profile(user_id, payload.profile_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    audit_service.record(
+        action="USER_PROFILE_CHANGE",
+        user_id=int(current_user["sub"]) if str(current_user.get("sub", "")).isdigit() else None,
+        username=current_user["username"],
+        user_role=current_user["role"],
+        resource=str(user_id),
+        detail=f"Changed profile of '{result['username']}' to id {result['new_profile_id']}",
+        ip_address=_client_ip(request),
+    )
+    return {"message": "Profile updated", **result}
 
 
 @router.put("/users/{user_id}/password")

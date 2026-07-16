@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from geoavia_backend.core.database import ALGORITHM, BOOTSTRAP_USER, SECRET_KEY
 from geoavia_backend.core.passwords import validate_password_strength
 from geoavia_backend.core.roles import ROLES
+from geoavia_backend.repositories.profile import ProfileRepository
 from geoavia_backend.repositories.user import UserRepository
 
 # Short-lived access token (Bearer) + long-lived refresh token (httpOnly cookie).
@@ -151,6 +152,47 @@ class UserService:
 
         password_hash = self.security.get_password_hash(clean_password)
         return self.repo.update_password_hash(user_id, password_hash)
+
+    def change_role(self, user_id: int, new_role: str) -> dict:
+        """Changes a user's base role. Returns {previous_role, new_role, username}.
+
+        Protects the bootstrap account and validates the role. Granting the
+        privileged 'desenvolvedor' role is gated in the router (only a
+        desenvolvedor may do it).
+        """
+        clean_role = (new_role or "").strip().lower()
+        if clean_role not in ROLES:
+            raise ValueError("Invalid role. Use: operador, administrador or desenvolvedor")
+
+        user = self.repo.obtain_user_from_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+        if user["username"] == BOOTSTRAP_USER:
+            raise ValueError(
+                f"The protected bootstrap user ('{BOOTSTRAP_USER}') role cannot be changed."
+            )
+
+        self.repo.update_role(user_id, clean_role)
+        return {
+            "username": user["username"],
+            "previous_role": user["role"],
+            "new_role": clean_role,
+        }
+
+    def assign_profile(self, user_id: int, profile_id: int | None) -> dict:
+        """Assigns (or clears, when profile_id is None) a user's custom profile."""
+        user = self.repo.obtain_user_from_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+        if profile_id is not None and ProfileRepository().get_by_id(profile_id) is None:
+            raise ValueError("Profile not found")
+
+        self.repo.update_profile(user_id, profile_id)
+        return {
+            "username": user["username"],
+            "previous_profile_id": user.get("profile_id"),
+            "new_profile_id": profile_id,
+        }
 
     def authenticate_user(self, username: str, password: str) -> dict | None:
         """Validates credentials and returns the user data if correct."""

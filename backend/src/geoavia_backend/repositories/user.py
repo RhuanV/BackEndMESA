@@ -5,7 +5,13 @@ class UserRepository:
     def get_all(self, limit: int = 100, offset: int = 0) -> list[dict]:
         with cursor(dict_rows=True) as cur:
             cur.execute(
-                "SELECT id, username, role FROM users ORDER BY id LIMIT %s OFFSET %s;",
+                """
+                SELECT u.id, u.username, u.role, u.profile_id, p.name AS profile_name
+                  FROM users u
+                  LEFT JOIN permission_profiles p ON p.id = u.profile_id
+                 ORDER BY u.id
+                 LIMIT %s OFFSET %s;
+                """,
                 (limit, offset),
             )
             return cur.fetchall()
@@ -35,6 +41,16 @@ class UserRepository:
                 "UPDATE users SET hash = %s WHERE id = %s;",
                 (new_hash, user_id),
             )
+            return cur.rowcount > 0
+
+    def update_role(self, user_id: int, role: str) -> bool:
+        with cursor() as cur:
+            cur.execute("UPDATE users SET role = %s WHERE id = %s;", (role, user_id))
+            return cur.rowcount > 0
+
+    def update_profile(self, user_id: int, profile_id: int | None) -> bool:
+        with cursor() as cur:
+            cur.execute("UPDATE users SET profile_id = %s WHERE id = %s;", (profile_id, user_id))
             return cur.rowcount > 0
 
     def delete(self, user_id: int) -> bool:

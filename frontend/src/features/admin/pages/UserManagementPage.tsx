@@ -18,6 +18,12 @@ import { Button, Input, Select } from '@/components/ui';
 import { RecoveryCodeModal } from '@/features/admin/components/RecoveryCodeModal';
 import { ResetPasswordModal } from '@/features/admin/components/ResetPasswordModal';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import {
+  assignUserProfile,
+  changeUserRole,
+  listProfiles,
+  type PermissionProfile,
+} from '@/features/admin/services/profilesApi';
 import { hasPermission } from '@/types';
 import type { UserRole } from '@/types';
 
@@ -27,6 +33,8 @@ interface UserRecord {
   readonly role: UserRole;
   readonly created_at?: string;
   readonly is_protected?: boolean;
+  readonly profile_id?: number | null;
+  readonly profile_name?: string | null;
 }
 
 const roleBadgeColors: Record<UserRole, string> = {
@@ -46,8 +54,10 @@ export function UserManagementPage() {
   const canCreateUsers = user ? hasPermission(user.role, 'admin:users:create') : false;
 
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [profiles, setProfiles] = useState<PermissionProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rowBusyId, setRowBusyId] = useState<number | null>(null);
 
   const [newUsername, setNewUsername] = useState('');
   const [newRole, setNewRole] = useState<UserRole | ''>('');
@@ -97,6 +107,39 @@ export function UserManagementPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
     void fetchUsers();
   }, [fetchUsers]);
+
+  useEffect(() => {
+    if (!canCreateUsers) return;
+    listProfiles()
+      .then(setProfiles)
+      .catch(() => setProfiles([]));
+  }, [canCreateUsers]);
+
+  const handleRoleChange = async (userId: number, role: UserRole) => {
+    setRowBusyId(userId);
+    setError(null);
+    try {
+      await changeUserRole(userId, role);
+      await fetchUsers();
+    } catch (err) {
+      setError(extractErrorDetail(err) ?? 'Não foi possível alterar a role.');
+    } finally {
+      setRowBusyId(null);
+    }
+  };
+
+  const handleProfileChange = async (userId: number, profileId: number | null) => {
+    setRowBusyId(userId);
+    setError(null);
+    try {
+      await assignUserProfile(userId, profileId);
+      await fetchUsers();
+    } catch (err) {
+      setError(extractErrorDetail(err) ?? 'Não foi possível alterar o perfil.');
+    } finally {
+      setRowBusyId(null);
+    }
+  };
 
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -266,7 +309,10 @@ export function UserManagementPage() {
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50">
                 <th scope="col" className="px-4 py-3 text-left font-semibold text-neutral-700">Usuário</th>
-                <th scope="col" className="px-4 py-3 text-left font-semibold text-neutral-700">Perfil</th>
+                <th scope="col" className="px-4 py-3 text-left font-semibold text-neutral-700">Role</th>
+                {canCreateUsers && (
+                  <th scope="col" className="px-4 py-3 text-left font-semibold text-neutral-700">Permissões</th>
+                )}
                 <th scope="col" className="px-4 py-3 text-left font-semibold text-neutral-700">Cadastro</th>
                 <th scope="col" className="px-4 py-3 text-right font-semibold text-neutral-700">Ações</th>
               </tr>
@@ -280,6 +326,41 @@ export function UserManagementPage() {
                       {sanitize(u.role)}
                     </span>
                   </td>
+                  {canCreateUsers && (
+                    <td className="px-4 py-3">
+                      {u.is_protected ? (
+                        <span className="text-xs text-neutral-400">protegido</span>
+                      ) : (
+                        <div className="flex flex-col gap-1.5">
+                          <select
+                            aria-label={`Role de ${u.username}`}
+                            className="rounded border border-neutral-300 bg-surface px-2 py-1 text-xs"
+                            value={u.role}
+                            disabled={rowBusyId === u.id || u.username === user?.username}
+                            onChange={(e) => void handleRoleChange(u.id, e.target.value as UserRole)}
+                          >
+                            {assignableRoles.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                          <select
+                            aria-label={`Perfil de ${u.username}`}
+                            className="rounded border border-neutral-300 bg-surface px-2 py-1 text-xs"
+                            value={u.profile_id ?? ''}
+                            disabled={rowBusyId === u.id}
+                            onChange={(e) =>
+                              void handleProfileChange(u.id, e.target.value ? Number(e.target.value) : null)
+                            }
+                          >
+                            <option value="">Sem perfil</option>
+                            {profiles.map((p) => (
+                              <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-neutral-500">{u.created_at ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     {canCreateUsers ? (
@@ -328,7 +409,7 @@ export function UserManagementPage() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-neutral-400">Nenhum usuário encontrado.</td></tr>
+                <tr><td colSpan={canCreateUsers ? 5 : 4} className="px-4 py-8 text-center text-neutral-400">Nenhum usuário encontrado.</td></tr>
               )}
             </tbody>
           </table>
