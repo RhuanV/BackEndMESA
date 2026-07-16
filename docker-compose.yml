@@ -34,6 +34,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend/src:/app/src
+      # Read-only mount so `python -m geoavia_backend.scripts.load_catalog` can
+      # reach the metadata spreadsheet (RF01) inside the container.
+      - ./docs:/app/docs:ro
     # --reload is opt-in via UVICORN_RELOAD=1 (off by default = production-safe).
     # $$ escapes the var so it is expanded inside the container, not by Compose.
     command: >
@@ -85,6 +88,7 @@ services:
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
+      - ./docs:/opt/airflow/docs:ro
       - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     ports:
       - "${AIRFLOW_PORT:-8080}:8080" # HOST:CONTAINER
@@ -117,6 +121,7 @@ services:
       - geo_data:/opt/airflow/data
       - ./airflow_config/plugins:/opt/airflow/plugins
       - ./tests:/opt/airflow/tests
+      - ./docs:/opt/airflow/docs:ro
       - ./init/airflow.sh:/opt/airflow/init_airflow.sh:ro
     command: scheduler
 

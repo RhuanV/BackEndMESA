@@ -35,6 +35,7 @@ ALLOWED_DAGS: frozenset[str] = frozenset(
         "load_gov_railways",
         "load_gov_waterways",
         "load_gov_ports",
+        "load_metadata_catalog",
     }
 )
 
