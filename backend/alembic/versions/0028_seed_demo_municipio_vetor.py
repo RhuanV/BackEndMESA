@@ -33,11 +33,21 @@ _VIEWS = (
     "municipality_boundaries_z1",
     "municipality_boundaries_z2",
     "municipality_boundaries_z3",
-    "incra_quilombolas_z1", "incra_quilombolas_z2", "incra_quilombolas_z3",
-    "incra_assentamentos_z1", "incra_assentamentos_z2", "incra_assentamentos_z3",
-    "mma_florestas_publicas_z1", "mma_florestas_publicas_z2", "mma_florestas_publicas_z3",
-    "cprm_geodiversidade_z1", "cprm_geodiversidade_z2", "cprm_geodiversidade_z3",
-    "ibge_biomas_z1", "ibge_biomas_z2", "ibge_biomas_z3",
+    "incra_quilombolas_z1",
+    "incra_quilombolas_z2",
+    "incra_quilombolas_z3",
+    "incra_assentamentos_z1",
+    "incra_assentamentos_z2",
+    "incra_assentamentos_z3",
+    "mma_florestas_publicas_z1",
+    "mma_florestas_publicas_z2",
+    "mma_florestas_publicas_z3",
+    "cprm_geodiversidade_z1",
+    "cprm_geodiversidade_z2",
+    "cprm_geodiversidade_z3",
+    "ibge_biomas_z1",
+    "ibge_biomas_z2",
+    "ibge_biomas_z3",
 )
 
 
@@ -53,9 +63,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute(
-        sa.text(
-            "DELETE FROM mesa_a.vetor_limites_municipais WHERE codigo_ibge = :c"
-        ).bindparams(c=_DEMO_IBGE)
+        sa.text("DELETE FROM mesa_a.vetor_limites_municipais WHERE codigo_ibge = :c").bindparams(
+            c=_DEMO_IBGE
+        )
     )
     for table in (
         "vetor_ibge_biomas",
