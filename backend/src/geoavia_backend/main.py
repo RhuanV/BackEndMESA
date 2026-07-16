@@ -24,6 +24,7 @@ from geoavia_backend.api import (
     processing,
     profiles,
     projeto,
+    raster,
     regions,
     screening,
     shapefiles,
@@ -150,3 +151,4 @@ app.include_router(regions.router)
 app.include_router(catalog.router)
 app.include_router(profiles.router)
 app.include_router(projeto.router)
+app.include_router(raster.router)

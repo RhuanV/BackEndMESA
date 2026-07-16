@@ -15,7 +15,7 @@ import tempfile
 import time
 import uuid
 import zipfile
-from threading import Lock
+from threading import Lock, Thread
 
 import geopandas as gpd
 from shapely.affinity import rotate, translate
@@ -23,6 +23,7 @@ from shapely.geometry import Point, Polygon, shape
 
 from geoavia_backend.repositories.mesa import AssessmentRepository
 from geoavia_backend.repositories.processing import ProcessingLogRepository
+from geoavia_backend.services.raster import RasterDataUnavailable, RasterService
 
 logger = logging.getLogger("geoavia.processing")
 
@@ -209,15 +210,15 @@ class AssessmentService:
 
 
 class AnalysisJobService:
-    """In-memory job tracker for the mock MCDA analysis.
+    """Runs the MCDA suitability analysis as a background job (per município).
 
-    Each /analysis/run call starts a fake job whose progress advances based
-    on wall-clock time since submission, so the front's polling loop sees
-    realistic 'pending → processing → completed' transitions without us
-    needing a real worker queue in Sprint 6.
+    Replaces the former wall-clock mock with a real worker: each /analysis/run
+    starts a daemon thread that computes the municipal suitability raster
+    (services.raster.RasterService), persists the ranked results and the
+    suitability COG. The frontend polling contract is preserved — status()
+    reports pending → processing → completed/failed with progress and, on
+    completion, a resultUrl + result (map-overlay bounds + PNG URL).
     """
-
-    _MOCK_DURATION_SEC = 4.0  # job 'finishes' after ~4s of polling
 
     def __init__(self) -> None:
         self._jobs: dict[str, dict] = {}
@@ -227,58 +228,72 @@ class AnalysisJobService:
     def submit(self, config: dict) -> str:
         job_id = str(uuid.uuid4())
         with self._lock:
-            self._jobs[job_id] = {
-                "config": config,
-                "started_at": time.monotonic(),
-                "logged": False,
-            }
+            self._jobs[job_id] = {"status": "pending", "progress": 0}
+        Thread(target=self._run, args=(job_id, config), daemon=True).start()
         return job_id
+
+    def _run(self, job_id: str, config: dict) -> None:
+        self._update(job_id, status="processing", progress=15)
+        started = time.monotonic()
+        codigo = str(config.get("codigoIbge") or "").strip()
+        try:
+            if not codigo:
+                raise ValueError("codigoIbge é obrigatório para a análise.")
+            result = RasterService().compute_suitability(codigo, config)
+            top = result["ranked"][0]["total_score"] if result["ranked"] else None
+            self._update(
+                job_id,
+                status="completed",
+                progress=100,
+                resultUrl=f"/raster/suitability/{codigo}.png",
+                result={
+                    "codigoIbge": codigo,
+                    "bounds": result["bounds"],
+                    "pngUrl": f"/raster/suitability/{codigo}.png",
+                    "topScore": top,
+                },
+            )
+            self._log(job_id, started, "completed", "MCDA suitability computed")
+        except RasterDataUnavailable as exc:
+            self._update(job_id, status="failed", progress=100, error=str(exc))
+            self._log(job_id, started, "failed", str(exc))
+        except Exception as exc:  # noqa: BLE001 — surface a clean error, log details
+            logger.exception("analysis job %s failed", job_id)
+            self._update(
+                job_id, status="failed", progress=100, error="Falha ao processar a análise."
+            )
+            self._log(job_id, started, "failed", str(exc))
 
     def status(self, job_id: str) -> dict | None:
         with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
                 return None
-            elapsed = time.monotonic() - job["started_at"]
+            response: dict = {
+                "id": job_id,
+                "status": job["status"],
+                "progress": job.get("progress", 0),
+            }
+            for key in ("resultUrl", "result", "error"):
+                if job.get(key) is not None:
+                    response[key] = job[key]
+            return response
 
-        progress = min(100, int((elapsed / self._MOCK_DURATION_SEC) * 100))
-        if progress >= 100:
-            status = "completed"
-        elif progress > 0:
-            status = "processing"
-        else:
-            status = "pending"
-
-        if status == "completed":
-            self._log_completion(job_id, elapsed)
-
-        response = {
-            "id": job_id,
-            "status": status,
-            "progress": progress,
-        }
-        if status == "completed":
-            response["resultUrl"] = "/ranking"
-        return response
-
-    def _log_completion(self, job_id: str, elapsed: float) -> None:
-        """Persists one processing_log row the first time a job completes.
-
-        Guarded by the per-job `logged` flag so repeated status polls don't
-        duplicate the entry. Best-effort: a logging failure never breaks polling.
-        """
+    def _update(self, job_id: str, **fields) -> None:
         with self._lock:
             job = self._jobs.get(job_id)
-            if job is None or job.get("logged"):
-                return
-            job["logged"] = True
+            if job is not None:
+                job.update(fields)
+
+    def _log(self, job_id: str, started: float, status: str, detail: str) -> None:
+        """Best-effort processing_log row; never breaks the job."""
         try:
             self._processing_repo.insert(
                 job=f"MCDA-{job_id[:8]}",
-                layer="aggregation",
-                status="completed",
-                duration_ms=int(elapsed * 1000),
-                detail="MCDA analysis completed",
+                layer="suitability",
+                status=status,
+                duration_ms=int((time.monotonic() - started) * 1000),
+                detail=detail,
             )
-        except Exception:  # noqa: BLE001 — processing log must not break polling
+        except Exception:  # noqa: BLE001 — logging must not break the worker
             logger.exception("failed to persist processing_log for job %s", job_id)

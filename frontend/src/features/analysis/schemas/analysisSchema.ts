@@ -13,6 +13,9 @@ import { z } from 'zod';
 
 export const analysisConfigSchema = z
   .object({
+    /** Target município (7-digit IBGE code) the MCDA is computed for */
+    codigoIbge: z.string().regex(/^\d{7}$/, 'Selecione um município'),
+
     /** Weight for slope criterion (ANADEM) */
     slopeWeight: z
       .number({ error: 'Peso deve ser um número' })
@@ -65,8 +68,9 @@ export const analysisConfigSchema = z
 
 export type AnalysisConfig = z.infer<typeof analysisConfigSchema>;
 
-/** Default MCDA configuration */
+/** Default MCDA configuration (codigoIbge is chosen by the user before running) */
 export const DEFAULT_ANALYSIS_CONFIG: AnalysisConfig = {
+  codigoIbge: '',
   slopeWeight: 30,
   slopeThreshold: 2,
   landUseWeight: 25,

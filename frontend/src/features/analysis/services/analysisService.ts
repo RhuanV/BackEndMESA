@@ -7,12 +7,65 @@
 import apiClient from '@/lib/api/axiosInstance';
 import type { AnalysisConfig } from '@/features/analysis/schemas/analysisSchema';
 
+/** Map-overlay + summary the backend returns when the MCDA job completes. */
+export interface AnalysisResult {
+  readonly codigoIbge: string;
+  readonly bounds: readonly [number, number, number, number];
+  readonly pngUrl: string;
+  readonly topScore: number | null;
+}
+
 export interface AnalysisStatusResponse {
   readonly id: string;
   readonly status: 'pending' | 'processing' | 'completed' | 'failed';
   readonly progress: number; // 0-100
   readonly resultUrl?: string;
+  readonly result?: AnalysisResult;
   readonly error?: string;
+}
+
+export interface RankedPoint {
+  readonly rank: number;
+  readonly total_score: number;
+  readonly latitude: number;
+  readonly longitude: number;
+}
+
+export interface SuitabilityMeta {
+  readonly codigoIbge: string;
+  readonly bounds: readonly [number, number, number, number];
+  readonly ranked: readonly RankedPoint[];
+  readonly pngUrl: string;
+}
+
+/** Maps the MCDA config to the snake_case query params the raster API expects. */
+function suitabilityParams(config: AnalysisConfig): Record<string, string> {
+  return {
+    slope_weight: String(config.slopeWeight),
+    land_use_weight: String(config.landUseWeight),
+    transport_weight: String(config.transportWeight),
+    cost_weight: String(config.costWeight),
+    slope_threshold: String(config.slopeThreshold),
+    apply_exclusions: String(config.applyExclusions),
+  };
+}
+
+/** Suitability bounds + ranked points for the map overlay (JSON). */
+export async function getSuitabilityMeta(config: AnalysisConfig): Promise<SuitabilityMeta> {
+  const response = await apiClient.get<SuitabilityMeta>(
+    `/raster/suitability/${config.codigoIbge}`,
+    { params: suitabilityParams(config) },
+  );
+  return response.data;
+}
+
+/** Fetches the colorized suitability PNG (authenticated) as an object URL. */
+export async function getSuitabilityPngUrl(config: AnalysisConfig): Promise<string> {
+  const response = await apiClient.get(`/raster/suitability/${config.codigoIbge}.png`, {
+    params: suitabilityParams(config),
+    responseType: 'blob',
+  });
+  return URL.createObjectURL(response.data as Blob);
 }
 
 /**
