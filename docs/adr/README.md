@@ -15,3 +15,5 @@ ADR that supersedes the old one instead of rewriting history.
 - [0003 — Layered backend architecture](0003-layered-architecture.md)
 - [0004 — Three-role RBAC and the developer sandbox](0004-rbac-three-roles-and-sandbox.md)
 - [0005 — Password reset via admin-issued code](0005-password-reset-by-admin-code.md)
+- [0006 — Raster analytic core: on-disk COGs + rasterio/NumPy MCDA](0006-raster-analytic-core.md)
+- [0007 — Reproducible deploy via a versioned demo seed (no Git LFS)](0007-reproducible-deploy-demo-seed.md)
