@@ -19,6 +19,7 @@ import sys
 plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plugins'))
 sys.path.insert(0, plugins_dir)
 from config_urls import CAVERNAS_URL
+from secure_http import government_get
 
 def extract_cavernas(**kwargs) -> str:
     """Extract: downloads and unpacks the shapefile ZIP, returning the extracted directory."""
@@ -31,7 +32,7 @@ def extract_cavernas(**kwargs) -> str:
     
     logging.info(f"Downloading from {CAVERNAS_URL}...")
     headers = {"User-Agent": "GeoAvia-MESA-Auto/1.0 (Airflow Data Pipeline)"}
-    response = requests.get(CAVERNAS_URL, stream=True, verify=False, headers=headers)
+    response = government_get(CAVERNAS_URL, stream=True, headers=headers)
     response.raise_for_status()
 
     # Verify the response is actually a ZIP (the portal sometimes returns HTML/redirects).

@@ -24,6 +24,7 @@ plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plu
 sys.path.insert(0, plugins_dir)
 
 from config_urls import IBGE_MUNICIPALITIES_URL
+from secure_http import government_get
 
 def extract_municipalities(**kwargs) -> str:
     """Extract: downloads and unpacks the shapefile ZIP and returns the extracted directory path."""
@@ -35,7 +36,7 @@ def extract_municipalities(**kwargs) -> str:
     extract_path = os.path.join(work_dir, "extracted")
     
     logging.info(f"Downloading from {IBGE_MUNICIPALITIES_URL}...")
-    response = requests.get(IBGE_MUNICIPALITIES_URL, stream=True, verify=False)
+    response = government_get(IBGE_MUNICIPALITIES_URL, stream=True)
     response.raise_for_status()
     
     with open(zip_path, "wb") as f:

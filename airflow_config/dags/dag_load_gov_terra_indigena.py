@@ -19,6 +19,7 @@ plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'plu
 sys.path.insert(0, plugins_dir)
 
 from config_urls import TERRA_INDIGENA_URL
+from secure_http import government_get
 
 def extract_terra_indigena(**kwargs) -> str:
     """Extract: downloads and unpacks the ZIP, returning the extracted directory."""
@@ -31,7 +32,7 @@ def extract_terra_indigena(**kwargs) -> str:
     
     logging.info(f"Downloading from {TERRA_INDIGENA_URL}...")
     headers = {"User-Agent": "GeoAvia-MESA-Auto/1.0 (Airflow Data Pipeline)"}
-    response = requests.get(TERRA_INDIGENA_URL, stream=True, verify=False, headers=headers)
+    response = government_get(TERRA_INDIGENA_URL, stream=True, headers=headers)
     response.raise_for_status()
     
     with open(zip_path, "wb") as f:
