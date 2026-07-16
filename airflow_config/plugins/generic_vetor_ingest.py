@@ -88,9 +88,22 @@ def ingest_zip_to_table(url: str, table: str, run_id: str) -> int:
             rows,
         )
         conn.commit()
+        logging.info("Loaded %d features into mesa_a.%s", len(rows), table)
+
+        # Refresh the layer's resolution views so the /layers API (which reads
+        # {prefix}_z1/z2/z3) serves the freshly-loaded geometry on the map. Done
+        # after the data commit and best-effort (a view may not exist for every
+        # table), each in its own transaction so a failure never drops the load.
+        prefix = table[len("vetor_") :] if table.startswith("vetor_") else table
+        for zoom in ("z1", "z2", "z3"):
+            try:
+                cur.execute(f"REFRESH MATERIALIZED VIEW {prefix}_{zoom};")
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001 — view may not exist for every table
+                conn.rollback()
+                logging.warning("Could not refresh %s_%s: %s", prefix, zoom, exc)
         cur.close()
         conn.close()
-        logging.info("Loaded %d features into mesa_a.%s", len(rows), table)
         return len(rows)
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
