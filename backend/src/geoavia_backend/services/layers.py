@@ -22,6 +22,17 @@ LAYER_REGISTRY: dict[str, dict] = {
         "base_view_prefix": "municipality_boundaries",
         "properties": ["codigo_ibge", "nome_municipio", "sigla_estado"],
     },
+    # Fase 4 vetorial layers (generic mesa_a.vetor_* tables; views in 0027).
+    # These expose only `id` — the attributes live in a JSONB column not carried
+    # into the simplified views; the map only needs geometry.
+    "incra_quilombolas": {"base_view_prefix": "incra_quilombolas", "properties": ["id"]},
+    "incra_assentamentos": {"base_view_prefix": "incra_assentamentos", "properties": ["id"]},
+    "mma_florestas_publicas": {
+        "base_view_prefix": "mma_florestas_publicas",
+        "properties": ["id"],
+    },
+    "cprm_geodiversidade": {"base_view_prefix": "cprm_geodiversidade", "properties": ["id"]},
+    "ibge_biomas": {"base_view_prefix": "ibge_biomas", "properties": ["id"]},
 }
 
 
