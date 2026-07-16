@@ -20,6 +20,8 @@ class AssessmentIn(BaseModel):
 
 
 class AnalysisConfigIn(BaseModel):
+    # Target município (7-digit IBGE code) the MCDA suitability is computed for.
+    codigoIbge: str = Field(min_length=7, max_length=7, pattern=r"^\d{7}$")
     slopeWeight: float = Field(ge=0, le=100)
     slopeThreshold: float = Field(ge=0, le=45)
     landUseWeight: float = Field(ge=0, le=100)

@@ -14,25 +14,45 @@ import { Button, Input, ProgressBar, Slider } from '@/components/ui';
 import { useAnalysis } from '@/features/analysis/hooks/useAnalysis';
 import { DEFAULT_ANALYSIS_CONFIG } from '@/features/analysis/schemas/analysisSchema';
 import type { AnalysisConfig } from '@/features/analysis/schemas/analysisSchema';
+import { MunicipalitySelector } from '@/features/regions/components/MunicipalitySelector';
+import { SuitabilityMap } from '@/features/analysis/components/SuitabilityMap';
 
 export function AnalysisConfigPanel() {
   const [config, setConfig] = useState<AnalysisConfig>(DEFAULT_ANALYSIS_CONFIG);
+  // Config snapshot the last successful run used — drives the result overlay.
+  const [ranConfig, setRanConfig] = useState<AnalysisConfig | null>(null);
   const { submit, isProcessing, progress, status, error, reset } = useAnalysis();
 
   const weightSum = config.slopeWeight + config.landUseWeight + config.transportWeight + config.costWeight;
   const isWeightValid = Math.abs(weightSum - 100) < 0.01;
+  const hasMunicipio = /^\d{7}$/.test(config.codigoIbge);
+  const canSubmit = isWeightValid && hasMunicipio && !isProcessing;
 
   const updateWeight = useCallback((field: keyof AnalysisConfig, value: number) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const handleSubmit = () => {
-    if (!isWeightValid) return;
+    if (!isWeightValid || !hasMunicipio) return;
+    setRanConfig(config);
     void submit(config);
   };
 
   return (
     <div className="space-y-6">
+      {/* Target município — the MCDA is computed for the selected município */}
+      <fieldset className="space-y-3 rounded-lg border border-neutral-200 p-4">
+        <legend className="px-2 text-sm font-semibold text-primary-700">Município-alvo</legend>
+        <MunicipalitySelector
+          value={config.codigoIbge}
+          onChange={(codigoIbge) => setConfig((prev) => ({ ...prev, codigoIbge }))}
+          disabled={isProcessing}
+        />
+        {!hasMunicipio && (
+          <p className="text-xs text-neutral-400">Selecione um município para rodar a análise.</p>
+        )}
+      </fieldset>
+
       {/* Weight Sum Indicator */}
       <div className={`rounded-lg px-4 py-3 text-sm font-medium ${
         isWeightValid
@@ -83,7 +103,7 @@ export function AnalysisConfigPanel() {
           min={0}
           max={45}
           step={0.5}
-          unit="°"
+          unit="%"
           onChange={(e) => updateWeight('slopeThreshold', Number(e.target.value))}
         />
 
@@ -123,12 +143,17 @@ export function AnalysisConfigPanel() {
         </div>
       )}
 
-      {/* Success */}
+      {/* Success + suitability overlay */}
       {status?.status === 'completed' && (
         <div role="alert" className="animate-fade-in rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
-          ✅ Análise concluída! Visualize os resultados na aba Resultados.
+          ✅ Análise concluída
+          {status.result?.topScore != null && (
+            <span> — melhor adequabilidade: <strong>{status.result.topScore}</strong>/100</span>
+          )}
+          .
         </div>
       )}
+      {status?.status === 'completed' && ranConfig && <SuitabilityMap config={ranConfig} />}
 
       {/* Error */}
       {error && (
@@ -141,7 +166,7 @@ export function AnalysisConfigPanel() {
       <div className="flex gap-3">
         <Button
           onClick={handleSubmit}
-          disabled={!isWeightValid || isProcessing}
+          disabled={!canSubmit}
           isLoading={isProcessing}
           className="flex-1"
           size="lg"

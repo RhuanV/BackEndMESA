@@ -1,13 +1,14 @@
-"""Ingest MapBiomas land use/cover (10 m), clip per município, register COGs.
+"""Ingest MapBiomas land use/cover per município via GDAL /vsicurl.
 
-Pattern mirrors the ANADEM DAG: download the annual land-use GeoTIFF once,
-reproject to SIRGAS 2000 (nearest-neighbour — the band is categorical), then
-clip to each requested municipal boundary and register the COG in
-``mesa_a.raster_catalog``. Land-use reclassification to a suitability score
-happens at MCDA time (services/mcda.py), keeping preferences tunable.
+Reads the national annual MapBiomas GeoTIFF remotely through ``/vsicurl`` and
+clips it to each requested municipal boundary with ``gdalwarp -cutline``
+(nearest-neighbour — the band is categorical), so only the município window is
+fetched. Land-use reclassification to a suitability score happens at MCDA time
+(services/mcda.py), keeping preferences tunable. Registers the COG in
+``mesa_a.raster_catalog``.
 
-Set MAPBIOMAS_LANDUSE_URL in the environment to the concrete collection/year
-asset before running. Requires gdal-bin.
+Env: MAPBIOMAS_LANDUSE_URL (national annual GeoTIFF on GCS), RASTER_DATA_DIR,
+GDAL_HTTP_UNSAFESSL. Requires gdal-bin.
 """
 import logging
 import os
@@ -23,7 +24,6 @@ plugins_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "plu
 sys.path.insert(0, plugins_dir)
 
 from config_urls import MAPBIOMAS_LANDUSE_URL  # noqa: E402
-from secure_http import government_get  # noqa: E402
 
 RASTER_ROOT = os.environ.get("RASTER_DATA_DIR", "/data/raster")
 DEFAULT_CODIGOS = ["3550308"]
@@ -34,31 +34,13 @@ def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
-def extract_landuse(**kwargs) -> str:
+def process(**kwargs) -> None:
     if not MAPBIOMAS_LANDUSE_URL:
         raise ValueError(
-            "MAPBIOMAS_LANDUSE_URL is not set. Configure the collection/year asset "
-            "URL in the environment before running this DAG."
+            "MAPBIOMAS_LANDUSE_URL is not set. Configure the collection/year asset URL."
         )
-    os.makedirs(RASTER_ROOT, exist_ok=True)
-    raw = os.path.join(RASTER_ROOT, "mapbiomas_raw.tif")
-    if not os.path.exists(raw):
-        logging.info("Downloading MapBiomas land use from %s", MAPBIOMAS_LANDUSE_URL)
-        resp = government_get(MAPBIOMAS_LANDUSE_URL, stream=True)
-        resp.raise_for_status()
-        with open(raw, "wb") as f:
-            for chunk in resp.iter_content(chunk_size=1 << 20):
-                f.write(chunk)
-    reproj = os.path.join(RASTER_ROOT, "mapbiomas_landuse_4674.tif")
-    _run(["gdalwarp", "-overwrite", "-t_srs", "EPSG:4674", "-r", "near", raw, reproj])
-    return reproj
-
-
-def clip_per_municipio(**kwargs) -> None:
-    ti = kwargs["ti"]
-    src = ti.xcom_pull(task_ids="extract_landuse")
     codigos = (kwargs.get("dag_run").conf or {}).get("codigos_ibge") or DEFAULT_CODIGOS
-
+    src = f"/vsicurl/{MAPBIOMAS_LANDUSE_URL}"
     hook = PostgresHook(postgres_conn_id="geoavia_main_conn")
     conn = hook.get_conn()
     for codigo in codigos:
@@ -84,17 +66,14 @@ def clip_per_municipio(**kwargs) -> None:
                 )
 
         out = os.path.join(muni_dir, "mapbiomas_landuse.tif")
-        _run(
-            [
-                "gdalwarp", "-overwrite", "-cutline", cutline, "-crop_to_cutline",
-                "-r", "near", "-co", "TILED=YES", "-co", "COMPRESS=DEFLATE", src, out,
-            ]
-        )
+        _run(["gdalwarp", "-overwrite", "-t_srs", "EPSG:4674", "-cutline", cutline,
+              "-crop_to_cutline", "-r", "near", "-co", "TILED=YES",
+              "-co", "COMPRESS=DEFLATE", src, out])
         cur = conn.cursor()
         cur.execute(
             """
             INSERT INTO mesa_a.raster_catalog (dataset, codigo_ibge, file_path, resolution_m, source_url)
-            VALUES ('mapbiomas_landuse', %s, %s, 10.0, %s)
+            VALUES ('mapbiomas_landuse', %s, %s, 30.0, %s)
             ON CONFLICT (dataset, codigo_ibge) DO UPDATE SET
                 file_path = EXCLUDED.file_path, resolution_m = EXCLUDED.resolution_m,
                 source_url = EXCLUDED.source_url, generated_at = NOW();
@@ -114,6 +93,4 @@ with DAG(
     catchup=False,
     tags=["raster", "mapbiomas", "uso-do-solo", "rf03"],
 ) as dag:
-    extract_task = PythonOperator(task_id="extract_landuse", python_callable=extract_landuse)
-    clip_task = PythonOperator(task_id="clip_per_municipio", python_callable=clip_per_municipio)
-    extract_task >> clip_task
+    PythonOperator(task_id="clip_per_municipio", python_callable=process)
